@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["vitest/globals"],
+    "paths": {
+      "@svx/portal": ["libs/portal/src/index.ts"]
+    }
+  }
+}

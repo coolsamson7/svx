@@ -1,0 +1,21 @@
+{
+  "name": "shell",
+  "root": "apps/shell",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vite",
+        "cwd": "apps/shell"
+      },
+      "dependsOn": ["@svx/portal:build"]
+    },
+    "generate-manifest": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx --tsconfig tools/manifest-generator/tsconfig.json tools/manifest-generator/src/generate.ts {projectRoot} {projectRoot}/public/manifest.json",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}
