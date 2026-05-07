@@ -1,6 +1,6 @@
-import { Injectable, Type } from '@nestjs/common';
 import 'reflect-metadata';
 
+import { Injectable } from '@nestjs/common';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -11,9 +11,12 @@ import {
   Service,
   ChannelAddress,
   ChannelFactory,
-  createComponentModule,
   ComponentRegistry,
   DeclareService,
+  ComponentModule,
+  DeclareChannel,
+  Channel,
+  ServiceDescriptor,
 } from './service';
 
 
@@ -24,7 +27,7 @@ export abstract class UserService extends Service {
   abstract createUser(name: string): Promise<string>;
 }
 
-@DeclareComponent({ name: "user-component", services: [UserService as Type<any>] })
+@DeclareComponent({ name: "user-component", services: [UserService] })
 export abstract class UserComponent extends Component {}
 
 // implementation
@@ -57,6 +60,21 @@ export class UserServiceImpl extends UserService {
   }
 }
 
+@DeclareChannel('http')
+@Injectable({ scope: Scope.TRANSIENT })
+export class HttpChannel implements Channel {
+
+  async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
+    /*const res = await fetch(`${this.uri}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    });
+    return res.json();*/
+    return undefined
+  }
+}
+
 /* =========================================
    Client
 ========================================= 
@@ -81,14 +99,16 @@ describe('Service', () => {
 
 
   beforeEach(async () => {
-    // create a dynamic NestJS testing module
+
     moduleRef = await Test.createTestingModule({
-      imports: [createComponentModule(UserComponent as any)],
-      providers: [ChannelFactory], // ensure factory is available
+      imports: [ComponentModule.forModule(UserComponent)],
+      providers: [ChannelFactory],
     }).compile();
 
     // retrieve the proxy for the abstract service
+
     componentRegistry = moduleRef.get(ComponentRegistry);
+
     await componentRegistry.createInstances(); // manually trigger module init to setup services ?????
   });
 
@@ -97,6 +117,6 @@ describe('Service', () => {
 
     const result = await userService.createUser('Alice');
 
-    expect(typeof userService.createUser).toBe('function');
+    expect(result).toBe('user-Alice');
   });
 });

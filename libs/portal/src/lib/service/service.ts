@@ -1,19 +1,15 @@
 import {
   Injectable,
   Type,
-  Inject,
   Module,
   DynamicModule,
-  Scope,
   OnModuleInit
 } from '@nestjs/common';
 
 import { ModuleRef } from  '@nestjs/core';
 import 'reflect-metadata';
 
-/* =========================================
-   Base Types
-========================================= */
+export type AbstractType<T> = abstract new (...args: any[]) => T;
 
 export class Service {}
 
@@ -60,20 +56,7 @@ export class ChannelFactory {
   create(channel: string): Channel {
     return this.moduleRef.get(this.findChannelType(channel), { strict: false });
   }
-
-  createProxy<T extends Service>(svc: Type<T>, channels: Channel[]): T {
-    const methodNames = Object.getOwnPropertyNames(svc.prototype).filter(
-      (m) => m !== 'constructor' && typeof svc.prototype[m] === 'function',
-    );
-    return new Proxy({} as T, {
-      get(_, prop: string) {
-        if (!methodNames.includes(prop)) return undefined;
-        return async (...args: any[]) => channels[0].call(prop as any, ...args);
-      },
-    });
-  }
 }
-
 
 // decorator
 
@@ -88,24 +71,10 @@ export function DeclareChannel(name: string): ClassDecorator {
 @DeclareChannel('local')
 @Injectable()
 export class LocalChannel implements Channel {
+  // implement channel
 
   async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
     return descriptor.instance![method](...args);
-  }
-}
-
-@DeclareChannel('http')
-@Injectable({ scope: Scope.TRANSIENT })
-export class HttpChannel implements Channel {
-
-  async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
-    /*const res = await fetch(`${this.uri}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(args),
-    });
-    return res.json();*/
-    return undefined
   }
 }
 
@@ -115,7 +84,6 @@ export class ChannelModule {
     return {
       module: ChannelModule,
       providers: [
-        // FIX 1: spread iterator into array before .map()
         ...[...ChannelFactory.channels.values()].map(descriptor => descriptor.type),
         ChannelFactory,
       ],
@@ -135,7 +103,7 @@ export class Descriptor<T extends Service> {
 
   // constructor
 
-  constructor(public name: string, public type: Type<T>) {}
+  constructor(public name: string, public type: AbstractType<T>) {}
 }
 
 export class ServiceDescriptor<T extends Service=Service> extends Descriptor<T> {
@@ -155,7 +123,7 @@ export class ComponentDescriptor<T extends Component=Component> extends Descript
 
   addresses: ChannelAddress[] = [];
 
-  constructor(public name: string, public type: Type<T>, public services: ServiceDescriptor[]) {
+  constructor(public name: string, public type: AbstractType<T>, public services: ServiceDescriptor[]) {
     super(name, type)
 
     // link
@@ -170,7 +138,7 @@ export interface ServiceOptions {
 }
 
 export interface ComponentOptions extends ServiceOptions {
-  services: Type<Service>[];
+  services: AbstractType<Service>[];
 }
 
 interface ComponentDeclaration {
@@ -210,10 +178,8 @@ export class ComponentRegistry implements OnModuleInit {
 
   private components = new Map<string, ComponentDescriptor<Component>>();
   private services = new Map<string, ServiceDescriptor<Service>>();
-
-  private byType =  new Map<Type<Service>, Descriptor<Service>>();
-
-  private proxies =  new Map<Type<Service>, Service>();
+  private byType =  new Map<AbstractType<Service>, Descriptor<Service>>();
+  private proxies =  new Map<AbstractType<Service>, Service>();
 
   // constructor
 
@@ -233,9 +199,6 @@ export class ComponentRegistry implements OnModuleInit {
     // implementations
 
     for (const implementation of ComponentRegistry.serviceImplementations) {
-      // FIX 2: findServiceDescriptor walks prototype chain to find the registered
-      // abstract/base service descriptor — but we must create the *implementation*
-      // type, not descriptor.type (which is the abstract base)
       const descriptor = this.findServiceDescriptor(implementation) as ServiceDescriptor
 
       if (!descriptor) throw new Error(`No descriptor found for ${implementation.name}`)
@@ -259,7 +222,7 @@ export class ComponentRegistry implements OnModuleInit {
       this.registerComponent(new ComponentDescriptor<any>(declaration.name, declaration.type, declaration.options.services.map(type => this.byType.get(type) as ServiceDescriptor)))
   }
 
-  private findServiceDescriptor(type: Type<Service>): Descriptor<Service> | undefined {
+  private findServiceDescriptor(type: AbstractType<Service>): Descriptor<Service> | undefined {
     let current: any = type;
 
     while (
@@ -317,10 +280,6 @@ export class ComponentRegistry implements OnModuleInit {
             return undefined;
           }
 
-          // FIX 3+4: resolve channel here in the get trap (not inside the async
-          // lambda) so it's created once per property access rather than once per
-          // call; also fixes args being passed as a pre-collected array instead of
-          // spread — channel.call now receives individual args via ...args
           const channel = descriptor.instance
             ? this.channelFactory.create('local')
             : (() => {
@@ -349,7 +308,6 @@ export class ComponentRegistry implements OnModuleInit {
 
 // decorator
 
-// Abstract component decorator
 export function DeclareComponent(options: ComponentOptions): ClassDecorator {
   return (target) => {
     ComponentRegistry.declareComponent(target, options)
@@ -368,39 +326,26 @@ export function Implementation<T extends Service>(): ClassDecorator {
   };
 }
 
-/* =========================================
-   Dynamic Module
-========================================= */
+@Module({})
+export class ComponentModule {
+  static forModule(component: AbstractType<Component>): DynamicModule {
+    const services = ComponentRegistry.serviceDeclarations.map(s => s.type);
 
-export function createComponentModule(component: Type<Component>): any {
-  // FIX 5a: serviceDeclarations is already an array — .values().map() is wrong,
-  // just use .map() directly
-  const services = ComponentRegistry.serviceDeclarations.map(service => service.type);
+    const providers: any[] = [
+      component,
+      ComponentRegistry,
+      ...services.map((svc) => ({
+        provide: svc as Type<Service>,
+        useFactory: (registry: ComponentRegistry) => registry.getService(svc),
+        inject: [ComponentRegistry],
+      })),
+    ];
 
-  const providers: any[] = [
-    component,
-
-    ComponentRegistry,
-    ...services.map((svc) => ({
-      provide: svc as Type<Service>,
-      useFactory: (registry: ComponentRegistry) =>
-        registry.getService(svc),
-      inject: [ComponentRegistry],
-    })),
-  ];
-
-  // create a proper dynamic module class
-
-  @Module({
-    providers,
-
-    imports: [
-      ChannelModule.register(),
-    ],
-    // FIX 5b: export tokens, not provider descriptor objects
-    exports: [ComponentRegistry, component, ...services],
-  })
-  class DynamicComponentModule {}
-
-  return DynamicComponentModule;
+    return {
+      module: ComponentModule,
+      imports: [ChannelModule.register()],
+      providers,
+      exports: [ComponentRegistry, component, ...services],
+    };
+  }
 }
