@@ -92,10 +92,10 @@ describe('Service', () => {
     await componentRegistry.createInstances(); // manually trigger module init to setup services ?????
   });
 
-  it('should return a proxy instance', () => {
+  it('should return a proxy instance', async () => {
     const userService = componentRegistry.getService<UserService>(UserService);
 
-    const result = userService.createUser('Alice');
+    const result = await userService.createUser('Alice');
 
     expect(typeof userService.createUser).toBe('function');
   });

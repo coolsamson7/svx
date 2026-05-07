@@ -41,7 +41,7 @@ interface ChannelDescriptor {
 
 @Injectable()
 export class ChannelFactory {
-  // static 
+  // static
 
   static channels : Map<string,ChannelDescriptor> = new Map()
 
@@ -54,6 +54,7 @@ export class ChannelFactory {
   private findChannelType(channel: string) :Type<Channel> {
     return ChannelFactory.channels.get(channel)!.type!
   }
+
   // public
 
   create(channel: string): Channel {
@@ -67,7 +68,7 @@ export class ChannelFactory {
     return new Proxy({} as T, {
       get(_, prop: string) {
         if (!methodNames.includes(prop)) return undefined;
-        return async (...args: any[]) => channels[0].call(prop, ...args);
+        return async (...args: any[]) => channels[0].call(prop as any, ...args);
       },
     });
   }
@@ -96,7 +97,7 @@ export class LocalChannel implements Channel {
 @DeclareChannel('http')
 @Injectable({ scope: Scope.TRANSIENT })
 export class HttpChannel implements Channel {
- 
+
   async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
     /*const res = await fetch(`${this.uri}/${method}`, {
       method: 'POST',
@@ -104,7 +105,7 @@ export class HttpChannel implements Channel {
       body: JSON.stringify(args),
     });
     return res.json();*/
-    return undefined//
+    return undefined
   }
 }
 
@@ -114,7 +115,8 @@ export class ChannelModule {
     return {
       module: ChannelModule,
       providers: [
-        ...ChannelFactory.channels.values().map(descriptor => descriptor.type),
+        // FIX 1: spread iterator into array before .map()
+        ...[...ChannelFactory.channels.values()].map(descriptor => descriptor.type),
         ChannelFactory,
       ],
       exports: [ChannelFactory],
@@ -127,7 +129,7 @@ export class ChannelModule {
 ========================================= */
 
 export class Descriptor<T extends Service> {
-  // insatcne data
+  // instance data
 
   instance?: T
 
@@ -222,19 +224,23 @@ export class ComponentRegistry implements OnModuleInit {
   // implement OnModuleInit
 
   onModuleInit() {
-    //this.createInstances();
+    // createInstances() is called externally
   }
 
   // private
-
 
   async createInstances() {
     // implementations
 
     for (const implementation of ComponentRegistry.serviceImplementations) {
-      const descriptor = this.findServiceDescriptor(implementation)!
+      // FIX 2: findServiceDescriptor walks prototype chain to find the registered
+      // abstract/base service descriptor — but we must create the *implementation*
+      // type, not descriptor.type (which is the abstract base)
+      const descriptor = this.findServiceDescriptor(implementation) as ServiceDescriptor
 
-      descriptor.instance = await this.moduleRef.create(descriptor.type);
+      if (!descriptor) throw new Error(`No descriptor found for ${implementation.name}`)
+
+      descriptor.instance = await this.moduleRef.create(implementation);
 
       if ( descriptor.instance instanceof Component)
         descriptor.instance.startup()
@@ -255,7 +261,7 @@ export class ComponentRegistry implements OnModuleInit {
 
   private findServiceDescriptor(type: Type<Service>): Descriptor<Service> | undefined {
     let current: any = type;
-  
+
     while (
       current &&
       current !== Function.prototype &&
@@ -263,14 +269,14 @@ export class ComponentRegistry implements OnModuleInit {
       current !== Object.prototype
     ) {
       const descriptor = this.byType.get(current);
-  
+
       if (descriptor) {
         return descriptor as Descriptor<Service>;
       }
-  
+
       current = Object.getPrototypeOf(current);
     }
-  
+
     return undefined;
   }
 
@@ -311,40 +317,25 @@ export class ComponentRegistry implements OnModuleInit {
             return undefined;
           }
 
-          return async (...args: any[]) => {
-            // LOCAL ALWAYS WINS
+          // FIX 3+4: resolve channel here in the get trap (not inside the async
+          // lambda) so it's created once per property access rather than once per
+          // call; also fixes args being passed as a pre-collected array instead of
+          // spread — channel.call now receives individual args via ...args
+          const channel = descriptor.instance
+            ? this.channelFactory.create('local')
+            : (() => {
+                const addresses = descriptor.componentDescriptor.addresses;
 
-            if (descriptor.instance) {
-              const channel =
-                this.channelFactory.create('local');
+                if (!addresses.length) {
+                  throw new Error(
+                    `No address for component ${descriptor.componentDescriptor.name}`,
+                  );
+                }
 
-              return channel.call(
-                descriptor,
-                prop,
-                args,
-              );
-            }
+                return this.channelFactory.create(addresses[0].channel);
+              })();
 
-            const addresses =
-              descriptor.componentDescriptor.addresses;
-
-            if (!addresses.length) {
-              throw new Error(
-                `No address for component ${descriptor.componentDescriptor.name}`,
-              );
-            }
-
-            const address = addresses[0];
-
-            const channel =
-              this.channelFactory.create(address.channel);
-
-            return channel.call(
-              descriptor,
-              prop,
-              args,
-            );
-          };
+          return async (...args: any[]) => channel.call(descriptor, prop, ...args);
         },
       },
     ) as T;
@@ -382,13 +373,15 @@ export function Implementation<T extends Service>(): ClassDecorator {
 ========================================= */
 
 export function createComponentModule(component: Type<Component>): any {
-  const services = ComponentRegistry.serviceDeclarations.values().map(service => service.type);
+  // FIX 5a: serviceDeclarations is already an array — .values().map() is wrong,
+  // just use .map() directly
+  const services = ComponentRegistry.serviceDeclarations.map(service => service.type);
 
   const providers: any[] = [
     component,
-  
+
     ComponentRegistry,
-    ...(services).map((svc) => ({
+    ...services.map((svc) => ({
       provide: svc as Type<Service>,
       useFactory: (registry: ComponentRegistry) =>
         registry.getService(svc),
@@ -404,7 +397,8 @@ export function createComponentModule(component: Type<Component>): any {
     imports: [
       ChannelModule.register(),
     ],
-    exports: providers,
+    // FIX 5b: export tokens, not provider descriptor objects
+    exports: [ComponentRegistry, component, ...services],
   })
   class DynamicComponentModule {}
 
