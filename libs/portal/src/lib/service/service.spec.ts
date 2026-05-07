@@ -1,134 +1,122 @@
-import "reflect-metadata";
+import 'reflect-metadata';
+
+import { Injectable } from '@nestjs/common';
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { Test, TestingModule } from '@nestjs/testing';
 import {
-  Module,
-  Injectable,
-  Inject,
-  Controller,
-  Post,
-  Param,
-  Body,
-} from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
+  Component,
+  DeclareComponent,
+  Implementation,
+  Service,
+  ChannelAddress,
+  ChannelFactory,
+  ComponentRegistry,
+  DeclareService,
+  ComponentModule,
+  DeclareChannel,
+  Channel,
+  ServiceDescriptor,
+} from './service';
 
-import { TypeDescriptor } from "../reflection"
 
-import { Component, InjectService, createComponentModule } from "./service"
+// interface
 
-const method = function (): any {
-    return (target: any, property: string, _descriptor: PropertyDescriptor) => {
-        TypeDescriptor.forType(target.constructor).addMethodDecorator(target, property, method)
-    }
+@DeclareService({ name: "user-service" })
+export abstract class UserService extends Service {
+  abstract createUser(name: string): Promise<string>;
 }
 
-/* ============================================================
-   🧩 1. SHARED CONTRACTS
-============================================================ */
+@DeclareComponent({ name: "user-component", services: [UserService] })
+export abstract class UserComponent extends Component {}
 
-export class ServiceA {
-  @method()
-  foo!: () => Promise<string>;
-}
-
-export abstract class ServiceB {
-  @method()
-  bar!: (x: number) => Promise<number>;
-}
-
-/* ============================================================
-   🌐 2. REMOTE CONTROLLERS (SERVER SIDE)
-============================================================ */
-
-@Controller("ServiceA")
-class ServiceAController extends ServiceA {
-  @Post("foo")
-  async foo() : Promise<string> {
-    return "hello-from-remote";
-  }
-}
-
-@Controller("ServiceB")
-class ServiceBController extends ServiceB {
-  @Post("foo")
-  override async foo(@Body() args: any[]) : Promise<number> {
-    const [x] = args;
-    return x * 2;
-  }
-}
-
-@Module({
-  controllers: [ServiceAController, ServiceBController],
-})
-class RemoteAppModule {}
-
-/* ============================================================
-   🧠 3. CLIENT SIDE INFRA (YOUR ARCHITECTURE)
-============================================================ */
-
-/* ============================================================
-   🧩 4. COMPONENT (CLIENT CONFIG)
-============================================================ */
-
-@Component({
-  services: [ServiceA, ServiceB],
-  endpoint: "http://localhost:4000",
-})
-class RemoteComponent {}
-
-/* ============================================================
-   💉 5. CLIENT SERVICE
-============================================================ */
+// implementation
 
 @Injectable()
-class AppService {
-  constructor(
-    @InjectService(ServiceA) private a: ServiceA,
-    @InjectService(ServiceB) private b: ServiceB
-  ) {}
+@Implementation()
+export class UserComponentImpl extends UserComponent {
+  // implement
 
-  async run() {
-    const resA = await this.a.foo();
-    const resB = await this.b.foo(21);
+  async startup() {
+    console.log("UserComponent starting up...");
+  }
 
-    return { resA, resB };
+  async shutdown() {
+    console.log("UserComponent shutting down...");
+  }
+
+  get addresses(): ChannelAddress[] {
+    return [
+      new ChannelAddress('http', 'http://localhost:3000'), // remote
+    ];
   }
 }
 
-@Module({
-  imports: [createComponentModule(RemoteComponent)],
-  providers: [AppService],
-})
-class ClientAppModule {}
+@Injectable()
+@Implementation()
+export class UserServiceImpl extends UserService {
+  async createUser(name: string): Promise<string> {
+    return `user-${name}`;
+  }
+}
 
+@DeclareChannel('http')
+@Injectable({ scope: Scope.TRANSIENT })
+export class HttpChannel implements Channel {
 
-describe("Remote Component (E2E)", () => {
-  let remoteApp: any;
-  let clientApp: any;
-  let appService: AppService;
-
-  beforeAll(async () => {
-    // start remote server
-    remoteApp = await NestFactory.create(RemoteAppModule);
-    await remoteApp.listen(4000);
-
-    // start client DI container
-    clientApp = await NestFactory.createApplicationContext(
-      ClientAppModule
-    );
-
-    appService = clientApp.get(AppService);
-  });
-
-  afterAll(async () => {
-    await remoteApp.close();
-    await clientApp.close();
-  });
-
-  it("should call remote services via proxy", async () => {
-    const result = await appService.run();
-
-    expect(result).toEqual({
-      resA: "hello-from-remote",
-      resB: 42,
+  async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
+    /*const res = await fetch(`${this.uri}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
     });
+    return res.json();*/
+    return undefined
+  }
+}
+
+/* =========================================
+   Client
+========================================= 
+
+@Injectable()
+export class ClientService {
+  constructor(
+    @Inject(UserServiceInterface) private userSvc: UserServiceInterface,
+  ) {}
+  async run() {
+    const id = await this.userSvc.createUser('Alice');
+    console.log('Got user id:', id);
+  }
+}*/
+
+// TES
+
+describe('Service', () => {
+  let moduleRef: TestingModule;
+
+  let componentRegistry: ComponentRegistry;
+
+
+  beforeEach(async () => {
+
+    moduleRef = await Test.createTestingModule({
+      imports: [ComponentModule.forModule(UserComponent)],
+      providers: [ChannelFactory],
+    }).compile();
+
+    // retrieve the proxy for the abstract service
+
+    componentRegistry = moduleRef.get(ComponentRegistry);
+
+    await componentRegistry.createInstances(); // manually trigger module init to setup services ?????
+  });
+
+  it('should return a proxy instance', async () => {
+    const userService = componentRegistry.getService<UserService>(UserService);
+
+    const result = await userService.createUser('Alice');
+
+    expect(result).toBe('user-Alice');
   });
 });
