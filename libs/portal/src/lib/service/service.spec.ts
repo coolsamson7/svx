@@ -89,10 +89,13 @@ describe('Service', () => {
 
     // retrieve the proxy for the abstract service
     componentRegistry = moduleRef.get(ComponentRegistry);
+    await componentRegistry.createInstances(); // manually trigger module init to setup services ?????
   });
 
   it('should return a proxy instance', () => {
     const userService = componentRegistry.getService<UserService>(UserService);
+
+    const result = userService.createUser('Alice');
 
     expect(typeof userService.createUser).toBe('function');
   });

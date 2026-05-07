@@ -4,7 +4,8 @@ import {
   Inject,
   Module,
   DynamicModule,
-  Scope
+  Scope,
+  OnModuleInit
 } from '@nestjs/common';
 
 import { ModuleRef } from  '@nestjs/core';
@@ -184,7 +185,7 @@ interface ServiceDeclaration {
 }
 
 @Injectable()
-export class ComponentRegistry {
+export class ComponentRegistry implements OnModuleInit {
   // static
 
   static componentDeclarations : ComponentDeclaration[] = []
@@ -218,7 +219,27 @@ export class ComponentRegistry {
     this.setup();
   }
 
+  // implement OnModuleInit
+
+  onModuleInit() {
+    //this.createInstances();
+  }
+
   // private
+
+
+  async createInstances() {
+    // implementations
+
+    for (const implementation of ComponentRegistry.serviceImplementations) {
+      const descriptor = this.findServiceDescriptor(implementation)!
+
+      descriptor.instance = await this.moduleRef.create(descriptor.type);
+
+      if ( descriptor.instance instanceof Component)
+        descriptor.instance.startup()
+    }
+  }
 
   private setup() {
     // services
@@ -230,17 +251,6 @@ export class ComponentRegistry {
 
     for (const declaration of ComponentRegistry.componentDeclarations)
       this.registerComponent(new ComponentDescriptor<any>(declaration.name, declaration.type, declaration.options.services.map(type => this.byType.get(type) as ServiceDescriptor)))
-
-    // implementations
-
-    for (const implementation of ComponentRegistry.serviceImplementations) {
-      const descriptor = this.findServiceDescriptor(implementation)!
-
-      descriptor.instance = this.moduleRef.get(descriptor.type);
-
-      if ( descriptor.instance instanceof Component)
-        descriptor.instance.startup()
-    }
   }
 
   private findServiceDescriptor(type: Type<Service>): Descriptor<Service> | undefined {
@@ -347,8 +357,6 @@ export class ComponentRegistry {
 
 
 // decorator
-
-
 
 // Abstract component decorator
 export function DeclareComponent(options: ComponentOptions): ClassDecorator {
