@@ -235,7 +235,7 @@ export class DefaultAddressResolution extends AddressResolution {
 
     for (const p of this.priority) {
       const match = addresses.find(a => a.channel === p);
-      if (match) 
+      if (match)
         return match;
     }
 
@@ -338,7 +338,18 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
       descriptor.instance = await this.moduleRef.create(implementation);
 
       if ( descriptor instanceof ComponentDescriptor) {
-        descriptor.addresses =  descriptor.instance.addresses
+        descriptor.addresses = descriptor.instance.addresses
+
+        // 👇 ensure local channel exists when an instance is available
+        const hasLocal = descriptor.addresses.some(a => a.channel === 'local');
+
+        if (!hasLocal && descriptor.instance) {
+          descriptor.addresses = [
+            new ChannelAddress('local', 'local'),
+            ...descriptor.addresses,
+          ];
+        }
+
         this.discovery.register(descriptor)
         descriptor.instance.startup()
       }
@@ -401,43 +412,52 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
     if (cached) return cached as T;
 
     const descriptor = this.findServiceDescriptor(type);
-    const methods    = TypeDescriptor.forType(type as any).getMethods();
-    const proxy      = Object.create((type as any).prototype);
+    const methods = TypeDescriptor.forType(type as any).getMethods();
+    const proxy = Object.create((type as any).prototype);
 
-    const bindRemote = () => {
-      const address = this.pickAddress(descriptor.componentDescriptor);
+    const bindRemote = (address: ChannelAddress) => {
       const channel = this.channelFactory.create(address.channel, address.uri);
 
       for (const method of methods) {
         const name = method.name;
-        proxy[name] = (...args: any[]) => channel.call(descriptor, name, ...args);
+        proxy[name] = (...args: any[]) =>
+          channel.call(descriptor, name, ...args);
       }
     };
 
     const bindLocal = () => {
-      const instance = descriptor.instance!;
+      const instance = descriptor.instance;
+      if (!instance) {
+        throw new Error(`No local instance for ${descriptor.name}`);
+      }
 
       for (const method of methods) {
         const name = method.name;
-        proxy[name] = (...args: any[]) => (instance as any)[name](...args);
+        proxy[name] = (...args: any[]) =>
+          (instance as any)[name](...args);
       }
     };
 
-    // install lazy stubs — first call to ANY method triggers class-level binding
     const installStubs = () => {
       for (const method of methods) {
         const name = method.name;
 
         proxy[name] = (...args: any[]) => {
-          // bind all methods at once, then delegate
-          (false && descriptor.instance) ? bindLocal() : bindRemote();
-          return proxy[name](...args);   // call the freshly installed fn
+          // pick address ONCE per first call
+          const address = this.pickAddress(descriptor.componentDescriptor);
+
+          if (address.channel === 'local') {
+            bindLocal();
+          } else {
+            bindRemote(address);
+          }
+
+          return proxy[name](...args);
         };
       }
     };
 
     installStubs();
-    // rebind hook for address death: () => installStubs()
 
     this.proxies.set(type, proxy);
     return proxy as T;
