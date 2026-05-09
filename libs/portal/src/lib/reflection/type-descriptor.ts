@@ -222,9 +222,60 @@ export class TypeDescriptor<T> {
         }
 
         this.analyzeStructure(type)
-        this.loadReflectedMethods()
+        this.loadReflectionFromJSON()
         this.inheritFromParent()
     }
+
+  private loadReflectionFromJSON() {
+      const reflected =
+          TypeDescriptor.reflected.get(this.type.name)
+
+      if (!reflected)
+          return
+
+      // =====================================================
+      // 1. METHODS
+      // =====================================================
+      for (const m of reflected.methods) {
+
+          if (this.properties[m.name])
+              continue
+
+          const synthetic = async function () {}
+
+          const method = new MethodDescriptor(
+              m.name,
+              synthetic,
+              PropertyType.METHOD,
+              this.type
+          )
+
+          // decorators
+          for (const d of m.decorators) {
+              method.addDecorator({ name: d.name } as any, d.arguments)
+          }
+
+          // parameters
+          for (const p of m.parameters) {
+              // attach param metadata via decorators (simple model)
+              // or extend MethodDescriptor if you want full param reflection
+              (method as any).parameters ??= []
+              ;(method as any).parameters.push(p)
+          }
+
+          this.properties[m.name] = method
+      }
+
+      // =====================================================
+      // 2. CLASS DECORATORS
+      // =====================================================
+      for (const d of reflected.decorators) {
+          this.decorators.push({
+              decorator: { name: d.name } as any,
+              arguments: d.arguments,
+          })
+      }
+  }
 
   private loadReflectedMethods() {
       const reflected =
