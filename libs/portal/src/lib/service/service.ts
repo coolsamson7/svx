@@ -319,8 +319,8 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
   // implement OnModuleInit
 
-  onModuleInit() {
-    // createInstances() is called externally
+  async onModuleInit() {
+    await this.createInstances()
   }
 
   // private

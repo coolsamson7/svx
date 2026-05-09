@@ -132,8 +132,6 @@ describe('Service', () => {
 
   componentRegistry = moduleRef.get(ComponentRegistry);
 
-  await componentRegistry.createInstances();
-
   app = moduleRef.createNestApplication();
 
   await app.init();
