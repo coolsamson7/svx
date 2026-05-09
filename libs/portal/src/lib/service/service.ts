@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
   Type,
   Module,
   DynamicModule,
-  OnModuleInit
+  OnModuleInit,
+  Scope
 } from '@nestjs/common';
 
 import { ModuleRef } from  '@nestjs/core';
@@ -30,6 +32,18 @@ export class ChannelAddress {
 export interface Channel {
   url?: string;
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any>;
+}
+
+@DeclareChannel("missing")
+@Injectable({ scope: Scope.TRANSIENT})
+export class MissingChannel implements Channel {
+  url!: string
+
+  // implement
+
+  async call(_descriptor: ServiceDescriptor, _method: string, ..._args: any[]): Promise<any> {
+    throw Error("missing channel for " + this.url);
+  }
 }
 
 interface ChannelDescriptor {
@@ -198,8 +212,65 @@ interface ServiceDeclaration {
   options: ServiceOptions
 }
 
+export interface AddressResolution {
+  select(addresses: ChannelAddress[]): ChannelAddress;
+}
+
+export class DefaultAddressResolution implements AddressResolution {
+  private priority: string[];
+
+  constructor(...priority: string[]) {
+    this.priority = priority;
+  }
+
+  select(addresses: ChannelAddress[]): ChannelAddress {
+    if (!addresses.length) {
+      return new ChannelAddress('missing', 'unknown');
+    }
+
+    return [...addresses].sort((a, b) => {
+      return (
+        this.priority.indexOf(a.channel) -
+        this.priority.indexOf(b.channel)
+      );
+    })[0];
+  }
+}
+
+
+export abstract class ComponentDiscovery {
+  abstract register(component: ComponentDescriptor<Component>) : void
+  abstract deregister(component: ComponentDescriptor<Component>) : void
+
+  abstract getAddresses(component: string) : ChannelAddress[]
+}
+
 @Injectable()
-export class ComponentRegistry implements OnModuleInit {
+export class LocalComponentDiscovery implements ComponentDiscovery {
+  // instance data
+
+  components = new Map<string,ComponentDescriptor<Component>>()
+  // implement
+
+  register(component: ComponentDescriptor<Component>) : void {
+    this.components.set(component.name, component)
+  }
+
+  deregister(component: ComponentDescriptor<Component>) : void {
+    this.components.delete(component.name)
+  }
+
+  getAddresses(component: string) : ChannelAddress[] {
+    const descriptor = this.components.get(component)
+    if ( descriptor )
+      return descriptor.addresses
+    else
+      return []
+  }
+}
+
+@Injectable()
+export class ComponentRegistry implements OnModuleInit { // TODO rename
   // static
 
   static componentDeclarations : ComponentDeclaration[] = []
@@ -227,7 +298,7 @@ export class ComponentRegistry implements OnModuleInit {
 
   // constructor
 
-  constructor(private channelFactory: ChannelFactory, private moduleRef: ModuleRef) {
+  constructor(private channelFactory: ChannelFactory, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
     this.setup();
   }
 
@@ -310,6 +381,10 @@ export class ComponentRegistry implements OnModuleInit {
     this.components.set(componentDescriptor.name, componentDescriptor)
   }
 
+  private pickAddress(component: ComponentDescriptor<Component>) : ChannelAddress {
+    return this.addressResolution.select(component.addresses)
+  }
+
   // public
 
   getService<T extends Service>(type: AbstractType<T>): T {
@@ -318,55 +393,46 @@ export class ComponentRegistry implements OnModuleInit {
       return cached as T;
 
     const descriptor = this.findServiceDescriptor(type);
-    const stub = Object.create((type as any).prototype) as T;
-
-    const t =  TypeDescriptor.forType(type as any)
+    const proxy = Object.create((type as any).prototype)
 
     TypeDescriptor.forType(type as any).getMethods()
-      //.filter(prop => prop !== 'constructor')
       .forEach(method => {
         const prop = method.name
 
         const makeRemote = () => (...args: any[]) => {
-          const addresses = descriptor.componentDescriptor.addresses;
-          if (!addresses.length) {
-                    throw new Error(`No address for component ${descriptor.componentDescriptor.name}`);
-                  }
-
-           const address = addresses[0];
+          const address = this.pickAddress(descriptor.componentDescriptor)
 
           const channel = this.channelFactory.create(address.channel, address.uri);
 
           // channel resolved — replace with direct call
-          stub[prop] = (...a: any[]) => channel.call(descriptor, prop, ...a);
+
+          proxy[prop] = (...a: any[]) => channel.call(descriptor, prop, ...a);
 
           // if address dies, fall back to dynamic resolution
           //descriptor.componentDescriptor.pool.onDead(address.uri, () => {
            // stub[prop] = makeRemote();
           //});
 
-          return stub[prop](...args);
+          return proxy[prop](...args);
         };
 
         // initial function — decides local vs remote once, then replaces itself
 
-        stub[prop] = (...args: any[]) => {
+        proxy[prop] = (...args: any[]) => {
           if (descriptor.instance) {
-            // local: permanent replacement, instance never changes
-            stub[prop] = (...a: any[]) => (descriptor.instance as any)[prop](...a);
-          } 
+            proxy[prop] = (...a: any[]) => (descriptor.instance as any)[prop](...a); // that's easy
+          }
           else {
-            // remote: dynamic until first address resolved
-            stub[prop] = makeRemote();
+            proxy[prop] = makeRemote(); // first time resolution
           }
 
-          return stub[prop](...args);
+          return proxy[prop](...args);
         };
       });
 
-    this.proxies.set(type, stub);
+    this.proxies.set(type, proxy);
 
-    return stub as T;
+    return proxy as T;
   }
 }
 
@@ -390,12 +456,25 @@ export function Implementation<T extends Service>(): ClassDecorator {
   };
 }
 
+export interface ComponentModuleOptions {
+  discovery:  AbstractType<ComponentDiscovery>
+  component: AbstractType<Component>
+  addressResolution: AddressResolution
+}
+
 @Module({})
 export class ComponentModule {
-  static forModule(component: AbstractType<Component>): DynamicModule {
+  static forRoot(options: ComponentModuleOptions): DynamicModule {
+    const component =  options.component
+
     const services = ComponentRegistry.serviceDeclarations.map(s => s.type);
 
     const providers: any[] = [
+      {
+        provide: ComponentDiscovery,
+        useValue: options.discovery,
+      },
+
       component,
       ComponentRegistry,
       ...services.map((svc) => ({

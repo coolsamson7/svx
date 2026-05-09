@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import { Injectable, Scope, INestApplication } from '@nestjs/common';
+import { Injectable, Scope, INestApplication, Controller, Put } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -14,10 +14,14 @@ import {
   ChannelAddress,
   ComponentRegistry,
   DeclareService,
-  ComponentModule
+  ComponentModule,
+  LocalComponentDiscovery,
+  DefaultAddressResolution
 } from './service';
 
 import "./http.channel"
+import "./rest.channel"
+
 import { TypeDescriptor } from '../reflection';
 
 import reflection from './service.json'
@@ -26,7 +30,9 @@ TypeDescriptor.loadReflection(reflection)
 // interface
 
 @DeclareService({ name: "user-service" })
+@Controller("user")
 export abstract class UserService extends Service {
+  @Put(":name")
   abstract createUser(name: string): Promise<string>;
 }
 
@@ -50,39 +56,24 @@ export class UserComponentImpl extends UserComponent {
 
   get addresses(): ChannelAddress[] {
     return [
+      new ChannelAddress('rest', 'http://localhost:3000'),
       new ChannelAddress('http', 'http://localhost:3000'), // remote
+      //new ChannelAddress('local'),
     ];
   }
 }
 
 @Injectable()
 @Implementation()
+@Controller("user")
 export class UserServiceImpl extends UserService {
+  @Put(":name")
   async createUser(name: string): Promise<string> {
     return `user-${name}`;
   }
 }
 
-/* =========================================
-   Client
-=========================================
-
-@Injectable()
-export class ClientService {
-  constructor(
-    @Inject(UserServiceInterface) private userSvc: UserServiceInterface,
-  ) {}
-  async run() {
-    const id = await this.userSvc.createUser('Alice');
-    console.log('Got user id:', id);
-  }
-}*/
-
-// TES
-
-//import { Test, TestingModule } from '@nestjs/testing';
-
-
+// TEST
 describe('Service', () => {
   let moduleRef: TestingModule;
 
@@ -93,7 +84,11 @@ describe('Service', () => {
   beforeEach(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [
-        ComponentModule.forModule(UserComponent),
+        ComponentModule.forRoot({
+          component: UserComponent,
+          discovery: LocalComponentDiscovery,
+          addressResolution: new DefaultAddressResolution("local", "rest") // CHNAGE HERE
+        }),
       ],
     }).compile();
 

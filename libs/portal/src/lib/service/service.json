@@ -1,0 +1,51 @@
+{
+  "classes": [
+    {
+      "name": "UserService",
+      "filePath": "/Users/andreasernst/Documents/projects/svx/libs/portal/src/lib/service/service.spec.ts",
+      "decorators": [
+        {
+          "name": "DeclareService",
+          "arguments": [
+            "{ name: \"user-service\" }"
+          ]
+        },
+        {
+          "name": "Controller",
+          "arguments": [
+            "\"user\""
+          ]
+        }
+      ],
+      "methods": [
+        {
+          "name": "createUser",
+          "returnType": "Promise<string>",
+          "decorators": [
+            {
+              "name": "Put",
+              "arguments": [
+                "\":name\""
+              ]
+            }
+          ],
+          "parameters": [
+            {
+              "name": "name",
+              "type": "string",
+              "decorators": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "kind": "interface",
+      "name": "Promise",
+      "filePath": "/node_modules/typescript/lib/lib.es5.d.ts",
+      "properties": []
+    }
+  ]
+}
