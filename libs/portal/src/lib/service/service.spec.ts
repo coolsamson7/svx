@@ -30,9 +30,7 @@ TypeDescriptor.loadReflection(reflection)
 // interface
 
 @DeclareService({ name: "user-service" })
-@Controller("user")
 export abstract class UserService extends Service {
-  @Put(":name")
   abstract createUser(name: string): Promise<string>;
 }
 
@@ -87,7 +85,7 @@ describe('Service', () => {
         ComponentModule.forRoot({
           component: UserComponent,
           discovery: LocalComponentDiscovery,
-          addressResolution: new DefaultAddressResolution("local", "rest") // CHNAGE HERE
+          addressResolution: new DefaultAddressResolution("xlocal", "rest") // CHNAGE HERE
         }),
       ],
     }).compile();

@@ -4,57 +4,33 @@ import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel, Channel, ServiceDescriptor } from './service';
 import { TypeDescriptor, MethodDescriptor, Returns } from '../reflection';
+import { ReflectedParameter } from '../reflection/reflector.interface';
 
 /* =========================================================
- * NestJS metadata keys & enums
+ * Module-level constants — created once, never recreated
  * ========================================================= */
 
-const PATH_METADATA       = 'path';
-const METHOD_METADATA     = 'method';
-const ROUTE_ARGS_METADATA = '__routeArguments__';
-
-const enum HttpMethod {
-  GET     = 0,
-  POST    = 1,
-  PUT     = 2,
-  DELETE  = 3,
-  PATCH   = 4,
-  ALL     = 5,
-  OPTIONS = 6,
-  HEAD    = 7,
+// Decorator name (as emitted by ts-morph JSON) → axios method string
+const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
+  Get:     'GET',
+  Post:    'POST',
+  Put:     'PUT',
+  Delete:  'DELETE',
+  Patch:   'PATCH',
+  Options: 'OPTIONS',
+  Head:    'HEAD',
+  All:     'GET',
 }
 
-const enum ParamType {
-  BODY    = 3,
-  QUERY   = 4,
-  PARAM   = 5,
-  HEADERS = 6,
+// Parameter decorator name → routing kind
+const PARAM_DECORATOR_TO_KIND: Record<string, string> = {
+  Body:    'body',
+  Param:   'param',
+  Query:   'query',
+  Headers: 'headers',
 }
 
-const HTTP_METHOD_MAP: Record<number, string> = {
-  [HttpMethod.GET]:     'GET',
-  [HttpMethod.POST]:    'POST',
-  [HttpMethod.PUT]:     'PUT',
-  [HttpMethod.DELETE]:  'DELETE',
-  [HttpMethod.PATCH]:   'PATCH',
-  [HttpMethod.OPTIONS]: 'OPTIONS',
-  [HttpMethod.HEAD]:    'HEAD',
-  [HttpMethod.ALL]:     'GET',
-};
-
-/* =========================================================
- * Compiled param extractor
- * Each instance is built ONCE at compile time and reused.
- * ========================================================= */
-
-interface ParamExtractor {
-  index:     number;
-  type:      ParamType;
-  data:      string | undefined;      // param name / query key / header name
-  paramType: ClassConstructor<any>;   // TypeScript type → class-transformer
-}
-
-type CompiledCall = (...args: any[]) => Promise<any>;
+type CompiledCall = (...args: any[]) => Promise<any>
 
 /* =========================================================
  * RestChannel
@@ -63,10 +39,10 @@ type CompiledCall = (...args: any[]) => Promise<any>;
 @DeclareChannel('rest')
 @Injectable({ scope: Scope.TRANSIENT })
 export class RestChannel implements Channel {
-  url?: string;
+  url?: string
 
-  // populated once on first call() — zero overhead afterwards
-  private calls = new Map<string, CompiledCall>();
+  // populated once on first call() via compileAll()
+  private calls = new Map<string, CompiledCall>()
 
   constructor(private readonly http: HttpService) {}
 
@@ -76,112 +52,100 @@ export class RestChannel implements Channel {
 
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
     if (this.calls.size === 0)
-      this.compileAll(descriptor);
+      this.compileAll(descriptor)
 
-    const fn = this.calls.get(method);
+    const fn = this.calls.get(method)
     if (!fn)
-      throw new Error(`No REST mapping for '${method}' on service '${descriptor.name}'`);
+      throw new Error(`No REST mapping for '${method}' on service '${descriptor.name}'`)
 
-    return fn(...args);
+    return fn(...args)
   }
 
   // -------------------------------------------------------
-  // Compile all methods from TypeDescriptor — runs once
+  // Compile all methods — runs once on first call()
   // -------------------------------------------------------
 
   private compileAll(descriptor: ServiceDescriptor): void {
     TypeDescriptor
       .forType(descriptor.type as any)
       .getMethods()
-      .forEach(methodDesc => {
-        this.calls.set(methodDesc.name, this.compileMethod(descriptor, methodDesc));
-      });
+      .forEach(methodDesc =>
+        this.calls.set(methodDesc.name, this.compileMethod(methodDesc))
+      )
   }
 
   // -------------------------------------------------------
-  // Compile a single MethodDescriptor into a direct axios call.
-  // Everything above the returned lambda runs at compile time only.
+  // Compile a single method into a direct axios call.
+  // Everything outside the returned lambda is compile-time work.
   // -------------------------------------------------------
 
-  private compileMethod(descriptor: ServiceDescriptor, methodDesc: MethodDescriptor): CompiledCall {
-    const proto = (descriptor.type as any).prototype;
-    const ctor  =  descriptor.type as any;
+  private compileMethod(methodDesc: MethodDescriptor): CompiledCall {
 
-    // ── HTTP verb + path ──────────────────────────────────────────────
-    const httpMethod: number =
-      Reflect.getMetadata(METHOD_METADATA, proto, methodDesc.name) ?? HttpMethod.GET;
-    const rawPath: string =
-      Reflect.getMetadata(PATH_METADATA,   proto, methodDesc.name) ?? `/${methodDesc.name}`;
+    // ── HTTP verb + path ──────────────────────────────────
+    const httpDec = methodDesc.decorators.find(d =>
+      d.decorator.name in HTTP_DECORATOR_TO_METHOD
+    )
 
-    const axiosMethod = HTTP_METHOD_MAP[httpMethod] ?? 'GET';
+    const axiosMethod = HTTP_DECORATOR_TO_METHOD[httpDec?.decorator.name ?? ''] ?? 'GET'
+    const rawPath     = (httpDec?.arguments[0] as string | undefined) ?? `/${methodDesc.name}`
 
-    // ── NestJS route args: { '3:0': { index, data }, '5:1': ... }
-    //    key format = `${RouteParamtypes}:${argIndex}`  ───────────────
-    const rawRouteArgs: Record<string, { index: number; data: any }> =
-      Reflect.getMetadata(ROUTE_ARGS_METADATA, ctor, methodDesc.name) ?? {};
+    // ── Pre-split path tokens ─────────────────────────────
+    const pathTokens = rawPath.split('/')
 
-    // ── Pair NestJS route args with TypeScript param types
-    //    from MethodDescriptor.paramTypes (design:paramtypes)
-    //    so class-transformer can do its job  ────────────────────────
-    const extractors: ParamExtractor[] = Object.entries(rawRouteArgs)
-      .map(([key, meta]) => ({
-        index:     meta.index,
-        type:      parseInt(key.split(':')[0], 10) as ParamType,
-        data:      meta.data,
-        paramType: methodDesc.paramTypes[meta.index],  // ← from MethodDescriptor
-      }))
-      .sort((a, b) => a.index - b.index);
+    // ── Param extractors — built once from JSON parameters ─
+    const reflectedParams: ReflectedParameter[] = (methodDesc as any).parameters ?? []
 
-    // ── Return type for response deserialization ──────────────────────
-    // design:returntype yields Promise for async methods.
-    // @Returns(User) on the MethodDescriptor carries the actual type.
-    const returnType = this.resolveReturnType(methodDesc);
+    const extractors = reflectedParams.map(p => {
+      const kindDec = p.decorators.find(d => d.name in PARAM_DECORATOR_TO_KIND)
+      return {
+        index: p.index,
+        kind:  PARAM_DECORATOR_TO_KIND[kindDec?.name ?? ''] ?? 'query',
+        data:  kindDec?.arguments[0] as string | undefined,
+      }
+    })
 
-    // ── Pre-split path tokens once at compile time ────────────────────
-    const pathTokens = rawPath.split('/');
+    // ── Return type — resolved once at compile time ────────
+    // NOT inside .then() — that would re-resolve on every call
+    const returnType = this.resolveReturnType(methodDesc)
 
-    // ── The compiled call ─────────────────────────────────────────────
-    // This is the only thing that runs on every RPC call.
-    // No reflection, no metadata reads, no string splits.
-
+    // ── The compiled call — hot path, zero metadata work ──
     return (...args: any[]): Promise<any> => {
-      const pathParams: Record<string, string> = {};
-      const query:      Record<string, any>    = {};
-      const headers:    Record<string, any>    = {};
-      let   body:       any                    = undefined;
+      const pathParams: Record<string, string> = {}
+      const query:      Record<string, any>    = {}
+      const headers:    Record<string, any>    = {}
+      let   body:       any                    = undefined
 
       for (const ex of extractors) {
-        const raw = args[ex.index];
+        const raw = args[ex.index]
 
-        switch (ex.type) {
-          case ParamType.BODY:
-            // serialize with class-transformer — respects @Exclude(), @Transform(), etc.
-            body = instanceToPlain(raw);
-            break;
+        switch (ex.kind) {
+          case 'body':
+            body = instanceToPlain(raw)
+            break
 
-          case ParamType.PARAM:
+          case 'param':
             if (ex.data)
-              pathParams[ex.data] = encodeURIComponent(raw);
+              pathParams[ex.data] = encodeURIComponent(raw)
             else if (typeof raw === 'object')
               for (const [k, v] of Object.entries(raw as object))
-                pathParams[k] = encodeURIComponent(String(v));
-            break;
+                pathParams[k] = encodeURIComponent(String(v))
+            break
 
-          case ParamType.QUERY:
-            if (ex.data) query[ex.data] = raw;
-            else Object.assign(query, raw);
-            break;
+          case 'query':
+            if (ex.data) query[ex.data] = raw
+            else Object.assign(query, raw)
+            break
 
-          case ParamType.HEADERS:
-            if (ex.data) headers[ex.data] = raw;
-            else Object.assign(headers, raw);
-            break;
+          case 'headers':
+            if (ex.data) headers[ex.data] = raw
+            else Object.assign(headers, raw)
+            break
         }
       }
 
       const resolvedPath = pathTokens
         .map(seg => seg.startsWith(':') ? (pathParams[seg.slice(1)] ?? seg) : seg)
-        .join('/');
+        .join('/')
 
       return firstValueFrom(
         this.http.request({
@@ -193,34 +157,27 @@ export class RestChannel implements Channel {
         })
       ).then(response => {
         if (!returnType)
-          return response.data;
+          return response.data
 
-        // deserialize with class-transformer — respects @Expose(), @Transform(), etc.
         return Array.isArray(response.data)
           ? response.data.map((item: unknown) => plainToInstance(returnType, item))
-          : plainToInstance(returnType, response.data);
-      });
-    };
+          : plainToInstance(returnType, response.data)
+      })
+    }
   }
 
   // -------------------------------------------------------
-  // Resolve unwrapped return type via MethodDescriptor
-  //
-  // design:returntype gives Promise for async methods, so we
-  // use @Returns(User) to carry the actual inner type.
-  // For sync methods returnType is directly usable.
+  // Resolve unwrapped return type — called at compile time only
   // -------------------------------------------------------
 
   private resolveReturnType(methodDesc: MethodDescriptor): ClassConstructor<any> | undefined {
-    // check @Returns() decorator registered in TypeDescriptor
-    const dec = methodDesc.getDecorator(Returns);
+    const dec = methodDesc.getDecorator(Returns)
     if (dec)
-      return dec.arguments[0] as ClassConstructor<any>;
+      return dec.arguments[0] as ClassConstructor<any>
 
-    // sync method — returnType is the real type, not Promise
     if (!methodDesc.async && methodDesc.returnType !== Promise)
-      return methodDesc.returnType;
+      return methodDesc.returnType
 
-    return undefined;
+    return undefined
   }
 }

@@ -34,18 +34,6 @@ export interface Channel {
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any>;
 }
 
-@DeclareChannel("missing")
-@Injectable({ scope: Scope.TRANSIENT})
-export class MissingChannel implements Channel {
-  url!: string
-
-  // implement
-
-  async call(_descriptor: ServiceDescriptor, _method: string, ..._args: any[]): Promise<any> {
-    throw Error("missing channel for " + this.url);
-  }
-}
-
 interface ChannelDescriptor {
   name: string
   type: Type<Channel>
@@ -107,6 +95,20 @@ export function DeclareChannel(name: string): ClassDecorator {
     ChannelFactory.channels.set(name, {name: name, type: target as unknown as Type<Channel>});
   };
 }
+
+
+@DeclareChannel("missing")
+@Injectable({ scope: Scope.TRANSIENT})
+export class MissingChannel implements Channel {
+  url!: string
+
+  // implement
+
+  async call(_descriptor: ServiceDescriptor, _method: string, ..._args: any[]): Promise<any> {
+    throw Error("missing channel for " + this.url);
+  }
+}
+
 
 import { HttpModule } from '@nestjs/axios';
 import { TypeDescriptor } from '../reflection';
@@ -212,14 +214,17 @@ interface ServiceDeclaration {
   options: ServiceOptions
 }
 
-export interface AddressResolution {
-  select(addresses: ChannelAddress[]): ChannelAddress;
+export abstract class AddressResolution {
+  abstract select(addresses: ChannelAddress[]): ChannelAddress;
 }
 
-export class DefaultAddressResolution implements AddressResolution {
+@Injectable()
+export class DefaultAddressResolution extends AddressResolution {
   private priority: string[];
 
   constructor(...priority: string[]) {
+    super();
+
     this.priority = priority;
   }
 
@@ -246,7 +251,7 @@ export abstract class ComponentDiscovery {
 }
 
 @Injectable()
-export class LocalComponentDiscovery implements ComponentDiscovery {
+export class LocalComponentDiscovery extends ComponentDiscovery {
   // instance data
 
   components = new Map<string,ComponentDescriptor<Component>>()
@@ -331,8 +336,11 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename
 
       descriptor.instance = await this.moduleRef.create(implementation);
 
-      if ( descriptor.instance instanceof Component)
+      if ( descriptor instanceof ComponentDescriptor) {
+        descriptor.addresses =  descriptor.instance.addresses
+        this.discovery.register(descriptor)
         descriptor.instance.startup()
+      }
     }
   }
 
@@ -419,7 +427,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename
         // initial function — decides local vs remote once, then replaces itself
 
         proxy[prop] = (...args: any[]) => {
-          if (descriptor.instance) {
+          if (false && descriptor.instance) { // TODO
             proxy[prop] = (...a: any[]) => (descriptor.instance as any)[prop](...a); // that's easy
           }
           else {
@@ -472,7 +480,12 @@ export class ComponentModule {
     const providers: any[] = [
       {
         provide: ComponentDiscovery,
-        useValue: options.discovery,
+        useClass: options.discovery,
+      },
+
+      {
+        provide: AddressResolution,
+        useValue: options.addressResolution,
       },
 
       component,
