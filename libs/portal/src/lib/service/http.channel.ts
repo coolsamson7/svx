@@ -10,7 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 
-import { HttpService } from '@nestjs/axios';
+import { HttpModule, HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
 import {
@@ -48,6 +48,9 @@ export class ServiceReply {
 @DeclareChannel('http')
 @Injectable()
 export class HttpChannel implements Channel {
+  static imports   = [HttpModule]   // ← channel owns its deps
+  static providers: any[] = []
+
   url?: string;
 
   constructor(private readonly http: HttpService) {}

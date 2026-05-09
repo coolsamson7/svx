@@ -116,19 +116,17 @@ import { TypeDescriptor } from '../reflection';
 @Module({})
 export class ChannelModule {
   static register(): DynamicModule {
+    const channelTypes = [...ChannelFactory.channels.values()].map(d => d.type)
+
+    const imports   = channelTypes.flatMap(t => (t as any).imports   ?? [])
+    const providers = channelTypes.flatMap(t => (t as any).providers ?? [])
+
     return {
       module: ChannelModule,
-
-      imports: [
-        HttpModule, // TODO: make this dynamic based on registered channels
-      ],
-
-      providers: [
-        ...[...ChannelFactory.channels.values()].map(descriptor => descriptor.type),
-        ChannelFactory,
-      ],
-      exports: [ChannelFactory],
-    };
+      imports:   [...new Set(imports)],           // deduplicate HttpModule etc.
+      providers: [...channelTypes, ...providers, ChannelFactory],
+      exports:   [ChannelFactory],
+    }
   }
 }
 

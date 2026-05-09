@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
+import { HttpModule, HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel, Channel, ServiceDescriptor } from './service';
@@ -50,6 +51,9 @@ interface RequestPlan {
 @DeclareChannel('rest')
 @Injectable()
 export class RestChannel implements Channel {
+  static imports   = [HttpModule]   // ← channel owns its deps
+  static providers: any[] = []
+
   url?: string
 
   private calls = new Map<string, CompiledCall>()
