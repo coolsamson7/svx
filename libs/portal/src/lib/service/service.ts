@@ -273,6 +273,11 @@ export class LocalComponentDiscovery extends ComponentDiscovery {
   }
 }
 
+export interface GetServiceOptions {
+  channel?: string;   // force a specific channel, e.g. 'local' | 'http' | ...
+  url?: string;       // force a specific url (overrides discovery)
+}
+
 @Injectable()
 export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: OnModuleInit
   // static
@@ -298,7 +303,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
   private components = new Map<string, ComponentDescriptor<Component>>();
   private services = new Map<string, ServiceDescriptor<Service>>();
   private byType =  new Map<AbstractType<Service>, ServiceDescriptor>();
-  private proxies =  new Map<AbstractType<Service>, Service>();
+  private proxies =  new Map<string, Service>();
 
   // constructor
 
@@ -405,59 +410,56 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
   // public
 
-  getService<T extends Service>(type: AbstractType<T>): T {
-    const cached = this.proxies.get(type);
+  private proxyKey(type: AbstractType<Service>, opts?: GetServiceOptions): string {
+    return `${type.name}:${opts?.channel ?? ''}:${opts?.url ?? ''}`;
+  }
+
+  getService<T extends Service>(type: AbstractType<T>, opts?: GetServiceOptions): T {
+    const key    = this.proxyKey(type, opts);
+    const cached = this.proxies.get(key);
     if (cached) return cached as T;
 
     const descriptor = this.findServiceDescriptor(type);
-    const methods = TypeDescriptor.forType(type as any).getMethods();
-    const proxy = Object.create((type as any).prototype);
+    const methods    = TypeDescriptor.forType(type as any).getMethods();
+    const proxy      = Object.create((type as any).prototype);
 
     const bindRemote = (address: ChannelAddress) => {
       const channel = this.channelFactory.create(address.channel, address.uri);
-
       for (const method of methods) {
-        const name = method.name;
-        proxy[name] = (...args: any[]) =>
-          channel.call(descriptor, name, ...args);
+        proxy[method.name] = (...args: any[]) =>
+          channel.call(descriptor, method.name, ...args);
       }
     };
 
     const bindLocal = () => {
       const instance = descriptor.instance;
-      if (!instance) {
-        throw new Error(`No local instance for ${descriptor.name}`);
-      }
-
+      if (!instance) throw new Error(`No local instance for ${descriptor.name}`);
       for (const method of methods) {
-        const name = method.name;
-        proxy[name] = (...args: any[]) =>
-          (instance as any)[name](...args);
+        proxy[method.name] = (...args: any[]) =>
+          (instance as any)[method.name](...args);
       }
     };
 
-    const installStubs = () => {
+    if (opts?.channel) {
+      // ── explicit channel: bind eagerly, no lazy stub needed ──────────────
+      if (opts.channel === 'local') {
+        bindLocal();
+      } else {
+        bindRemote(new ChannelAddress(opts.channel, opts.url ?? ''));
+      }
+    } else {
+      // ── auto: lazy stub picks address on first call ───────────────────────
       for (const method of methods) {
-        const name = method.name;
-
-        proxy[name] = (...args: any[]) => {
-          // pick address ONCE per first call
+        proxy[method.name] = (...args: any[]) => {
           const address = this.pickAddress(descriptor.componentDescriptor);
-
-          if (address.channel === 'local') {
-            bindLocal();
-          } else {
-            bindRemote(address);
-          }
-
-          return proxy[name](...args);
+          if (address.channel === 'local') bindLocal();
+          else bindRemote(address);
+          return proxy[method.name](...args);
         };
       }
-    };
+    }
 
-    installStubs();
-
-    this.proxies.set(type, proxy);
+    this.proxies.set(key, proxy);
     return proxy as T;
   }
 }
