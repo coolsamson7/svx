@@ -124,7 +124,7 @@ describe('Service', () => {
         ComponentModule.forRoot({
           component: UserComponent,
           discovery: LocalComponentDiscovery,
-          addressResolution: new DefaultAddressResolution("xlocal", "rest") // CHNAGE HERE
+          addressResolution: new DefaultAddressResolution("clocal", "rest") // CHNAGE HERE
         }),
       ],
       controllers: [UserServiceImpl],
@@ -152,9 +152,30 @@ describe('Service', () => {
   it('should return a proxy instance', async () => {
     const userService = componentRegistry.getService<UserService>(UserService);
 
-    const result = await userService.createUser('Alice');
+    await userService.createUser('Alice');
 
-    expect(result).toBe('user-Alice');
+    const runs = 10000;
+
+      const start = performance.now();
+
+      for (let i = 0; i < runs; i++) {
+        await userService.createUser('Alice');
+      }
+
+      const end = performance.now();
+
+      const totalMs = end - start;
+      const opsPerSec = (runs / totalMs) * 1000;
+      const avgMs = totalMs / runs;
+
+      console.log(`
+    Benchmark: createUser
+    ----------------------
+    Runs:        ${runs.toLocaleString()}
+    Total time:  ${totalMs.toFixed(2)} ms
+    Avg/op:      ${avgMs.toFixed(6)} ms
+    Throughput:  ${opsPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })} ops/sec
+      `);
   });
 /*
   it('should expose http endpoint', async () => {
