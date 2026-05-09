@@ -29,6 +29,15 @@ export function ElementType(type: Function) {
 // optional alias (nicer DX)
 export const ArrayOf = ElementType
 
+
+export function Returns(type: any) {
+    return function (target: any, key: string | symbol, _descriptor: PropertyDescriptor) {
+      TypeDescriptor
+        .forType(target.constructor)
+        .addMethodDecorator(target, key as string, Returns, type);
+    };
+  }
+
 /* =========================================================
  * PROPERTY SYSTEM
  * ========================================================= */
