@@ -1,48 +1,64 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel, Channel, ServiceDescriptor } from './service';
-import { TypeDescriptor, MethodDescriptor, ParameterDescriptor, Returns } from '../reflection';
+import { TypeDescriptor, MethodDescriptor, Returns } from '../reflection';
 
 /* =========================================================
- * Module-level constants
+ * constants
  * ========================================================= */
 
 const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
-  Get:     'GET',
-  Post:    'POST',
-  Put:     'PUT',
-  Delete:  'DELETE',
-  Patch:   'PATCH',
+  Get: 'GET',
+  Post: 'POST',
+  Put: 'PUT',
+  Delete: 'DELETE',
+  Patch: 'PATCH',
   Options: 'OPTIONS',
-  Head:    'HEAD',
-  All:     'GET',
+  Head: 'HEAD',
+  All: 'GET',
 }
 
-const PARAM_DECORATOR_TO_KIND: Record<string, string> = {
-  Body:    'body',
-  Param:   'param',
-  Query:   'query',
-  Headers: 'headers',
+const stripQuotes = (s: string) => s.replace(/^["']|["']$/g, '')
+
+type CompiledCall = (args: any[]) => Promise<any>
+
+/* =========================================================
+ * compiled structures (fully precomputed)
+ * ========================================================= */
+
+type ParamKind = 'body' | 'param' | 'query'
+
+interface CompiledParam {
+  index: number
+  kind: ParamKind
+  key?: string
 }
 
-const stripQuotes = (s: string): string => s.replace(/^["']|["']$/g, '')
-
-type CompiledCall = (...args: any[]) => Promise<any>
+interface RequestPlan {
+  method: string
+  urlTemplate: string
+  params: CompiledParam[]
+  returnType?: ClassConstructor<any>
+}
 
 /* =========================================================
  * RestChannel
  * ========================================================= */
 
 @DeclareChannel('rest')
-@Injectable()//{ scope: Scope.TRANSIENT })
+@Injectable()
 export class RestChannel implements Channel {
   url?: string
 
   private calls = new Map<string, CompiledCall>()
 
   constructor(private readonly http: HttpService) {}
+
+  /* =========================================================
+   * entry point
+   * ========================================================= */
 
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
     if (this.calls.size === 0)
@@ -52,133 +68,130 @@ export class RestChannel implements Channel {
     if (!fn)
       throw new Error(`No REST mapping for '${method}' on service '${descriptor.name}'`)
 
-    return fn(...args)
+    return fn(args)
   }
+
+  /* =========================================================
+   * compile all once
+   * ========================================================= */
 
   private compileAll(descriptor: ServiceDescriptor): void {
-    const typeDesc = TypeDescriptor.forType(descriptor.type as any)
+    const type = TypeDescriptor.forType(descriptor.type as any)
 
-    // @Controller prefix from class-level decorators
-    const controllerDec = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
-    const prefix = controllerDec
-      ? stripQuotes(controllerDec.arguments[0] as string)
-      : ''
+    const controller = type.decorators.find(d => d.decorator.name === 'Controller')
+    const prefix = controller ? stripQuotes(controller.arguments[0] as string) : ''
 
-    typeDesc
-      .getMethods()
-      .forEach(methodDesc =>
-        this.calls.set(methodDesc.name, this.compileMethod(methodDesc, prefix))
-      )
-  }
-
-  private compileMethod(methodDesc: MethodDescriptor, prefix: string): CompiledCall {
-
-    // ── HTTP verb + path ──────────────────────────────────
-    const httpDec = methodDesc.decorators.find(d =>
-      d.decorator.name in HTTP_DECORATOR_TO_METHOD
-    )
-
-    const axiosMethod = HTTP_DECORATOR_TO_METHOD[httpDec?.decorator.name ?? ''] ?? 'GET'
-    const methodPath  = httpDec
-      ? stripQuotes(httpDec.arguments[0] as string)
-      : methodDesc.name
-
-    const rawPath    = `/${prefix}/${methodPath}`.replace(/\/+/g, '/')
-    const pathTokens = rawPath.split('/')
-
-    // ── Path param names from URL template ───────────────
-    const pathParamNames = new Set(
-      pathTokens
-        .filter(seg => seg.startsWith(':'))
-        .map(seg => seg.slice(1))
-    )
-
-    // ── Extractors from ParameterDescriptor[] ────────────
-    // No more (methodDesc as any).parameters — fully typed now
-    const extractors = methodDesc.parameters.map((param: ParameterDescriptor) => {
-      // explicit decorator wins
-      const kindDec = param.decorators.find(d => d.decorator.name in PARAM_DECORATOR_TO_KIND)
-      if (kindDec)
-        return {
-          index: param.index,
-          kind:  PARAM_DECORATOR_TO_KIND[kindDec.decorator.name],
-          data:  kindDec.arguments[0] as string | undefined,
-        }
-
-      // auto-infer: param name matches :token in path → path param
-      if (pathParamNames.has(param.name))
-        return { index: param.index, kind: 'param', data: param.name }
-
-      // default: query param keyed by param name
-      return { index: param.index, kind: 'query', data: param.name }
-    })
-
-    // ── Return type — resolved once at compile time ───────
-    const returnType = this.resolveReturnType(methodDesc)
-
-    // ── The compiled call — hot path ──────────────────────
-    return (...args: any[]): Promise<any> => {
-      const pathParams: Record<string, string> = {}
-      const query:      Record<string, any>    = {}
-      const headers:    Record<string, any>    = {}
-      let   body:       any                    = undefined
-
-      for (const ex of extractors) {
-        const raw = args[ex.index]
-
-        switch (ex.kind) {
-          case 'body':
-            body = instanceToPlain(raw)
-            break
-
-          case 'param':
-            if (ex.data)
-              pathParams[ex.data] = encodeURIComponent(raw)
-            else if (typeof raw === 'object')
-              for (const [k, v] of Object.entries(raw as object))
-                pathParams[k] = encodeURIComponent(String(v))
-            break
-
-          case 'query':
-            if (ex.data) query[ex.data] = raw
-            else Object.assign(query, raw)
-            break
-
-          case 'headers':
-            if (ex.data) headers[ex.data] = raw
-            else Object.assign(headers, raw)
-            break
-        }
-      }
-
-      const resolvedPath = pathTokens
-        .map(seg => seg.startsWith(':') ? (pathParams[seg.slice(1)] ?? seg) : seg)
-        .join('/')
-
-      return firstValueFrom(
-        this.http.request({
-          method:  axiosMethod,
-          url:     `${this.url}${resolvedPath}`,
-          params:  query,
-          headers,
-          data:    body,
-        })
-      ).then(response => {
-        if (!returnType) return response.data
-
-        return Array.isArray(response.data)
-          ? response.data.map((item: unknown) => plainToInstance(returnType, item))
-          : plainToInstance(returnType, response.data)
-      })
+    for (const method of type.getMethods()) {
+      const plan = this.compile(method, prefix)
+      this.calls.set(method.name, this.createExecutor(plan))
     }
   }
 
-  private resolveReturnType(methodDesc: MethodDescriptor): ClassConstructor<any> | undefined {
-    const dec = methodDesc.getDecorator(Returns)
+  /* =========================================================
+   * COMPILATION PHASE (no runtime logic survives)
+   * ========================================================= */
+
+  private compile(method: MethodDescriptor, prefix: string): RequestPlan {
+
+    const http = method.decorators.find(d =>
+      d.decorator.name in HTTP_DECORATOR_TO_METHOD
+    )
+
+    const httpMethod = HTTP_DECORATOR_TO_METHOD[http?.decorator.name ?? ''] ?? 'GET'
+
+    const basePath =
+      http?.arguments?.[0]
+        ? stripQuotes(http.arguments[0] as string)
+        : method.name
+
+    const urlTemplate = `/${prefix}/${basePath}`.replace(/\/+/g, '/')
+
+    const params: CompiledParam[] = []
+
+    for (const p of method.parameters) {
+      const dec = p.decorators.find(d =>
+        ['Body', 'Param', 'Query'].includes(d.decorator.name)
+      )
+
+      if (!dec || dec.decorator.name === 'Query') {
+        params.push({ index: p.index, kind: 'query', key: dec?.arguments?.[0] ?? p.name })
+      }
+
+      else if (dec.decorator.name === 'Param') {
+        params.push({ index: p.index, kind: 'param', key: dec.arguments?.[0] ?? p.name })
+      }
+
+      else if (dec.decorator.name === 'Body') {
+        params.push({ index: p.index, kind: 'body' })
+      }
+    }
+
+    return {
+      method: httpMethod,
+      urlTemplate,
+      params,
+      returnType: this.resolveReturnType(method),
+    }
+  }
+
+  /* =========================================================
+   * EXECUTION COMPILATION (flat, no branching logic per call)
+   * ========================================================= */
+
+  private createExecutor(plan: RequestPlan): CompiledCall {
+
+    return async (args: any[]) => {
+
+      let url = plan.urlTemplate
+      const query: Record<string, any> = {}
+      let body: any
+
+      // PURE LOOP over compiled descriptors (no metadata, no decorators)
+      for (const p of plan.params) {
+
+        const value = args[p.index]
+
+        if (p.kind === 'body') {
+          body = instanceToPlain(value)
+        }
+
+        else if (p.kind === 'param') {
+          url = url.replace(`:${p.key}`, encodeURIComponent(value))
+        }
+
+        else if (p.kind === 'query') {
+          query[p.key!] = value
+        }
+      }
+
+      const res = await firstValueFrom(
+        this.http.request({
+          method: plan.method,
+          url: `${this.url}${url}`,
+          params: query,
+          data: body,
+        })
+      )
+
+      if (!plan.returnType)
+        return res.data
+
+      return Array.isArray(res.data)
+        ? res.data.map((x: any) => plainToInstance(plan.returnType!, x))
+        : plainToInstance(plan.returnType!, res.data)
+    }
+  }
+
+  /* =========================================================
+   * return type resolution (compile-time only)
+   * ========================================================= */
+
+  private resolveReturnType(method: MethodDescriptor): ClassConstructor<any> | undefined {
+    const dec = method.getDecorator(Returns)
     if (dec) return dec.arguments[0] as ClassConstructor<any>
 
-    if (!methodDesc.async && methodDesc.returnType !== Promise)
-      return methodDesc.returnType
+    if (!method.async && method.returnType !== Promise)
+      return method.returnType
 
     return undefined
   }
