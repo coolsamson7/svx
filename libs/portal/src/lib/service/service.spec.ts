@@ -122,7 +122,7 @@ describe('Service', () => {
     moduleRef = await Test.createTestingModule({
       imports: [
         ComponentModule.forRoot({
-          component: UserComponent,
+          components: [UserComponent],
           discovery: LocalComponentDiscovery,
           addressResolution: new DefaultAddressResolution("clocal", "rest") // CHNAGE HERE
         }),

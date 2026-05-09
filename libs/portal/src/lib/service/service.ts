@@ -484,42 +484,43 @@ export function Implementation<T extends Service>(): ClassDecorator {
 
 export interface ComponentModuleOptions {
   discovery:  AbstractType<ComponentDiscovery>
-  component: AbstractType<Component>
+  components: AbstractType<Component>[]
   addressResolution: AddressResolution
 }
 
 @Module({})
 export class ComponentModule {
-  static forRoot(options: ComponentModuleOptions): DynamicModule {
-    const component =  options.component
+   static forRoot(options: ComponentModuleOptions): DynamicModule {
+      const { components } = options;
 
-    const services = ComponentRegistry.serviceDeclarations.map(s => s.type);
+      const services = ComponentRegistry.serviceDeclarations.map(s => s.type);
 
-    const providers: any[] = [
-      {
-        provide: ComponentDiscovery,
-        useClass: options.discovery,
-      },
+      const providers: any[] = [
+        {
+          provide: ComponentDiscovery,
+          useClass: options.discovery,
+        },
+        {
+          provide: AddressResolution,
+          useValue: options.addressResolution,
+        },
 
-      {
-        provide: AddressResolution,
-        useValue: options.addressResolution,
-      },
+        ...components,                                   // register each component class
 
-      component,
-      ComponentRegistry,
-      ...services.map((svc) => ({
-        provide: svc as Type<Service>,
-        useFactory: (registry: ComponentRegistry) => registry.getService(svc),
-        inject: [ComponentRegistry],
-      })),
-    ];
+        ComponentRegistry,
 
-    return {
-      module: ComponentModule,
-      imports: [ChannelModule.register()],
-      providers,
-      exports: [ComponentRegistry, component, ...services],
-    };
-  }
+        ...services.map((svc) => ({
+          provide: svc as Type<Service>,
+          useFactory: (registry: ComponentRegistry) => registry.getService(svc),
+          inject: [ComponentRegistry],
+        })),
+      ];
+
+      return {
+        module: ComponentModule,
+        imports:   [ChannelModule.register()],
+        providers,
+        exports:   [ComponentRegistry, ...components, ...services],
+      };
+    }
 }
