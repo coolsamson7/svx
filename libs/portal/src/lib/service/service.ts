@@ -98,7 +98,7 @@ export function DeclareChannel(name: string): ClassDecorator {
 
 
 @DeclareChannel("missing")
-@Injectable({ scope: Scope.TRANSIENT})
+@Injectable()
 export class MissingChannel implements Channel {
   url!: string
 
@@ -233,12 +233,12 @@ export class DefaultAddressResolution extends AddressResolution {
       return new ChannelAddress('missing', 'unknown');
     }
 
-    return [...addresses].sort((a, b) => {
-      return (
-        this.priority.indexOf(a.channel) -
-        this.priority.indexOf(b.channel)
-      );
-    })[0];
+    for (const p of this.priority) {
+      const match = addresses.find(a => a.channel === p);
+      if (match) return match;
+    }
+
+    return addresses[0]; // ? is a fallback ok?
   }
 }
 
@@ -397,49 +397,48 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename
 
   getService<T extends Service>(type: AbstractType<T>): T {
     const cached = this.proxies.get(type);
-    if (cached)
-      return cached as T;
-
+    if (cached) return cached as T;
+  
     const descriptor = this.findServiceDescriptor(type);
-    const proxy = Object.create((type as any).prototype)
-
-    TypeDescriptor.forType(type as any).getMethods()
-      .forEach(method => {
-        const prop = method.name
-
-        const makeRemote = () => (...args: any[]) => {
-          const address = this.pickAddress(descriptor.componentDescriptor)
-
-          const channel = this.channelFactory.create(address.channel, address.uri);
-
-          // channel resolved — replace with direct call
-
-          proxy[prop] = (...a: any[]) => channel.call(descriptor, prop, ...a);
-
-          // if address dies, fall back to dynamic resolution
-          //descriptor.componentDescriptor.pool.onDead(address.uri, () => {
-           // stub[prop] = makeRemote();
-          //});
-
-          return proxy[prop](...args);
+    const methods    = TypeDescriptor.forType(type as any).getMethods();
+    const proxy      = Object.create((type as any).prototype);
+  
+    const bindRemote = () => {
+      const address = this.pickAddress(descriptor.componentDescriptor);
+      const channel = this.channelFactory.create(address.channel, address.uri);
+  
+      for (const method of methods) {
+        const name = method.name;
+        proxy[name] = (...args: any[]) => channel.call(descriptor, name, ...args);
+      }
+    };
+  
+    const bindLocal = () => {
+      const instance = descriptor.instance!;
+  
+      for (const method of methods) {
+        const name = method.name;
+        proxy[name] = (...args: any[]) => (instance as any)[name](...args);
+      }
+    };
+  
+    // install lazy stubs — first call to ANY method triggers class-level binding
+    const installStubs = () => {
+      for (const method of methods) {
+        const name = method.name;
+  
+        proxy[name] = (...args: any[]) => {
+          // bind all methods at once, then delegate
+          (false && descriptor.instance) ? bindLocal() : bindRemote();
+          return proxy[name](...args);   // call the freshly installed fn
         };
-
-        // initial function — decides local vs remote once, then replaces itself
-
-        proxy[prop] = (...args: any[]) => {
-          if (false && descriptor.instance) { // TODO
-            proxy[prop] = (...a: any[]) => (descriptor.instance as any)[prop](...a); // that's easy
-          }
-          else {
-            proxy[prop] = makeRemote(); // first time resolution
-          }
-
-          return proxy[prop](...args);
-        };
-      });
-
+      }
+    };
+  
+    installStubs();
+    // rebind hook for address death: () => installStubs()
+  
     this.proxies.set(type, proxy);
-
     return proxy as T;
   }
 }

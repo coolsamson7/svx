@@ -37,7 +37,7 @@ type CompiledCall = (...args: any[]) => Promise<any>
  * ========================================================= */
 
 @DeclareChannel('rest')
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()// TODO { scope: Scope.TRANSIENT })
 export class RestChannel implements Channel {
   url?: string
 
