@@ -3,14 +3,12 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel, Channel, ServiceDescriptor } from './service';
-import { TypeDescriptor, MethodDescriptor, Returns } from '../reflection';
-import { ReflectedParameter } from '../reflection/reflector.interface';
+import { TypeDescriptor, MethodDescriptor, ParameterDescriptor, Returns } from '../reflection';
 
 /* =========================================================
- * Module-level constants — created once, never recreated
+ * Module-level constants
  * ========================================================= */
 
-// Decorator name (as emitted by ts-morph JSON) → axios method string
 const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
   Get:     'GET',
   Post:    'POST',
@@ -22,13 +20,14 @@ const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
   All:     'GET',
 }
 
-// Parameter decorator name → routing kind
 const PARAM_DECORATOR_TO_KIND: Record<string, string> = {
   Body:    'body',
   Param:   'param',
   Query:   'query',
   Headers: 'headers',
 }
+
+const stripQuotes = (s: string): string => s.replace(/^["']|["']$/g, '')
 
 type CompiledCall = (...args: any[]) => Promise<any>
 
@@ -37,18 +36,13 @@ type CompiledCall = (...args: any[]) => Promise<any>
  * ========================================================= */
 
 @DeclareChannel('rest')
-@Injectable()// TODO { scope: Scope.TRANSIENT })
+@Injectable()//{ scope: Scope.TRANSIENT })
 export class RestChannel implements Channel {
   url?: string
 
-  // populated once on first call() via compileAll()
   private calls = new Map<string, CompiledCall>()
 
   constructor(private readonly http: HttpService) {}
-
-  // -------------------------------------------------------
-  // Channel
-  // -------------------------------------------------------
 
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
     if (this.calls.size === 0)
@@ -61,25 +55,23 @@ export class RestChannel implements Channel {
     return fn(...args)
   }
 
-  // -------------------------------------------------------
-  // Compile all methods — runs once on first call()
-  // -------------------------------------------------------
-
   private compileAll(descriptor: ServiceDescriptor): void {
-    TypeDescriptor
-      .forType(descriptor.type as any)
+    const typeDesc = TypeDescriptor.forType(descriptor.type as any)
+
+    // @Controller prefix from class-level decorators
+    const controllerDec = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
+    const prefix = controllerDec
+      ? stripQuotes(controllerDec.arguments[0] as string)
+      : ''
+
+    typeDesc
       .getMethods()
       .forEach(methodDesc =>
-        this.calls.set(methodDesc.name, this.compileMethod(methodDesc))
+        this.calls.set(methodDesc.name, this.compileMethod(methodDesc, prefix))
       )
   }
 
-  // -------------------------------------------------------
-  // Compile a single method into a direct axios call.
-  // Everything outside the returned lambda is compile-time work.
-  // -------------------------------------------------------
-
-  private compileMethod(methodDesc: MethodDescriptor): CompiledCall {
+  private compileMethod(methodDesc: MethodDescriptor, prefix: string): CompiledCall {
 
     // ── HTTP verb + path ──────────────────────────────────
     const httpDec = methodDesc.decorators.find(d =>
@@ -87,28 +79,44 @@ export class RestChannel implements Channel {
     )
 
     const axiosMethod = HTTP_DECORATOR_TO_METHOD[httpDec?.decorator.name ?? ''] ?? 'GET'
-    const rawPath     = (httpDec?.arguments[0] as string | undefined) ?? `/${methodDesc.name}`
+    const methodPath  = httpDec
+      ? stripQuotes(httpDec.arguments[0] as string)
+      : methodDesc.name
 
-    // ── Pre-split path tokens ─────────────────────────────
+    const rawPath    = `/${prefix}/${methodPath}`.replace(/\/+/g, '/')
     const pathTokens = rawPath.split('/')
 
-    // ── Param extractors — built once from JSON parameters ─
-    const reflectedParams: ReflectedParameter[] = (methodDesc as any).parameters ?? []
+    // ── Path param names from URL template ───────────────
+    const pathParamNames = new Set(
+      pathTokens
+        .filter(seg => seg.startsWith(':'))
+        .map(seg => seg.slice(1))
+    )
 
-    const extractors = reflectedParams.map(p => {
-      const kindDec = p.decorators.find(d => d.name in PARAM_DECORATOR_TO_KIND)
-      return {
-        index: p.index,
-        kind:  PARAM_DECORATOR_TO_KIND[kindDec?.name ?? ''] ?? 'query',
-        data:  kindDec?.arguments[0] as string | undefined,
-      }
+    // ── Extractors from ParameterDescriptor[] ────────────
+    // No more (methodDesc as any).parameters — fully typed now
+    const extractors = methodDesc.parameters.map((param: ParameterDescriptor) => {
+      // explicit decorator wins
+      const kindDec = param.decorators.find(d => d.decorator.name in PARAM_DECORATOR_TO_KIND)
+      if (kindDec)
+        return {
+          index: param.index,
+          kind:  PARAM_DECORATOR_TO_KIND[kindDec.decorator.name],
+          data:  kindDec.arguments[0] as string | undefined,
+        }
+
+      // auto-infer: param name matches :token in path → path param
+      if (pathParamNames.has(param.name))
+        return { index: param.index, kind: 'param', data: param.name }
+
+      // default: query param keyed by param name
+      return { index: param.index, kind: 'query', data: param.name }
     })
 
-    // ── Return type — resolved once at compile time ────────
-    // NOT inside .then() — that would re-resolve on every call
+    // ── Return type — resolved once at compile time ───────
     const returnType = this.resolveReturnType(methodDesc)
 
-    // ── The compiled call — hot path, zero metadata work ──
+    // ── The compiled call — hot path ──────────────────────
     return (...args: any[]): Promise<any> => {
       const pathParams: Record<string, string> = {}
       const query:      Record<string, any>    = {}
@@ -156,8 +164,7 @@ export class RestChannel implements Channel {
           data:    body,
         })
       ).then(response => {
-        if (!returnType)
-          return response.data
+        if (!returnType) return response.data
 
         return Array.isArray(response.data)
           ? response.data.map((item: unknown) => plainToInstance(returnType, item))
@@ -166,14 +173,9 @@ export class RestChannel implements Channel {
     }
   }
 
-  // -------------------------------------------------------
-  // Resolve unwrapped return type — called at compile time only
-  // -------------------------------------------------------
-
   private resolveReturnType(methodDesc: MethodDescriptor): ClassConstructor<any> | undefined {
     const dec = methodDesc.getDecorator(Returns)
-    if (dec)
-      return dec.arguments[0] as ClassConstructor<any>
+    if (dec) return dec.arguments[0] as ClassConstructor<any>
 
     if (!methodDesc.async && methodDesc.returnType !== Promise)
       return methodDesc.returnType

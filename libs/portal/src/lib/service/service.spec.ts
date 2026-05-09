@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import { Injectable, Scope, INestApplication, Controller, Put } from '@nestjs/common';
+import { Injectable, Scope, INestApplication, Controller, Put, Param } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -66,7 +66,7 @@ export class UserComponentImpl extends UserComponent {
 @Controller("user")
 export class UserServiceImpl extends UserService {
   @Put(":name")
-  async createUser(name: string): Promise<string> {
+  async createUser(@Param("name") name: string): Promise<string> {
     return `user-${name}`;
   }
 }
@@ -97,6 +97,7 @@ describe('Service', () => {
   app = moduleRef.createNestApplication();
 
   await app.init();
+  await app.listen(3000);
 
   console.log(componentRegistry.report());
   });

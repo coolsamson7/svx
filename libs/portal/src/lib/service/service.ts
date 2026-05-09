@@ -235,7 +235,8 @@ export class DefaultAddressResolution extends AddressResolution {
 
     for (const p of this.priority) {
       const match = addresses.find(a => a.channel === p);
-      if (match) return match;
+      if (match) 
+        return match;
     }
 
     return addresses[0]; // ? is a fallback ok?
@@ -275,7 +276,7 @@ export class LocalComponentDiscovery extends ComponentDiscovery {
 }
 
 @Injectable()
-export class ComponentRegistry implements OnModuleInit { // TODO rename
+export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: OnModuleInit
   // static
 
   static componentDeclarations : ComponentDeclaration[] = []
@@ -398,35 +399,35 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename
   getService<T extends Service>(type: AbstractType<T>): T {
     const cached = this.proxies.get(type);
     if (cached) return cached as T;
-  
+
     const descriptor = this.findServiceDescriptor(type);
     const methods    = TypeDescriptor.forType(type as any).getMethods();
     const proxy      = Object.create((type as any).prototype);
-  
+
     const bindRemote = () => {
       const address = this.pickAddress(descriptor.componentDescriptor);
       const channel = this.channelFactory.create(address.channel, address.uri);
-  
+
       for (const method of methods) {
         const name = method.name;
         proxy[name] = (...args: any[]) => channel.call(descriptor, name, ...args);
       }
     };
-  
+
     const bindLocal = () => {
       const instance = descriptor.instance!;
-  
+
       for (const method of methods) {
         const name = method.name;
         proxy[name] = (...args: any[]) => (instance as any)[name](...args);
       }
     };
-  
+
     // install lazy stubs — first call to ANY method triggers class-level binding
     const installStubs = () => {
       for (const method of methods) {
         const name = method.name;
-  
+
         proxy[name] = (...args: any[]) => {
           // bind all methods at once, then delegate
           (false && descriptor.instance) ? bindLocal() : bindRemote();
@@ -434,10 +435,10 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename
         };
       }
     };
-  
+
     installStubs();
     // rebind hook for address death: () => installStubs()
-  
+
     this.proxies.set(type, proxy);
     return proxy as T;
   }

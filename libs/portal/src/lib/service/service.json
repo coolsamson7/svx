@@ -13,7 +13,7 @@
         {
           "name": "Controller",
           "arguments": [
-            "\"user\""
+            "user"
           ]
         }
       ],
@@ -25,7 +25,7 @@
             {
               "name": "Put",
               "arguments": [
-                "\":name\""
+                ":name"
               ]
             }
           ],
