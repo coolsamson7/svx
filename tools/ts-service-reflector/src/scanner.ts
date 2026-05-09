@@ -1,4 +1,5 @@
 import { Project, Decorator, Node } from "ts-morph";
+
 import {
   OutputSchema,
   ClassInfo,
@@ -15,6 +16,7 @@ import { TypeResolver } from "./type-resolver";
 
 function mapArgument(arg: Node): any {
   switch (arg.getKindName()) {
+
     case "StringLiteral":
       return (arg as any).getLiteralValue();
 
@@ -30,12 +32,38 @@ function mapArgument(arg: Node): any {
     case "NullKeyword":
       return null;
 
-    // arrays/objects/functions/etc.
-    // keep raw TS text for now
+    case "ObjectLiteralExpression": {
+      const obj: Record<string, any> = {};
+
+      for (const prop of (arg as any).getProperties()) {
+
+        if (Node.isPropertyAssignment(prop)) {
+          const name = prop.getName();
+          const initializer = prop.getInitializer();
+
+          obj[name] = initializer
+            ? mapArgument(initializer)
+            : undefined;
+        }
+      }
+
+      return obj;
+    }
+
+    case "ArrayLiteralExpression":
+      return (arg as any)
+        .getElements()
+        .map((e: Node) => mapArgument(e));
+
     default:
+      // fallback to raw TS source text
       return arg.getText();
   }
 }
+
+/* =========================================================
+ * Decorator mapper
+ * ========================================================= */
 
 function mapDecorator(d: Decorator) {
   return {
@@ -49,6 +77,7 @@ function mapDecorator(d: Decorator) {
  * ========================================================= */
 
 export function scan(tsconfigPath: string): OutputSchema {
+
   const project = new Project({
     tsConfigFilePath: tsconfigPath,
   });
@@ -61,9 +90,12 @@ export function scan(tsconfigPath: string): OutputSchema {
   console.log(project.getCompilerOptions());
 
   for (const file of project.getSourceFiles()) {
+
     for (const cls of file.getClasses()) {
 
-      // include service contracts + controller implementations
+      // include:
+      // - abstract service contracts
+      // - controller implementations
       const include =
         cls.getDecorator("DeclareService") ||
         cls.getDecorator("Controller");
@@ -81,6 +113,7 @@ export function scan(tsconfigPath: string): OutputSchema {
       };
 
       for (const method of cls.getMethods()) {
+
         const returnType = method.getReturnType();
 
         resolver.resolve(returnType);
@@ -93,6 +126,7 @@ export function scan(tsconfigPath: string): OutputSchema {
         };
 
         for (const param of method.getParameters()) {
+
           const type = param.getType();
 
           resolver.resolve(type);
