@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
   Type,
@@ -7,7 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { ModuleRef } from  '@nestjs/core';
-import 'reflect-metadata';
+import { StringBuilder } from '../util';
 
 export type AbstractType<T> = abstract new (...args: any[]) => T;
 
@@ -27,6 +28,7 @@ export class ChannelAddress {
 }
 
 export interface Channel {
+  url?: string;
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any>;
 }
 
@@ -39,7 +41,11 @@ interface ChannelDescriptor {
 export class ChannelFactory {
   // static
 
-  static channels : Map<string,ChannelDescriptor> = new Map()
+  static channels: Map<string, ChannelDescriptor> = new Map();
+
+  // instance data
+
+  private cache = new Map<string, Channel>();
 
   // constructor
 
@@ -47,14 +53,36 @@ export class ChannelFactory {
 
   // private
 
-  private findChannelType(channel: string) :Type<Channel> {
-    return ChannelFactory.channels.get(channel)!.type!
+  private find(name: string): Type<Channel> {
+    const type = ChannelFactory.channels.get(name)
+    if (type)
+      return type.type;
+    else
+      throw new Error(`Channel not found: ${name}`);
   }
 
-  // public
+  private buildCacheKey(
+    channel: string,
+    url?: string,
+  ): string {
+    return `${channel}:${url ?? ''}`;
+  }
 
-  create(channel: string): Channel {
-    return this.moduleRef.get(this.findChannelType(channel), { strict: false });
+  create(channel: string, url?: string): Channel {
+    const key = this.buildCacheKey(channel, url);
+
+    const cached = this.cache.get(key);
+    if (cached)
+      return cached;
+
+
+    const instance = this.moduleRef.get(this.find(channel), { strict: false });
+
+    instance.url = url;
+
+    this.cache.set(key, instance);
+
+    return instance;
   }
 }
 
@@ -66,23 +94,19 @@ export function DeclareChannel(name: string): ClassDecorator {
   };
 }
 
-// some channels
-
-@DeclareChannel('local')
-@Injectable()
-export class LocalChannel implements Channel {
-  // implement channel
-
-  async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
-    return descriptor.instance![method](...args);
-  }
-}
+import { HttpModule } from '@nestjs/axios';
+import { TypeDescriptor } from '../reflection';
 
 @Module({})
 export class ChannelModule {
   static register(): DynamicModule {
     return {
       module: ChannelModule,
+
+      imports: [
+        HttpModule, // TODO: make this dynamic based on registered channels
+      ],
+
       providers: [
         ...[...ChannelFactory.channels.values()].map(descriptor => descriptor.type),
         ChannelFactory,
@@ -109,16 +133,23 @@ export class Descriptor<T extends Service> {
 export class ServiceDescriptor<T extends Service=Service> extends Descriptor<T> {
   // instance data
 
-  componentDescriptor! : ComponentDescriptor
+  componentDescriptor! : ComponentDescriptor<Component>
 
   // constructor
 
-  constructor(public name: string, public type: Type<T>) {
+  constructor(public name: string, public type: AbstractType<T>) {
     super(name,  type)
+  }
+
+  report(builder: StringBuilder) {
+    builder.append("\t").append(this.name)
+
+    if ( this.instance )
+      builder.append(" implemented by ").append(this.instance.constructor.name)
   }
 }
 
-export class ComponentDescriptor<T extends Component=Component> extends Descriptor<T> {
+export class ComponentDescriptor<T extends Component> extends ServiceDescriptor<T> {
   // instance data
 
   addresses: ChannelAddress[] = [];
@@ -130,6 +161,19 @@ export class ComponentDescriptor<T extends Component=Component> extends Descript
 
     for ( const service of services)
       service.componentDescriptor = this
+  }
+
+  // public
+
+  report(builder: StringBuilder) {
+    builder.append(this.name)
+    if ( this.instance )
+      builder.append(" implemented by ").append(this.instance.constructor.name)
+
+    builder.append("\n")
+
+    for ( const service of this.services)
+      service.report(builder)
   }
 }
 
@@ -178,13 +222,24 @@ export class ComponentRegistry implements OnModuleInit {
 
   private components = new Map<string, ComponentDescriptor<Component>>();
   private services = new Map<string, ServiceDescriptor<Service>>();
-  private byType =  new Map<AbstractType<Service>, Descriptor<Service>>();
+  private byType =  new Map<AbstractType<Service>, ServiceDescriptor>();
   private proxies =  new Map<AbstractType<Service>, Service>();
 
   // constructor
 
   constructor(private channelFactory: ChannelFactory, private moduleRef: ModuleRef) {
     this.setup();
+  }
+
+  report() : string {
+    const builder = new StringBuilder()
+
+    builder.append("Components\n")
+
+    for ( const component of this.components.values())
+      component.report(builder)
+
+    return builder.toString()
   }
 
   // implement OnModuleInit
@@ -214,16 +269,16 @@ export class ComponentRegistry implements OnModuleInit {
     // services
 
     for (const declaration of ComponentRegistry.serviceDeclarations)
-      this.registerService(new ServiceDescriptor<any>(declaration.name, declaration.type))
+      this.registerService(new ServiceDescriptor(declaration.name, declaration.type))
 
     // components
 
     for (const declaration of ComponentRegistry.componentDeclarations)
-      this.registerComponent(new ComponentDescriptor<any>(declaration.name, declaration.type, declaration.options.services.map(type => this.byType.get(type) as ServiceDescriptor)))
+      this.registerComponent(new ComponentDescriptor(declaration.name, declaration.type, declaration.options.services.map(type => this.byType.get(type) as ServiceDescriptor)))
   }
 
-  private findServiceDescriptor(type: AbstractType<Service>): Descriptor<Service> | undefined {
-    let current: any = type;
+  private findServiceDescriptor(type: AbstractType<Service>): ServiceDescriptor {
+    let current = type;
 
     while (
       current &&
@@ -234,13 +289,13 @@ export class ComponentRegistry implements OnModuleInit {
       const descriptor = this.byType.get(current);
 
       if (descriptor) {
-        return descriptor as Descriptor<Service>;
+        return descriptor;
       }
 
       current = Object.getPrototypeOf(current);
     }
 
-    return undefined;
+    throw new Error(`Unknown service ${type.name}`)
   }
 
   private registerService(serviceDescriptor: ServiceDescriptor<Service>) {
@@ -257,54 +312,63 @@ export class ComponentRegistry implements OnModuleInit {
 
   // public
 
-  getService<T extends Service>(type: abstract new (...args: any[]) => T): T {
-    const cached = this.proxies.get(type as any);
-
-    if (cached) {
+  getService<T extends Service>(type: AbstractType<T>): T {
+    const cached = this.proxies.get(type);
+    if (cached)
       return cached as T;
-    }
 
-    const descriptor = this.findServiceDescriptor(type) as ServiceDescriptor<T>;
+    const descriptor = this.findServiceDescriptor(type);
+    const stub = Object.create((type as any).prototype) as T;
 
-    if (!descriptor) {
-      throw new Error(
-        `Unknown service ${type.name}`,
-      );
-    }
+    const t =  TypeDescriptor.forType(type as any)
 
-    const proxy = new Proxy(
-      {},
-      {
-        get: (_, prop: string) => {
-          if (prop === 'then') { // TODO
-            return undefined;
+    TypeDescriptor.forType(type as any).getMethods()
+      //.filter(prop => prop !== 'constructor')
+      .forEach(method => {
+        const prop = method.name
+
+        const makeRemote = () => (...args: any[]) => {
+          const addresses = descriptor.componentDescriptor.addresses;
+          if (!addresses.length) {
+                    throw new Error(`No address for component ${descriptor.componentDescriptor.name}`);
+                  }
+
+           const address = addresses[0];
+
+          const channel = this.channelFactory.create(address.channel, address.uri);
+
+          // channel resolved — replace with direct call
+          stub[prop] = (...a: any[]) => channel.call(descriptor, prop, ...a);
+
+          // if address dies, fall back to dynamic resolution
+          //descriptor.componentDescriptor.pool.onDead(address.uri, () => {
+           // stub[prop] = makeRemote();
+          //});
+
+          return stub[prop](...args);
+        };
+
+        // initial function — decides local vs remote once, then replaces itself
+
+        stub[prop] = (...args: any[]) => {
+          if (descriptor.instance) {
+            // local: permanent replacement, instance never changes
+            stub[prop] = (...a: any[]) => (descriptor.instance as any)[prop](...a);
+          } 
+          else {
+            // remote: dynamic until first address resolved
+            stub[prop] = makeRemote();
           }
 
-          const channel = descriptor.instance
-            ? this.channelFactory.create('local')
-            : (() => {
-                const addresses = descriptor.componentDescriptor.addresses;
+          return stub[prop](...args);
+        };
+      });
 
-                if (!addresses.length) {
-                  throw new Error(
-                    `No address for component ${descriptor.componentDescriptor.name}`,
-                  );
-                }
+    this.proxies.set(type, stub);
 
-                return this.channelFactory.create(addresses[0].channel);
-              })();
-
-          return async (...args: any[]) => channel.call(descriptor, prop, ...args);
-        },
-      },
-    ) as T;
-
-    this.proxies.set(type, proxy);
-
-    return proxy;
+    return stub as T;
   }
 }
-
 
 // decorator
 

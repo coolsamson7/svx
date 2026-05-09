@@ -1,24 +1,27 @@
 import 'reflect-metadata';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Scope, INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
+
+
 import {
   Component,
   DeclareComponent,
   Implementation,
   Service,
   ChannelAddress,
-  ChannelFactory,
   ComponentRegistry,
   DeclareService,
-  ComponentModule,
-  DeclareChannel,
-  Channel,
-  ServiceDescriptor,
+  ComponentModule
 } from './service';
 
+import "./http.channel"
+import { TypeDescriptor } from '../reflection';
+
+import reflection from './service.json'
+TypeDescriptor.loadReflection(reflection)
 
 // interface
 
@@ -60,24 +63,9 @@ export class UserServiceImpl extends UserService {
   }
 }
 
-@DeclareChannel('http')
-@Injectable({ scope: Scope.TRANSIENT })
-export class HttpChannel implements Channel {
-
-  async call(descriptor: ServiceDescriptor, method: string, ...args: any[]) {
-    /*const res = await fetch(`${this.uri}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(args),
-    });
-    return res.json();*/
-    return undefined
-  }
-}
-
 /* =========================================
    Client
-========================================= 
+=========================================
 
 @Injectable()
 export class ClientService {
@@ -92,24 +80,36 @@ export class ClientService {
 
 // TES
 
+//import { Test, TestingModule } from '@nestjs/testing';
+
+
 describe('Service', () => {
   let moduleRef: TestingModule;
 
+  let app: INestApplication;
+
   let componentRegistry: ComponentRegistry;
 
-
   beforeEach(async () => {
-
     moduleRef = await Test.createTestingModule({
-      imports: [ComponentModule.forModule(UserComponent)],
-      providers: [ChannelFactory],
+      imports: [
+        ComponentModule.forModule(UserComponent),
+      ],
     }).compile();
 
-    // retrieve the proxy for the abstract service
+  componentRegistry = moduleRef.get(ComponentRegistry);
 
-    componentRegistry = moduleRef.get(ComponentRegistry);
+  await componentRegistry.createInstances();
 
-    await componentRegistry.createInstances(); // manually trigger module init to setup services ?????
+  app = moduleRef.createNestApplication();
+
+  await app.init();
+
+  console.log(componentRegistry.report());
+  });
+
+  afterEach(async () => {
+    await app.close();
   });
 
   it('should return a proxy instance', async () => {
@@ -119,4 +119,19 @@ describe('Service', () => {
 
     expect(result).toBe('user-Alice');
   });
+/*
+  it('should expose http endpoint', async () => {
+    await request(app.getHttpServer())
+      .post('/service')
+      .send({
+        service: 'user-service',
+        method: 'createUser',
+        args: ['Bob'],
+      })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.success).toBe(true);
+        expect(res.body.result).toBe('user-Bob');
+      });
+  });*/
 });
