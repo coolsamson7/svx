@@ -22,6 +22,45 @@ import {
 import "./http.channel"
 import "./rest.channel"
 
+import { ModulesContainer } from '@nestjs/core';
+import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
+import { RequestMethod } from '@nestjs/common';
+
+function printRoutes(app: INestApplication) {
+  const modules = app.get(ModulesContainer);
+
+  for (const module of modules.values()) {
+    for (const controller of module.controllers.values()) {
+      const instance = controller.instance;
+      if (!instance) continue;
+
+      const controllerPath =
+        Reflect.getMetadata(PATH_METADATA, instance.constructor) ?? '';
+
+      const prototype = Object.getPrototypeOf(instance);
+
+      for (const methodName of Object.getOwnPropertyNames(prototype)) {
+        if (methodName === 'constructor') continue;
+
+        const handler = prototype[methodName];
+
+        const routePath =
+          Reflect.getMetadata(PATH_METADATA, handler);
+
+        const requestMethod: RequestMethod =
+          Reflect.getMetadata(METHOD_METADATA, handler);
+
+        if (routePath !== undefined) {
+          console.log(
+            `${RequestMethod[requestMethod]} /${controllerPath}/${routePath}`
+              .replace(/\/+/g, '/')
+          );
+        }
+      }
+    }
+  }
+}
+
 import { TypeDescriptor } from '../reflection';
 
 import reflection from './service.json'
@@ -88,6 +127,7 @@ describe('Service', () => {
           addressResolution: new DefaultAddressResolution("xlocal", "rest") // CHNAGE HERE
         }),
       ],
+      controllers: [UserServiceImpl],
     }).compile();
 
   componentRegistry = moduleRef.get(ComponentRegistry);
@@ -97,6 +137,9 @@ describe('Service', () => {
   app = moduleRef.createNestApplication();
 
   await app.init();
+
+  printRoutes(app);
+
   await app.listen(3000);
 
   console.log(componentRegistry.report());
