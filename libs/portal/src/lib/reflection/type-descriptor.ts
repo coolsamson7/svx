@@ -3,6 +3,7 @@ import "reflect-metadata";
 import { TraceLevel, Tracer } from "../tracer"
 import { StringBuilder } from "../util"
 import { GType } from "../lang"
+import { ReflectedClass, ReflectorOutput} from "./reflector.interface";
 
 /* =========================================================
  * INTERNAL METADATA KEYS
@@ -182,6 +183,14 @@ export interface Decorator<T = any> {
 }
 
 export class TypeDescriptor<T> {
+   private static reflected = new Map<string, ReflectedClass>()
+
+   static loadReflection(data: ReflectorOutput) {
+       for (const cls of data.classes) {
+           TypeDescriptor.reflected.set(cls.name, cls)
+       }
+   }
+
     static forType<T>(type: GType<T>): TypeDescriptor<T> {
         const proto = type.prototype as any
         if (!Object.prototype.hasOwnProperty.call(proto, '__descriptor')) {
@@ -204,8 +213,44 @@ export class TypeDescriptor<T> {
         }
 
         this.analyzeStructure(type)
+        this.loadReflectedMethods()
         this.inheritFromParent()
     }
+
+  private loadReflectedMethods() {
+      const reflected =
+          TypeDescriptor.reflected.get(this.type.name)
+
+      if (!reflected)
+          return
+
+      for (const reflectedMethod of reflected.methods) {
+
+          // already discovered at runtime
+          if (this.properties[reflectedMethod.name])
+              continue
+
+          // synthetic placeholder function
+          const synthetic = async function () {}
+
+          const descriptor = new MethodDescriptor(
+              reflectedMethod.name,
+              synthetic,
+              PropertyType.METHOD,
+              this.type
+          )
+
+          // restore decorators
+          for (const decorator of reflectedMethod.decorators) {
+              descriptor.addDecorator(
+                  { name: decorator.name } as any,
+                  decorator.arguments
+              )
+          }
+
+          this.properties[reflectedMethod.name] = descriptor
+      }
+  }
 
     public create(...args: any[]): T {
         return new this.type(...args)
