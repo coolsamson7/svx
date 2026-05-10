@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { injectable }    from '../di/'
+import { AxiosRestChannel } from './axios.channel'
 import { ProxyBuilder } from './proxy-builder'
 import {
   AbstractType,
+  Channel,
+  Component,
+  ComponentDescriptor,
   Service,
   ServiceRegistry,
 } from './service.shared'
@@ -12,25 +16,32 @@ export abstract class ComponentLocator {
 }
 
 @injectable()
-export class StaticComponentLocator extends ComponentLocator {
-  // implement
-
-  locate(component: ComponentDescriptor<Component>): string {
-    return "http://localhost:3000"
-  }
-}
-
-@injectable()
 export class ServiceClient {
   // instance data
 
-  private proxies     = new Map<AbstractType<Service>, Service>()
+  private proxies = new Map<AbstractType<Service>, Service>()
+  private channels = new Map<string, Channel>()
 
   serviceRegistry = new ServiceRegistry()
 
   // constructor
 
-  constructor(private readonly channel: RestChannel, private componentLocator: ComponentLocator) {
+  constructor(private componentLocator: ComponentLocator) {
+  }
+
+  // private
+
+  private getChannel(component: ComponentDescriptor<Component>): Channel {
+    const url = this.componentLocator.locate(component)
+    let channel = this.channels.get(url)
+    if (!channel) {
+      channel = new AxiosRestChannel()
+      channel.url = url
+
+      this.channels.set(url, channel)
+    }
+
+    return channel
   }
 
   // public
@@ -41,7 +52,7 @@ export class ServiceClient {
       const descriptor = this.serviceRegistry.findServiceDescriptor(type)
 
       proxy = new ProxyBuilder<T>(type)
-        .bind((name, ...args) => this.channel.call(descriptor, name, ...args))
+        .bind((name, ...args) => this.getChannel(descriptor.componentDescriptor).call(descriptor, name, ...args))
         .build()
 
       this.proxies.set(type, proxy)

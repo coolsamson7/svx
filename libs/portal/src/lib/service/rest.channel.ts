@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel } from './service';
 import { TypeDescriptor, MethodDescriptor, Returns } from '../reflection';
-import { ServiceDescriptor, Channel } from './service.shared';
+import { ServiceDescriptor, Channel, CachingChannelFactory } from './service.shared';
 
 /* =========================================================
  * Constants
@@ -29,16 +29,31 @@ type QueryExtractor = (args: Args) => Record<string, any> | undefined
 type ResponseHandler = (data: any) => any
 type CompiledCall   = (args: Args) => Promise<any>
 
-/* =========================================================
- * RestChannel
- * ========================================================= */
-
-@DeclareChannel('rest')
 @Injectable()
-export class RestChannel implements Channel {
+@DeclareChannel('rest')
+export class RestChannelFactory extends CachingChannelFactory<RestChannel> {
   static imports   = [HttpModule]
   static providers: any[] = []
 
+  // constructor
+
+  constructor(private readonly http: HttpService) {
+    super();
+  }
+
+  // implement
+
+  createChannel(url: string) {
+    const channel =  new RestChannel(this.http)
+
+    channel.url = url
+
+    return channel
+  }
+}
+
+@Injectable()
+export class RestChannel implements Channel {
   url?: string
 
   private calls = new Map<string, CompiledCall>()

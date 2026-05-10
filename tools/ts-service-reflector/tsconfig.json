@@ -4,7 +4,8 @@
     "moduleResolution": "bundler",
     "target": "ESNext",
     "esModuleInterop": true,
-    "types": ["node"], 
-    "strict": true
+    "types": ["node"],
+    "strict": true,
+    "experimentalDecorators": true
   }
 }

@@ -8,44 +8,54 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 
-import { AbstractType, Channel, ChannelAddress, Component, ComponentDescriptor, Service, ServiceDescriptor, ServiceRegistry } from './service.shared';
+import { AbstractType, CachingChannelFactory, Channel, ChannelAddress, ChannelFactory, Component, ComponentDescriptor, Service, ServiceDescriptor, ServiceRegistry } from './service.shared';
 
 import { ModuleRef } from  '@nestjs/core';
 import { ProxyBuilder } from './proxy-builder';
 
-interface ChannelDescriptor {
-  name: string
-  type: Type<Channel>
-}
 
 @Injectable()
-export class ChannelFactory {
+export class ChannelBuilder {
   // static
 
-  static channels: Map<string, ChannelDescriptor> = new Map();
+  static factoryTypes: Map<string, Type<ChannelFactory>>  = new Map();
+
+  static declareFactory(name: string, type: Type<ChannelFactory>) {
+    ChannelBuilder.factoryTypes.set(name, type)
+  }
 
   // instance data
 
+  private factories = new Map<string, ChannelFactory>();
   private cache = new Map<string, Channel>();
 
   // constructor
 
-  constructor(private moduleRef: ModuleRef) {}
+  constructor(private moduleRef: ModuleRef) {
+  }
 
   // private
 
-  private find(name: string): Type<Channel> {
-    const type = ChannelFactory.channels.get(name)
-    if (type)
-      return type.type;
-    else
-      throw new Error(`Channel not found: ${name}`);
+  private findFactoryType(channel: string) : Type<ChannelFactory> {
+    const type = ChannelBuilder.factoryTypes.get(channel)
+    if (!type) {
+      throw new Error(`No factory declared for channel ${channel}`)
+    }
+
+    return type 
   }
 
-  private buildCacheKey(
-    channel: string,
-    url?: string,
-  ): string {
+  private findFactory(channel: string) : ChannelFactory {
+    let factory = this.factories.get(channel)
+    if (!factory ) {
+      this.factories.set(channel, factory = this.moduleRef.get(this.findFactoryType(channel), { strict: false })!)
+    }
+
+    return factory
+  }
+
+
+  private buildCacheKey(channel: string, url?: string): string {
     return `${channel}:${url ?? ''}`;
   }
 
@@ -56,10 +66,7 @@ export class ChannelFactory {
     if (cached)
       return cached;
 
-
-    const instance = this.moduleRef.get(this.find(channel), { strict: false });
-
-    instance.url = url;
+    const instance = this.findFactory(channel).create(url!)
 
     this.cache.set(key, instance);
 
@@ -71,12 +78,25 @@ export class ChannelFactory {
 
 export function DeclareChannel(name: string): ClassDecorator {
   return (target) => {
-    ChannelFactory.channels.set(name, {name: name, type: target as unknown as Type<Channel>});
+    ChannelBuilder.declareFactory(name, target as unknown as Type<ChannelFactory>);
   };
 }
 
-
 @DeclareChannel("missing")
+export class MissingChannelFactory extends CachingChannelFactory<MissingChannel> {
+  // implement
+
+  createChannel(url: string) {
+    const channel =  new MissingChannel()
+
+    channel.url = url
+
+    return channel
+  }
+}
+
+
+
 @Injectable()
 export class MissingChannel implements Channel {
   url!: string
@@ -92,16 +112,16 @@ export class MissingChannel implements Channel {
 @Module({})
 export class ChannelModule {
   static register(): DynamicModule {
-    const channelTypes = [...ChannelFactory.channels.values()].map(d => d.type)
+    const channelTypes = [...ChannelBuilder.factoryTypes.values()]
 
     const imports   = channelTypes.flatMap(t => (t as any).imports   ?? [])
     const providers = channelTypes.flatMap(t => (t as any).providers ?? [])
 
     return {
       module: ChannelModule,
-      imports:   [...new Set(imports)],           // deduplicate HttpModule etc.
-      providers: [...channelTypes, ...providers, ChannelFactory],
-      exports:   [ChannelFactory],
+      imports:   [...new Set(imports)],
+      providers: [...channelTypes, ...providers, ChannelBuilder],
+      exports:   [ChannelBuilder],
     }
   }
 }

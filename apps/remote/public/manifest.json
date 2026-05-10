@@ -1,7 +1,6 @@
 {
-  "generated": "2026-04-27T16:33:43.702Z",
+  "generated": "2026-05-05T19:42:56.923Z",
   "project": "remote",
-  "remote": "http://localhost:4201/remoteEntry.js",
   "features": [
     {
       "id": "bar",

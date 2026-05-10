@@ -20,7 +20,7 @@ import {
   DeclareChannel,
 } from './service';
 
-import { Channel, ServiceDescriptor } from "./service.shared"
+import { CachingChannelFactory, Channel, ServiceDescriptor } from "./service.shared"
 
 // =========================================
 // DTO
@@ -38,20 +38,36 @@ export class ServiceReply {
   error?: string;
 }
 
-// =========================================
-// HTTP Channel
-// =========================================
-
+@Injectable()
 @DeclareChannel('http')
+export class HttpChannelFactory extends CachingChannelFactory<HttpChannel> {
+  // constructor
+
+  constructor(private readonly http: HttpService) {
+    super();
+  }
+
+  // implement
+
+  createChannel(url: string) {
+    return new HttpChannel(url, this.http)
+  }
+}
+
+
 @Injectable()
 export class HttpChannel implements Channel {
+  // static
+
   static imports   = [HttpModule]   // ← channel owns its deps
   static providers: any[] = []
 
-  url?: string;
+  // constructor
 
-  constructor(private readonly http: HttpService) {}
+  constructor(public url: string, private readonly http: HttpService) {}
 
+  // implement Channel
+  
   async call(
     descriptor: ServiceDescriptor,
     method: string,
@@ -66,7 +82,7 @@ export class HttpChannel implements Channel {
 
     const response = await firstValueFrom(
       this.http.post(
-        this.url!,
+        this.url,
         instanceToPlain(request),
         {
           headers: {

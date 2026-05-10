@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "analytics": true,
+  "projects": ["apps/api", "apps/remote", "apps/shell", "libs/portal", "tools/manifest-generator", "tools/ts-service-reflector"],
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [

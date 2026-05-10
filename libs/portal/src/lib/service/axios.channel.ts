@@ -2,7 +2,7 @@
 import axios, { AxiosInstance }                              from 'axios'
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer'
 import { TypeDescriptor, MethodDescriptor, Returns }         from '../reflection'
-import { Channel, ServiceDescriptor }                                 from './service.shared'
+import { Channel, ChannelFactory, ServiceDescriptor }                                 from './service.shared'
 
 /* =========================================================
  * Constants
@@ -24,25 +24,39 @@ type QueryExtractor  = (args: Args) => Record<string, any> | undefined
 type ResponseHandler = (data: any) => any
 type CompiledCall    = (args: Args) => Promise<any>
 
-/* =========================================================
- * RestChannel
- * ========================================================= */
 
-export class RestChannel implements Channel {
-  // insatnce data
 
-  private readonly axios: AxiosInstance
-  private readonly calls = new Map<string, CompiledCall>()
+export class HttpChannelFactory implements ChannelFactory<AxiosRestChannel> {
+  // implement
 
-  // constructor
+  create(url: string) {
+    const channel =  new AxiosRestChannel()
 
-  constructor(baseUrl: string) {
-    // axios instance owns the base URL — all calls relative to it
-    this.axios = axios.create({
-      baseURL: baseUrl,
+    channel.url = url
+
+    return channel
+  }
+}
+
+
+export class AxiosRestChannel implements Channel {
+  // instance data
+
+  private _url?: string;
+
+  get url(): string | undefined {
+    return this._url;
+  }
+
+  set url(value: string | undefined) {
+      this.axios = axios.create({
+      baseURL: value,
       headers: { 'content-type': 'application/json' },
     })
   }
+
+  private axios!: AxiosInstance
+  private readonly calls = new Map<string, CompiledCall>()
 
   // implement Channel
 

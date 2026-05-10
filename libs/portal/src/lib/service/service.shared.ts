@@ -25,9 +25,33 @@ export interface Channel {
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any>;
 }
 
+export interface ChannelFactory<T extends Channel=Channel> {
+  create(url: string) : T 
+}
+
+export abstract class CachingChannelFactory<T extends Channel> implements ChannelFactory<T> {
+  // instance data
+
+  channels = new Map<string, T>()
+
+  // asbtract
+
+  abstract createChannel(url: string) : T;
+
+  // implement
+
+  create(url: string) : T {
+    let channel = this.channels.get(url)
+    if (!channel ) {
+      this.channels.set(url, channel = this.createChannel(url))
+    }
+
+    return channel
+  }
+}
 
 export interface ServiceOptions {
-  name: string
+  name?: string
 }
 
 export interface ComponentOptions extends ServiceOptions {
@@ -121,16 +145,12 @@ export class ServiceRegistry {
   // static methods
 
   static declareComponent(target: AbstractType<Component>, options: ComponentOptions): void {
-    ServiceRegistry.componentDeclarations.push({ name: options.name, type: target, options })
+    ServiceRegistry.componentDeclarations.push({ name: options.name ?? target.name, type: target, options })
   }
 
   static declareService(target: AbstractType<Service>, options: ServiceOptions): void {
-    ServiceRegistry.serviceDeclarations.push({ name: options.name, type: target, options })
+    ServiceRegistry.serviceDeclarations.push({ name: options.name ?? target.name, type: target, options })
   }
-
-  /*static implementService(target: AbstractType<Service>): void {
-    ServiceRegistry.serviceImplementations.push(target)
-  }*/
 
   // instance data
 
@@ -212,10 +232,12 @@ export class ServiceRegistry {
  * Register into ServiceRegistry only — no framework coupling.
  * ========================================================= */
 
-export function DeclareService(options: ServiceOptions): ClassDecorator {
+export function DeclareService(options: ServiceOptions = {}): ClassDecorator {
   return (target: any) => {
     TypeDescriptor.forType(target).addDecorator(DeclareService, options)
-    ServiceRegistry.declareService(target, options)
+    ServiceRegistry.declareService(target, {
+      name: options.name ?? target.name,
+    })
   }
 }
 

@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 
 import { ApplicationModule } from './application.module';
 
-async function bootstrap() {
+async function main() {
   const app = await NestFactory.create(ApplicationModule);
 
   await app.listen(3000);
@@ -12,4 +12,4 @@ async function bootstrap() {
   console.log('Server started on http://localhost:3000');
 }
 
-bootstrap();
+main();

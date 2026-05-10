@@ -35,6 +35,18 @@ export function Returns(type: any) {
     };
 }
 
+export const Field = (): any => {
+    return function (target: any, propertyKey: string) {
+        TypeDescriptor.forType(target.constructor).addPropertyDecorator(target, propertyKey, Field)
+    }
+}
+
+export function Method(): any {
+  return (target: any, property: string) => {
+    TypeDescriptor.forType(target.constructor).addMethodDecorator(target, property, Method)
+  };
+}
+
 /* =========================================================
  * PROPERTY SYSTEM
  * ========================================================= */

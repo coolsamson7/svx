@@ -780,7 +780,7 @@ export class MappingDefinition<S = any, T = any> {
   // instance data
 
   transformer?: Transformer<MappingContext>
-  reverse : MappingDefinition<any,any>
+  reverse! : MappingDefinition<any,any>
 
   // constructor
 
