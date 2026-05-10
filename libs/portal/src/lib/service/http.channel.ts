@@ -1,7 +1,4 @@
-// =========================================
-// transport/http.transport.ts
-// =========================================
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Body,
   Controller,
@@ -19,11 +16,11 @@ import {
 } from 'class-transformer';
 
 import {
-  Channel,
   ComponentRegistry,
   DeclareChannel,
-  ServiceDescriptor,
 } from './service';
+
+import { Channel, ServiceDescriptor } from "./service.shared"
 
 // =========================================
 // DTO

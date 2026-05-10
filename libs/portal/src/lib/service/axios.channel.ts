@@ -1,11 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Injectable } from '@nestjs/common';
-import { HttpModule, HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
-import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
-import { DeclareChannel } from './service';
-import { TypeDescriptor, MethodDescriptor, Returns } from '../reflection';
-import { ServiceDescriptor, Channel } from './service.shared';
+import axios, { AxiosInstance }                              from 'axios'
+import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer'
+import { TypeDescriptor, MethodDescriptor, Returns }         from '../reflection'
+import { Channel, ServiceDescriptor }                                 from './service.shared'
 
 /* =========================================================
  * Constants
@@ -18,32 +15,36 @@ const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
 
 const stripQuotes = (s: string) => s.replace(/^["']|["']$/g, '')
 
-/* =========================================================
- * Precomputed function types — what survives into the hot path
- * ========================================================= */
+// Compiled function types
 
-type Args           = any[]
-type UrlBuilder     = (args: Args) => string
-type BodyExtractor  = (args: Args) => any
-type QueryExtractor = (args: Args) => Record<string, any> | undefined
+type Args            = any[]
+type UrlBuilder      = (args: Args) => string
+type BodyExtractor   = (args: Args) => any
+type QueryExtractor  = (args: Args) => Record<string, any> | undefined
 type ResponseHandler = (data: any) => any
-type CompiledCall   = (args: Args) => Promise<any>
+type CompiledCall    = (args: Args) => Promise<any>
 
 /* =========================================================
  * RestChannel
  * ========================================================= */
 
-@DeclareChannel('rest')
-@Injectable()
 export class RestChannel implements Channel {
-  static imports   = [HttpModule]
-  static providers: any[] = []
+  // insatnce data
 
-  url?: string
+  private readonly axios: AxiosInstance
+  private readonly calls = new Map<string, CompiledCall>()
 
-  private calls = new Map<string, CompiledCall>()
+  // constructor
 
-  constructor(private readonly http: HttpService) {}
+  constructor(baseUrl: string) {
+    // axios instance owns the base URL — all calls relative to it
+    this.axios = axios.create({
+      baseURL: baseUrl,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  // implement Channel
 
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
     if (this.calls.size === 0)
@@ -56,9 +57,7 @@ export class RestChannel implements Channel {
     return fn(args)
   }
 
-  /* =========================================================
-   * Compile all methods once — pure setup, nothing runs at call time
-   * ========================================================= */
+  // private
 
   private compileAll(descriptor: ServiceDescriptor): void {
     const typeDesc   = TypeDescriptor.forType(descriptor.type as any)
@@ -72,70 +71,63 @@ export class RestChannel implements Channel {
   private compileMethod(method: MethodDescriptor, prefix: string): CompiledCall {
     const httpDec    = method.decorators.find(d => d.decorator.name in HTTP_DECORATOR_TO_METHOD)
     const httpMethod = HTTP_DECORATOR_TO_METHOD[httpDec?.decorator.name ?? ''] ?? 'GET'
-    const basePath   = httpDec?.arguments?.[0] ? stripQuotes(httpDec.arguments[0] as string) : method.name
+    const basePath   = httpDec?.arguments?.[0]
+      ? stripQuotes(httpDec.arguments[0] as string)
+      : method.name
     const template   = `/${prefix}/${basePath}`.replace(/\/+/g, '/')
 
-    // classify each parameter once
     const pathParams:  { index: number; key: string }[] = []
     const queryParams: { index: number; key: string }[] = []
     let   bodyIndex:   number | undefined
 
     for (const p of method.parameters) {
-      const dec = p.decorators.find(d => ['Body', 'Param', 'Query'].includes(d.decorator.name))
-
+      const dec = p.decorators.find(d =>
+        ['Body', 'Param', 'Query'].includes(d.decorator.name)
+      )
       if (!dec || dec.decorator.name === 'Query')
         queryParams.push({ index: p.index, key: dec?.arguments?.[0] ?? p.name })
-
       else if (dec.decorator.name === 'Param')
         pathParams.push({ index: p.index, key: dec.arguments?.[0] ?? p.name })
-
       else if (dec.decorator.name === 'Body')
         bodyIndex = p.index
     }
 
-    // precompute the four functions — no logic survives into the hot path
-    const buildUrl      = this.makeUrlBuilder(template, pathParams)
-    const extractBody   = this.makeBodyExtractor(bodyIndex)
-    const extractQuery  = this.makeQueryExtractor(queryParams)
+    const buildUrl       = this.makeUrlBuilder(template, pathParams)
+    const extractBody    = this.makeBodyExtractor(bodyIndex)
+    const extractQuery   = this.makeQueryExtractor(queryParams)
     const handleResponse = this.makeResponseHandler(this.resolveReturnType(method))
+    const http           = this.axios   // capture once — avoids `this` in hot path
 
-    // hot path: 4 calls + 1 await — zero branching, zero loops, zero metadata
     return async (args: Args): Promise<any> => {
-      const res = await firstValueFrom(
-        this.http.request({
-          method: httpMethod,
-          url:    `${this.url}${buildUrl(args)}`,
-          data:   extractBody(args),
-          params: extractQuery(args),
-        })
-      )
-      return handleResponse(res.data)
+      const { data } = await http.request({
+        method:  httpMethod,
+        url:     buildUrl(args),
+        params:  extractQuery(args),
+        data:    extractBody(args),
+      })
+      return handleResponse(data)
     }
   }
 
-  /* =========================================================
-   * Function factories — each returns the simplest possible lambda
-   * ========================================================= */
+  // ── Function factories ────────────────────────────────────
 
-  private makeUrlBuilder(template: string, pathParams: { index: number; key: string }[]): UrlBuilder {
-    // fully static URL — return a constant function (zero work per call)
+  private makeUrlBuilder(
+    template: string,
+    pathParams: { index: number; key: string }[]
+  ): UrlBuilder {
     if (pathParams.length === 0)
       return () => template
 
-    // precompute segments: static strings or arg-extractors
     const segments: Array<string | ((args: Args) => string)> = template
       .split('/')
       .map(seg => {
         if (!seg.startsWith(':')) return seg
         const p = pathParams.find(p => p.key === seg.slice(1))
-        return p
-          ? (args: Args) => encodeURIComponent(args[p.index])
-          : seg
+        return p ? (args: Args) => encodeURIComponent(args[p.index]) : seg
       })
 
-    return (args: Args) => segments
-      .map(s => typeof s === 'function' ? s(args) : s)
-      .join('/')
+    return (args: Args) =>
+      segments.map(s => typeof s === 'function' ? s(args) : s).join('/')
   }
 
   private makeBodyExtractor(bodyIndex: number | undefined): BodyExtractor {
@@ -143,17 +135,15 @@ export class RestChannel implements Channel {
     return (args: Args) => instanceToPlain(args[bodyIndex!])
   }
 
-  private makeQueryExtractor(queryParams: { index: number; key: string }[]): QueryExtractor {
+  private makeQueryExtractor(
+    queryParams: { index: number; key: string }[]
+  ): QueryExtractor {
     if (queryParams.length === 0)
       return () => undefined
-
-    // single param — no loop, no iteration
     if (queryParams.length === 1) {
       const { index, key } = queryParams[0]
       return (args: Args) => ({ [key]: args[index] })
     }
-
-    // multiple params — loop is over a precomputed array, no branching
     return (args: Args) => {
       const q: Record<string, any> = {}
       for (const p of queryParams) q[p.key] = args[p.index]
@@ -162,21 +152,19 @@ export class RestChannel implements Channel {
   }
 
   private makeResponseHandler(returnType?: ClassConstructor<any>): ResponseHandler {
-    if (!returnType)
-      return data => data
-
+    if (!returnType) return data => data
     return data => Array.isArray(data)
       ? data.map((x: any) => plainToInstance(returnType, x))
       : plainToInstance(returnType, data)
   }
 
-  private resolveReturnType(method: MethodDescriptor): ClassConstructor<any> | undefined {
+  private resolveReturnType(
+    method: MethodDescriptor
+  ): ClassConstructor<any> | undefined {
     const dec = method.getDecorator(Returns)
     if (dec) return dec.arguments[0] as ClassConstructor<any>
-
     if (!method.async && method.returnType !== Promise)
       return method.returnType
-
     return undefined
   }
 }

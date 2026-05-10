@@ -107,8 +107,6 @@ export class ChannelModule {
 }
 
 
-
-
 export abstract class AddressResolution {
   abstract select(addresses: ChannelAddress[]): ChannelAddress;
 }
@@ -252,25 +250,25 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
     if (!proxy ) {
       const descriptor = this.serviceRegistry.findServiceDescriptor(type)
       const builder = new ProxyBuilder<T>(type)
-    
+
       if (opts?.channel) {
         // explicit channel: bind eagerly
         if (opts.channel === 'local') {
           builder.bind((name, ...args) => (descriptor.instance as any)[name](...args))
-        } 
+        }
         else {
           const channel = this.channelFactory.create(opts.channel)
           builder.bind((name, ...args) => channel.call(descriptor, name, ...args))
         }
-      } 
+      }
       else {
         // lazy — first call picks address, binds all
         builder.lazy(() => {
           const address = this.pickAddress(descriptor.componentDescriptor)
-    
+
           if (address.channel === 'local') {
             builder.bind((name, ...args) => (descriptor.instance as any)[name](...args))
-          } 
+          }
           else {
             const channel = this.channelFactory.create(address.channel)
             builder.bind((name, ...args) => channel.call(descriptor, name, ...args))
@@ -279,7 +277,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
       }
 
       // create and cache
-    
+
       this.proxies.set(key, proxy = builder.build())
     }
 
