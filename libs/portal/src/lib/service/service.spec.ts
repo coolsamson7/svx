@@ -1,23 +1,22 @@
 import 'reflect-metadata';
 
-import { Injectable, Scope, INestApplication, Controller, Put, Param } from '@nestjs/common';
+import { Injectable, INestApplication, Controller, Put, Param } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
 
 import {
-  Component,
-  DeclareComponent,
   Implementation,
-  Service,
-  ChannelAddress,
+ 
   ComponentRegistry,
-  DeclareService,
+  
   ComponentModule,
   LocalComponentDiscovery,
   DefaultAddressResolution
 } from './service';
+
+import { Component, DeclareService, DeclareComponent,  Service, ChannelAddress, } from "./service.shared"
 
 import "./http.channel"
 import "./rest.channel"

@@ -6,33 +6,15 @@ import {
   Module,
   DynamicModule,
   OnModuleInit,
-  Scope
 } from '@nestjs/common';
+
+import { TypeDescriptor } from '../reflection';
+import { AbstractType, Channel, ChannelAddress, Component, ComponentDescriptor, Service, ServiceDescriptor, ServiceRegistry } from './service.shared';
+
 
 import { ModuleRef } from  '@nestjs/core';
 import { StringBuilder } from '../util';
 
-export type AbstractType<T> = abstract new (...args: any[]) => T;
-
-export class Service {}
-
-export abstract class Component extends Service {
-  abstract startup(): Promise<void>;
-  abstract shutdown(): Promise<void>;
-  abstract get addresses(): ChannelAddress[];
-}
-
-export class ChannelAddress {
-  constructor(
-    public channel: string,
-    public uri: string,
-  ) {}
-}
-
-export interface Channel {
-  url?: string;
-  call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any>;
-}
 
 interface ChannelDescriptor {
   name: string
@@ -110,9 +92,6 @@ export class MissingChannel implements Channel {
 }
 
 
-import { HttpModule } from '@nestjs/axios';
-import { TypeDescriptor } from '../reflection';
-
 @Module({})
 export class ChannelModule {
   static register(): DynamicModule {
@@ -130,87 +109,8 @@ export class ChannelModule {
   }
 }
 
-/* =========================================
-   Component Descriptor & Registry
-========================================= */
-
-export class Descriptor<T extends Service> {
-  // instance data
-
-  instance?: T
-
-  // constructor
-
-  constructor(public name: string, public type: AbstractType<T>) {}
-}
-
-export class ServiceDescriptor<T extends Service=Service> extends Descriptor<T> {
-  // instance data
-
-  componentDescriptor! : ComponentDescriptor<Component>
-
-  // constructor
-
-  constructor(public name: string, public type: AbstractType<T>) {
-    super(name,  type)
-  }
-
-  report(builder: StringBuilder) {
-    builder.append("\t").append(this.name)
-
-    if ( this.instance )
-      builder.append(" implemented by ").append(this.instance.constructor.name)
-  }
-}
-
-export class ComponentDescriptor<T extends Component> extends ServiceDescriptor<T> {
-  // instance data
-
-  addresses: ChannelAddress[] = [];
-
-  constructor(public name: string, public type: AbstractType<T>, public services: ServiceDescriptor[]) {
-    super(name, type)
-
-    // link
-
-    for ( const service of services)
-      service.componentDescriptor = this
-  }
-
-  // public
-
-  report(builder: StringBuilder) {
-    builder.append(this.name)
-    if ( this.instance )
-      builder.append(" implemented by ").append(this.instance.constructor.name)
-
-    builder.append("\n")
-
-    for ( const service of this.services)
-      service.report(builder)
-  }
-}
-
-export interface ServiceOptions {
-  name: string
-}
-
-export interface ComponentOptions extends ServiceOptions {
-  services: AbstractType<Service>[];
-}
-
-interface ComponentDeclaration {
-  name: string
-  type: Type<Component>
-  options: ComponentOptions
-}
 
 
-interface ServiceDeclaration {
-  name: string
-  type: Type<Component>
-  options: ServiceOptions
-}
 
 export abstract class AddressResolution {
   abstract select(addresses: ChannelAddress[]): ChannelAddress;
@@ -282,17 +182,17 @@ export interface GetServiceOptions {
 export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: OnModuleInit
   // static
 
-  static componentDeclarations : ComponentDeclaration[] = []
-  static serviceDeclarations : ServiceDeclaration[] = []
+  //static componentDeclarations : ComponentDeclaration[] = []
+  //static serviceDeclarations : ServiceDeclaration[] = []
   static serviceImplementations : Type<Service>[] = []
 
-  static declareComponent(target: any, options: ComponentOptions) {
+  /*static declareComponent(target: any, options: ComponentOptions) {
     ComponentRegistry.componentDeclarations.push({name: options.name, type: target, options: options})
   }
 
   static declareService(target: any, options: ServiceOptions) {
     ComponentRegistry.serviceDeclarations.push({name: options.name, type: target, options: options})
-  }
+  }*/
 
   static implementService(target: Type<Service>) {
     ComponentRegistry.serviceImplementations.push(target)
@@ -362,12 +262,12 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
   private setup() {
     // services
 
-    for (const declaration of ComponentRegistry.serviceDeclarations)
+    for (const declaration of ServiceRegistry.serviceDeclarations)
       this.registerService(new ServiceDescriptor(declaration.name, declaration.type))
 
     // components
 
-    for (const declaration of ComponentRegistry.componentDeclarations)
+    for (const declaration of ServiceRegistry.componentDeclarations)
       this.registerComponent(new ComponentDescriptor(declaration.name, declaration.type, declaration.options.services.map(type => this.byType.get(type) as ServiceDescriptor)))
   }
 
@@ -464,19 +364,6 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
   }
 }
 
-// decorator
-
-export function DeclareComponent(options: ComponentOptions): ClassDecorator {
-  return (target) => {
-    ComponentRegistry.declareComponent(target, options)
-  };
-}
-
-export function DeclareService(options: ServiceOptions): ClassDecorator {
-  return (target) => {
-    ComponentRegistry.declareService(target, options)
-  };
-}
 
 export function Implementation<T extends Service>(): ClassDecorator {
   return (target) => {
@@ -495,7 +382,7 @@ export class ComponentModule {
    static forRoot(options: ComponentModuleOptions): DynamicModule {
       const { components } = options;
 
-      const services = ComponentRegistry.serviceDeclarations.map(s => s.type);
+      const services = ServiceRegistry.serviceDeclarations.map(s => s.type);
 
       const providers: any[] = [
         {
@@ -512,7 +399,7 @@ export class ComponentModule {
         ComponentRegistry,
 
         ...services.map((svc) => ({
-          provide: svc as Type<Service>,
+          provide: svc as AbstractType<Service>,
           useFactory: (registry: ComponentRegistry) => registry.getService(svc),
           inject: [ComponentRegistry],
         })),
