@@ -8,14 +8,14 @@
  */
 
 import { injectable }    from '../di/'
-import { TypeDescriptor } from '../reflection'
+import { ProxyBuilder } from './proxy-builder'
 import {
   AbstractType,
   Service,
   ServiceDescriptor,
   ServiceRegistry,
 } from './service.shared'
-import { RestChannel } from './rest-channel.client'
+
 
 /* =========================================================
  * ServiceClient
@@ -23,8 +23,14 @@ import { RestChannel } from './rest-channel.client'
 
 @injectable()
 export class ServiceClient {
+  // instance data
+
   private proxies     = new Map<AbstractType<Service>, Service>()
   private descriptors = new Map<string, ServiceDescriptor>()
+
+  private serviceRegistry = new ServiceRegistry()
+
+  // constructor
 
   constructor(private readonly channel: RestChannel) {
     // pre-build descriptors from shared registry
@@ -32,36 +38,20 @@ export class ServiceClient {
       this.descriptors.set(decl.name, new ServiceDescriptor(decl.name, decl.type))
   }
 
+  // public
+
   getService<T extends Service>(type: AbstractType<T>): T {
-    const cached = this.proxies.get(type)
-    if (cached) return cached as T
-
-    // find descriptor by type — walk prototype chain like server does
-    const descriptor = this.findDescriptor(type)
-    const methods    = TypeDescriptor.forType(type as any).getMethods()
-    const proxy      = Object.create((type as any).prototype)
-
-    // always remote — direct binding, no lazy stubs
-    for (const method of methods) {
-      const name = method.name
-      proxy[name] = (...args: any[]) => this.channel.call(descriptor, name, ...args)
+    let proxy = this.proxies.get(type)
+    if (!proxy) {
+      const descriptor = this.serviceRegistry.findServiceDescriptor(type)
+    
+      proxy = new ProxyBuilder<T>(type)
+        .bind((name, ...args) => this.channel.call(descriptor, name, ...args))
+        .build()
+    
+      this.proxies.set(type, proxy)
     }
 
-    this.proxies.set(type, proxy)
     return proxy as T
-  }
-
-  private findDescriptor(type: AbstractType<Service>): ServiceDescriptor {
-    let current: any = type
-
-    while (current && current !== Function.prototype && current !== Object) {
-      for (const descriptor of this.descriptors.values()) {
-        if (descriptor.type === current)
-          return descriptor
-      }
-      current = Object.getPrototypeOf(current)
-    }
-
-    throw new Error(`No service descriptor for ${(type as any).name}`)
   }
 }

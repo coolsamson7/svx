@@ -20,7 +20,6 @@ export class ChannelAddress {
   ) {}
 }
 
-
 export interface Channel {
   url?: string;
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any>;
@@ -113,9 +112,13 @@ interface ServiceDeclaration {
 // class
 
 export class ServiceRegistry {
+  // static data
+
   static readonly componentDeclarations:    ComponentDeclaration[]    = []
   static readonly serviceDeclarations:      ServiceDeclaration[]      = []
   //static readonly serviceImplementations:   AbstractType<Service>[]   = []
+
+  // static methods
 
   static declareComponent(target: AbstractType<Component>, options: ComponentOptions): void {
     ServiceRegistry.componentDeclarations.push({ name: options.name, type: target, options })
@@ -128,6 +131,80 @@ export class ServiceRegistry {
   /*static implementService(target: AbstractType<Service>): void {
     ServiceRegistry.serviceImplementations.push(target)
   }*/
+
+  // instance data
+
+  private components = new Map<string, ComponentDescriptor<Component>>();
+  private services = new Map<string, ServiceDescriptor<Service>>();
+  private byType =  new Map<AbstractType<Service>, ServiceDescriptor>();
+
+  // constructor
+
+  constructor() {
+    this.setup()
+  }
+
+  // public
+
+  findServiceDescriptor(type: AbstractType<Service>): ServiceDescriptor {
+    let current = type;
+
+    while (
+      current &&
+      current !== Function.prototype &&
+      current !== Object &&
+      current !== Object.prototype
+    ) {
+      const descriptor = this.byType.get(current);
+
+      if (descriptor) {
+        return descriptor;
+      }
+
+      current = Object.getPrototypeOf(current);
+    }
+
+    throw new Error(`Unknown service ${type.name}`)
+  }
+
+  report() : string {
+    const builder = new StringBuilder()
+
+    builder.append("Components\n")
+
+    for ( const component of this.components.values())
+      component.report(builder)
+
+    return builder.toString()
+  }
+
+  // private
+
+  private registerService(serviceDescriptor: ServiceDescriptor<Service>) {
+    this.byType.set(serviceDescriptor.type, serviceDescriptor)
+
+    this.services.set(serviceDescriptor.name, serviceDescriptor)
+  }
+
+  private registerComponent(componentDescriptor: ComponentDescriptor<Component>) {
+    this.byType.set(componentDescriptor.type, componentDescriptor)
+
+    this.components.set(componentDescriptor.name, componentDescriptor)
+  }
+
+  private setup() {
+    // services
+
+    for (const declaration of ServiceRegistry.serviceDeclarations)
+      this.registerService(new ServiceDescriptor(declaration.name, declaration.type))
+
+    // components
+
+    for (const declaration of ServiceRegistry.componentDeclarations)
+      this.registerComponent(new ComponentDescriptor(declaration.name, declaration.type, declaration.options.services.map(type => this.byType.get(type) as ServiceDescriptor)))
+  }
+
+  // public
 }
 
 /* =========================================================
@@ -148,9 +225,3 @@ export function DeclareComponent(options: ComponentOptions): ClassDecorator {
     ServiceRegistry.declareComponent(target, options)
   }
 }
-
-/*export function Implementation<T extends Service>(): ClassDecorator {
-  return (target: any) => {
-    ServiceRegistry.implementService(target)
-  }
-}*/
