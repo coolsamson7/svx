@@ -1,0 +1,16 @@
+{
+  "name": "@svx/service-nestjs",
+  "sourceRoot": "libs/service/nestjs/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/portal/src/index.ts",
+        "tsConfig": "libs/service/nestjs/tsconfig.lib.json",
+        "outputPath": "dist/libs/service/nestjs"
+      }
+    }
+  }
+}
