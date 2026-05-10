@@ -26,7 +26,7 @@ export class ServiceClient {
 
   private proxies     = new Map<AbstractType<Service>, Service>()
 
-  private serviceRegistry = new ServiceRegistry()
+  serviceRegistry = new ServiceRegistry()
 
   // constructor
 
