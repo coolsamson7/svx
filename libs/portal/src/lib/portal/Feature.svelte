@@ -17,7 +17,7 @@
   } = $props();
 
   const env      = getContext<Environment>('env');
-  const registry = inject(env, FeatureRegistry);
+  const registry = env.get(FeatureRegistry);
 
   let state: State = $state({ status: 'loading' });
 
