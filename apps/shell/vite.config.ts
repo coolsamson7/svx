@@ -15,39 +15,44 @@ export default defineConfig({
       //},
       shared: {
         svelte: {
-          singleton:       true,
-          requiredVersion: '^5.0.0'
+          singleton: true,
+          requiredVersion: '^5.0.0',
         },
         //'@svx/portal': {
         // singleton: true,
-          //eager: true,
+        //eager: true,
         //  requiredVersion: false
         //}
-      }
+      },
     }),
     svelte(),
     swc.vite({
       jsc: {
         parser: {
-          syntax:     'typescript',
-          decorators: true
+          syntax: 'typescript',
+          decorators: true,
         },
         transform: {
-          decoratorMetadata: true
-        }
-      }
+          decoratorMetadata: true,
+        },
+      },
     }),
   ],
 
   resolve: {
     //  mainFields: ['module', 'browser', 'main'],
     alias: {
+      '@svx/common': path.resolve(__dirname, '../../libs/common/src'),
+      '@svx/di': path.resolve(__dirname, '../../libs/di/src'),
+      '@svx/validation': path.resolve(__dirname, '../../libs/validation/src'),
       '@svx/portal': path.resolve(__dirname, '../../libs/portal/src'),
-    }
+      '@svx/service-common': path.resolve(__dirname, '../../libs/service/common/src'),
+      '@svx/service-client': path.resolve(__dirname, '../../libs/service/client/src'),
+    },
   },
 
   build: {
-    target: 'esnext'
+    target: 'esnext',
   },
 
   //optimizeDeps: {
@@ -56,5 +61,5 @@ export default defineConfig({
 
   server: {
     port: 4200,
-  }
+  },
 });
