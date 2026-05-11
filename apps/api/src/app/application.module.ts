@@ -16,7 +16,7 @@ import { UserInventoryModule } from './user-inventory.module';
         host: 'localhost',
         port: 5432,
         username: 'postgres',
-        password: 'secure',
+        password: 'postgres',
         database: 'postgres',
         entities: [
           UserEntity,
