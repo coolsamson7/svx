@@ -1,4 +1,5 @@
-import { Field, Component, DeclareComponent, DeclareService, Service } from "@svx/portal";
+import { Component, DeclareComponent, DeclareService, Service } from "@svx/service-common";
+import { Field } from "@svx/common"
 
 export class AddressDto {
    @Field() id?: number;

@@ -5,7 +5,9 @@ import { UserDto } from "./user.dto";
 import { Transactional } from "typeorm-transactional";
 
 import { InjectRepository } from "@nestjs/typeorm";
-import { ApplyContext, DeclareService, Implementation, Mapper, mapping, RelationSynchronizer, Service, syncRelation } from "@svx/portal";
+import { Mapper, mapping, RelationSynchronizer, syncRelation, ApplyContext } from "@svx/service-core";
+
+import { DeclareService, Implementation, Service } from "@svx/service-common";
 import { AddressDto } from "./address.dto";
 import { AddressEntity } from "./address.entity";
 

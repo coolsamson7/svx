@@ -1,0 +1,16 @@
+{
+  "name": "@svx/di",
+  "sourceRoot": "libs/di/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/di/src/index.ts",
+        "tsConfig": "libs/di/tsconfig.lib.json",
+        "outputPath": "dist/libs/di"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@svx/validation",
+  "sourceRoot": "libs/validation/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/validation/src/index.ts",
+        "tsConfig": "libs/validation/tsconfig.lib.json",
+        "outputPath": "dist/libs/validation"
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
-import { injectable } from '../di';
-import { TraceLevel, Tracer } from '../tracer';
+import { injectable } from '@svx/di';
+import { TraceLevel, Tracer } from '@svx/common';
 import type { Component } from 'svelte';
 
 console.log('feature-registry.ts');

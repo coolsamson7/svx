@@ -4,7 +4,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserEntity } from "./user.entity";
 import { UserInventoryServiceController } from "./user-inventory.service";
 import { AddressEntity } from "./address.entity";
-import { ComponentModule, DefaultAddressResolution, LocalComponentDiscovery } from "@svx/portal";
+import { ComponentModule, DefaultAddressResolution, LocalComponentDiscovery } from "@svx/service-common";
 import { UserInventoryComponent } from "./user-inventory.component";
 
 

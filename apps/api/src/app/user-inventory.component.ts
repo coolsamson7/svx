@@ -1,4 +1,4 @@
-import { ChannelAddress, Component, DeclareComponent, Implementation } from "@svx/portal";
+import { ChannelAddress, Component, DeclareComponent, Implementation } from "@svx/service-common";
 import { UserInventoryService } from "./user-inventory.service";
 import { Injectable } from "@nestjs/common";
 
