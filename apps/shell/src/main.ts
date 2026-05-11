@@ -1,6 +1,11 @@
 import 'reflect-metadata'
 
-import { Component, ConsoleTrace, Environment, TraceLevel, Tracer, module, onRunning, Module, FeatureRegistry, Providers, ServiceClient, injectable, ComponentLocator, ComponentDescriptor, ServiceRegistry, ServiceInstanceProvider} from "@svx/portal"
+import {  ConsoleTrace, TraceLevel, Tracer } from "@svx/common"
+
+import {  Environment, module, onRunning, Module, injectable } from "@svx/di"
+
+import { Component, ComponentDescriptor} from "@svx/service-common"
+import { ComponentLocator, ServiceInstanceProvider} from "@svx/service-client"
 
 import { mount } from 'svelte';
 
@@ -40,7 +45,7 @@ export class StaticComponentLocator extends ComponentLocator {
 
 // NEW
 
-Providers.registerClass('', RestChannel, true)
+//TODO Providers.registerClass('', RestChannel, true)
 //Providers.registerClass('', ServiceClient, true)
 
 ServiceInstanceProvider.registerServiceProviders()
@@ -73,6 +78,7 @@ console.log(environment.report())
 
 import './main.css';
 import { UserInventoryComponent } from './features/users/user-inventory.service';
+import { FeatureRegistry } from '@svx/portal';
 
 const { default: App } = await import('./App.svelte');
 
