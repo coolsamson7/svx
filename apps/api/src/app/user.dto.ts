@@ -1,5 +1,5 @@
 
-import { Field } from "@svx/portal";
+import { Field } from "@svx/common";
 
 import { AddressDto } from "./address.dto";
 

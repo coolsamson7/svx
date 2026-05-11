@@ -1,4 +1,4 @@
-import { Environment, injectable, onRunning } from '../di';
+import { Environment, injectable, onRunning } from '@svx/di';
 import { createRouter } from 'sv-router';
 import { FeatureRegistry } from './feature-registry';
 

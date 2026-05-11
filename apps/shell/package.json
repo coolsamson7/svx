@@ -14,7 +14,10 @@
     "reflect-metadata": "^0.2.2",
 
     "@svx/portal": "*",
+    "@svx/di": "*",
+    "@svx/core": "*",
     "@svx/common": "*",
+    "@svx/service-common": "*",
     "@svx/service-client": "*"
   },
   "devDependencies": {

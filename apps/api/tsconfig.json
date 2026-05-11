@@ -1,14 +1,13 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "files": [],
   "include": [],
   "references": [
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.spec.json"
-    }
+    { "path": "../../libs/common" },
+    { "path": "../../libs/service/common" },
+    { "path": "../../libs/service/nestjs" },
+    { "path": "./tsconfig.app.json"  },
+    { "path": "./tsconfig.spec.json" }
   ],
   "compilerOptions": {
     "esModuleInterop": true

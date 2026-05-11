@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn
 import { AddressEntity } from "./address.entity";
 
 
-import { ArrayOf } from "@svx/portal";
+import { ArrayOf, Field } from "@svx/common";
 
 @Entity()
 export class UserEntity {

@@ -10,7 +10,7 @@
     "composite": true
   },
   "references": [
-    { "path": "../../common" },
+    { "path": "../../libs/common" },
     { "path": "../common" },
     { "path": "./tsconfig.lib.json" },
     { "path": "./tsconfig.spec.json" }

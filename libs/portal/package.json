@@ -6,5 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
+  },
+   "dependencies": {
+    "@svx/common": "*",
+    "@svx/di": "*"
   }
 }
