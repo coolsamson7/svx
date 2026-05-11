@@ -1,2 +1,2 @@
 export * from './di';
-export * from './EnvironmentProvider.svelte';
+//TODO export * from './EnvironmentProvider.svelte';

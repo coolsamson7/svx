@@ -11,7 +11,7 @@ import {
   Service,
   AbstractType,
   ServiceRegistry,
-} from '@svx/service.common'
+} from '@svx/service-common'
 
 
 export class ServiceInstanceProvider<T extends Service> extends AbstractInstanceProvider<T> {

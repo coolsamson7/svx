@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TypeDescriptor } from "@svx/common"
+import { TypeDescriptor, StringBuilder } from "@svx/common"
 import { AbstractType, Component, ComponentDeclaration, ComponentDescriptor, ComponentOptions, Service, ServiceDeclaration, ServiceDescriptor, ServiceOptions } from "./service-common"
 
 export class ServiceRegistry {
