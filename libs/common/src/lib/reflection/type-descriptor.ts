@@ -314,6 +314,7 @@ export class TypeDescriptor<T> {
         if (!Object.prototype.hasOwnProperty.call(proto, '__descriptor')) {
             const desc = new TypeDescriptor<T>(type)
             proto.__descriptor = desc
+            desc.init()
             TypeDescriptor.instances.set(type.name, desc)
         }
         return proto.__descriptor
@@ -323,15 +324,17 @@ export class TypeDescriptor<T> {
     public decorators:  DecoratorDescriptor[] = []
     private properties: Record<string, PropertyDescriptor> = {}
 
-    private constructor(public type: GType<T>) {
-        if (Tracer.ENABLED)
-            Tracer.Trace("type", TraceLevel.HIGH, "create type descriptor for {0}", type.name)
+    private constructor(public type: GType<T>) {}
 
-        const parentProto = Object.getPrototypeOf(type.prototype)
+    public init() {
+        if (Tracer.ENABLED)
+            Tracer.Trace("type", TraceLevel.HIGH, "create type descriptor for {0}", this.type.name)
+
+        const parentProto = Object.getPrototypeOf(this.type.prototype)
         if (parentProto && parentProto.constructor !== Object)
             this.parent = TypeDescriptor.forType(parentProto.constructor)
 
-        this.analyzeStructure(type)
+        this.analyzeStructure(this.type)
         this.loadReflectionFromJSON()
         this.inheritFromParent()
     }

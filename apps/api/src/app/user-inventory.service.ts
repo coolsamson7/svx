@@ -1,4 +1,4 @@
-import { Controller, Injectable } from "@nestjs/common";
+import { Controller, Injectable, Get, Post, Put, Delete, Param, Body, ParseIntPipe } from "@nestjs/common";
 import { Repository } from "typeorm";
 import { UserEntity } from "./user.entity";
 import { UserDto } from "./user.dto";
@@ -34,7 +34,7 @@ export abstract class UserInventoryService extends Service {
 @Injectable()
 @Implementation()
 @Controller("users")
-export class UserInventoryServiceController implements UserInventoryService {
+export class UserInventoryServiceController extends UserInventoryService {
   // instance data
 
   mapper : Mapper
@@ -42,6 +42,7 @@ export class UserInventoryServiceController implements UserInventoryService {
   // constructor
 
   constructor(@InjectRepository(UserEntity) private repo: Repository<UserEntity>) {
+    super();
     const synchronizer = new AddressSynchronizer(s => s.id!, t => t.id!);
 
     this.mapper = new Mapper(
@@ -51,8 +52,7 @@ export class UserInventoryServiceController implements UserInventoryService {
         map.from("id").to("id");
         map.from("name").to("name");
         map.from("addresses").to("addresses").apply({
-          //target: (ctx) => ctx.set(ctx.mapper.mapList(ctx.sourceValue, {sourceType: AddressEntity})),
-          source: syncRelation(synchronizer)
+          target: syncRelation(synchronizer)
         });
       }),
 
@@ -66,6 +66,7 @@ export class UserInventoryServiceController implements UserInventoryService {
 
   // implement
 
+  @Get()
   @Transactional()
   async findAll(): Promise<UserDto[]> {
     const entities = await this.repo.find({ relations: ["addresses"] });
@@ -73,8 +74,9 @@ export class UserInventoryServiceController implements UserInventoryService {
     return this.mapper.mapList(entities);
   }
 
+  @Get(':id')
   @Transactional()
-  async findOne(id: number): Promise<UserDto> {
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({
       where: { id },
       relations: ["addresses"],
@@ -83,8 +85,9 @@ export class UserInventoryServiceController implements UserInventoryService {
     return this.mapper.map<UserEntity,UserDto>(entity);
   }
 
+  @Post()
   @Transactional()
-  async create(dto: UserDto): Promise<UserDto> {
+  async create(@Body() dto: UserDto): Promise<UserDto> {
     const entity = this.mapper.map<UserDto, UserEntity>(dto, { direction: "reverse"});
 
     const saved = await this.repo.save(entity);
@@ -92,8 +95,9 @@ export class UserInventoryServiceController implements UserInventoryService {
     return this.mapper.map<UserEntity, UserDto>(saved);
   }
 
+  @Put()
   @Transactional()
-  async update(dto: UserDto): Promise<UserDto> {
+  async update(@Body() dto: UserDto): Promise<UserDto> {
    const entity = await this.repo.findOneOrFail({
       where: { id: dto.id! },
       relations: ["addresses"],
@@ -106,8 +110,9 @@ export class UserInventoryServiceController implements UserInventoryService {
     return this.mapper.map(saved);
   }
 
+  @Delete(':id')
   @Transactional()
-  async delete(id: number): Promise<void> {
+  async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.repo.delete(id);
   }
 }

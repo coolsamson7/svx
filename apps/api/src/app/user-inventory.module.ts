@@ -5,7 +5,7 @@ import { UserEntity } from "./user.entity";
 import { UserInventoryServiceController } from "./user-inventory.service";
 import { AddressEntity } from "./address.entity";
 import { ComponentModule, DefaultAddressResolution, LocalComponentDiscovery } from "@svx/service-nestjs";
-import { UserInventoryComponent } from "./user-inventory.component";
+import { UserInventoryComponent, UserInventoryComponentImpl } from "./user-inventory.component";
 
 
 @Module({
@@ -18,6 +18,7 @@ import { UserInventoryComponent } from "./user-inventory.component";
           addressResolution: new DefaultAddressResolution("local", "rest")
     })
     ],
+    providers: [UserInventoryComponentImpl],
     controllers: [UserInventoryServiceController]
 })
 export class UserInventoryModule {}

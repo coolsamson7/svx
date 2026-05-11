@@ -18,25 +18,27 @@ describe("UserService", () => {
 
     const app = await Test.createTestingModule({
       imports: [
-        TypeOrmModule.forRoot({
-          type: "postgres",
-          host: "localhost",
-          port: 5432,
-          username: "postgres",
-          password: "postgres",
-          database: "postgres",
-          entities: [UserEntity, AddressEntity],
-          synchronize: true,
+        TypeOrmModule.forRootAsync({
+          useFactory: () => ({
+            type: "postgres",
+            host: "localhost",
+            port: 5432,
+            username: "postgres",
+            password: "postgres",
+            database: "postgres",
+            entities: [UserEntity, AddressEntity],
+            synchronize: true,
+          }),
+          dataSourceFactory: async (options) => {
+            if (!options) throw new Error('Invalid options passed');
+            return addTransactionalDataSource(new DataSource(options));
+          }
         }),
 
         TypeOrmModule.forFeature([UserEntity, AddressEntity]),
       ],
       providers: [UserInventoryService],
     }).compile();
-
-    const dataSource = app.get(DataSource);
-
-    addTransactionalDataSource(dataSource);
 
     service = app.get(UserInventoryService);
   });
@@ -77,7 +79,7 @@ describe("UserService", () => {
         const updatedUser = service.findOne(updated.id!).then(u => {
            console.log("check reread updated user " + updated.id + " with name " + updated.name);
 
-          if (u.name !== updated.name) 
+          if (u.name !== updated.name)
             throw new Error("Name was not updated");
         });
       });
