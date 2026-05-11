@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { inject } from '../di/inject';
-  import { FeatureRegistry } from './feature-registry';
+  import { Environment, inject } from '@svx/di';
+  import { FeatureRegistry } from '@svx/portal';
   import { getContext, type Component } from 'svelte';
-  import type { Environment } from '../di';
 
   type State =
     | { status: 'loading' }
