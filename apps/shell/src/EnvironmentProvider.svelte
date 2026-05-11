@@ -1,6 +1,6 @@
 <script lang="ts">
   import { setContext } from 'svelte';
-  import { Environment } from '@svx/portal';
+  import { Environment } from '@svx/di';
 
   const { environment, children }: { environment: Environment; children?: any } = $props();
   

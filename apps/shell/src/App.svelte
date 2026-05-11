@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Environment } from '@svx/portal';
+  import { Environment } from '@svx/di';
   import { Feature, FeatureRegistry } from '@svx/portal';
   import EnvironmentProvider from './EnvironmentProvider.svelte';
 

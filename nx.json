@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "analytics": true,
-  "xprojects": [
+  "projects": [
     "apps/api",
     "apps/remote", 
     "apps/shell",
