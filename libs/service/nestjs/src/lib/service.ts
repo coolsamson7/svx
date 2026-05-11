@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
+  Inject,
   Type,
   Module,
   DynamicModule,
@@ -210,7 +211,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
   // constructor
 
-  constructor(private channelFactory: ChannelFactory, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
+  constructor(@Inject(ChannelBuilder) private channelFactory: ChannelFactory, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
   }
 
   report() : string {

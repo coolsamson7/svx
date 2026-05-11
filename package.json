@@ -5,7 +5,9 @@
   "scripts": {},
   "workspaces": [
     "apps/*",
-    "libs/*"
+    "libs/*",
+    "libs/service/*",
+    "tools/*"
   ],
   "private": true,
   "devDependencies": {
@@ -20,6 +22,7 @@
     "@nx/node": "22.7.1",
     "@nx/web": "22.7.1",
     "@nx/webpack": "22.7.1",
+    "@nx/vite": "22.7.1",
     "@nx/workspace": "22.6.5",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@swc-node/register": "~1.11.1",

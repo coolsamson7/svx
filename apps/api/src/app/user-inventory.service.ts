@@ -7,7 +7,8 @@ import { Transactional } from "typeorm-transactional";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Mapper, mapping, RelationSynchronizer, syncRelation, ApplyContext } from "@svx/core";
 
-import { DeclareService, Implementation, Service } from "@svx/service-common";
+import { DeclareService, Service } from "@svx/service-common";
+import { Implementation } from "@svx/service-nestjs";
 import { AddressDto } from "./address.dto";
 import { AddressEntity } from "./address.entity";
 
@@ -41,7 +42,7 @@ export class UserInventoryServiceController implements UserInventoryService {
   // constructor
 
   constructor(@InjectRepository(UserEntity) private repo: Repository<UserEntity>) {
-    const synchronizer = new AddressSynchronizer(s => s.id, t => t.id);
+    const synchronizer = new AddressSynchronizer(s => s.id!, t => t.id!);
 
     this.mapper = new Mapper(
       // user
