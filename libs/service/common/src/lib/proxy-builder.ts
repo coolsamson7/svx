@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TypeDescriptor, MethodDescriptor } from '@svx/common'
-import { Service, AbstractType }            from './service-common'
+
+import { Service, AbstractType } from './service-common'
 
 export type MethodHandler = (name: string, ...args: any[]) => any
 
