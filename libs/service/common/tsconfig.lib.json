@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "../../dist/libs/service/common",
+    "outDir": "../../../dist/libs/service/common",
     "declaration": true,
   },
   "include": ["src/**/*.ts", "src/**/*.svelte"],

@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "../../dist/libs/service/client",
+    "outDir": "../../../dist/libs/service/client",
     "declaration": true,
     "types": []
   },
