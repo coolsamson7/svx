@@ -1,0 +1,16 @@
+{
+  "name": "@svx/service-client",
+  "sourceRoot": "libs/service/client/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/service/client/src/index.ts",
+        "tsConfig": "libs/service/client/tsconfig.lib.json",
+        "outputPath": "dist/libs/service/client"
+      }
+    }
+  }
+}

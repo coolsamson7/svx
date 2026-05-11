@@ -1,6 +1,6 @@
-import { field } from "./field.decorator";
+import { Field } from "@svx/portal";
 
 export class AddressDto {
-  @field() id?: number;
-  @field() city!: string;
+  @Field() id?: number;
+  @Field() city!: string;
 }

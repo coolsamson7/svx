@@ -1,11 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Controller, Injectable } from "@nestjs/common";
 import { Repository } from "typeorm";
 import { UserEntity } from "./user.entity";
 import { UserDto } from "./user.dto";
 import { Transactional } from "typeorm-transactional";
 
 import { InjectRepository } from "@nestjs/typeorm";
-import { ApplyContext, Mapper, mapping, RelationSynchronizer, syncRelation } from "@svx/portal";
+import { Mapper, mapping, RelationSynchronizer, syncRelation, ApplyContext } from "@svx/service-core";
+
+import { DeclareService, Implementation, Service } from "@svx/service-common";
 import { AddressDto } from "./address.dto";
 import { AddressEntity } from "./address.entity";
 
@@ -19,8 +21,19 @@ class AddressSynchronizer extends RelationSynchronizer<AddressDto, AddressEntity
   }
 }
 
+@DeclareService()
+export abstract class UserInventoryService extends Service {
+   abstract findAll(): Promise<UserDto[]>
+   abstract findOne(id: number): Promise<UserDto>
+   abstract create(dto: UserDto): Promise<UserDto>
+   abstract update(dto: UserDto): Promise<UserDto>
+   abstract delete(id: number): Promise<void>
+}
+
 @Injectable()
-export class UserInventoryService {
+@Implementation()
+@Controller("users")
+export class UserInventoryServiceController implements UserInventoryService {
   // instance data
 
   mapper : Mapper
@@ -37,7 +50,7 @@ export class UserInventoryService {
         map.from("id").to("id");
         map.from("name").to("name");
         map.from("addresses").to("addresses").apply({
-          //target: (ctx) => ctx.set(ctx.mapper.mapList(ctx.sourceValue, {sourceType: AddressEntity})), 
+          //target: (ctx) => ctx.set(ctx.mapper.mapList(ctx.sourceValue, {sourceType: AddressEntity})),
           source: syncRelation(synchronizer)
         });
       }),
@@ -50,12 +63,12 @@ export class UserInventoryService {
     ).setOptions({autoDeep: true});
   }
 
-  // public
+  // implement
 
   @Transactional()
   async findAll(): Promise<UserDto[]> {
     const entities = await this.repo.find({ relations: ["addresses"] });
-    
+
     return this.mapper.mapList(entities);
   }
 

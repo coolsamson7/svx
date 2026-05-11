@@ -5,6 +5,13 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "generate-metadata": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx tools/ts-service-reflector/src/cli.ts --tsconfig apps/api/tsconfig.app.json --out apps/api/services.json",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {

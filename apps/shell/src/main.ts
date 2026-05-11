@@ -1,8 +1,10 @@
 import 'reflect-metadata'
 
-import { ConsoleTrace, Environment, TraceLevel, Tracer, module, onRunning, Module, FeatureRegistry} from "@svx/portal"
+import { Component, ConsoleTrace, Environment, TraceLevel, Tracer, module, onRunning, Module, FeatureRegistry, Providers, ServiceClient, injectable, ComponentLocator, ComponentDescriptor, ServiceRegistry, ServiceInstanceProvider} from "@svx/portal"
 
 import { mount } from 'svelte';
+
+const c = UserInventoryComponent
 
 new Tracer({
       enabled: true,
@@ -26,6 +28,24 @@ class ApplicationModule extends Module {
     console.log("ApplicationModule.setup")
   }
 }
+
+@injectable()
+export class StaticComponentLocator extends ComponentLocator {
+  // implement
+
+  locate(_component: ComponentDescriptor<Component>): string {
+    return "http://localhost:3000"
+  }
+}
+
+// NEW
+
+Providers.registerClass('', RestChannel, true)
+//Providers.registerClass('', ServiceClient, true)
+
+ServiceInstanceProvider.registerServiceProviders()
+
+// NEW
 
 // start environment
 
@@ -52,6 +72,7 @@ console.log(environment.report())
 // mount app
 
 import './main.css';
+import { UserInventoryComponent } from './features/users/user-inventory.service';
 
 const { default: App } = await import('./App.svelte');
 

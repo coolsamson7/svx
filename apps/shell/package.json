@@ -13,7 +13,9 @@
     "sv-router": "^0.16.0",
     "reflect-metadata": "^0.2.2",
 
-    "@svx/portal": "*"
+    "@svx/portal": "*",
+    "@svx/common": "*",
+    "@svx/service-client": "*"
   },
   "devDependencies": {
     "vite": "^8.0.10"

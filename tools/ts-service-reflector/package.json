@@ -1,0 +1,14 @@
+{
+  "name": "ts-service-reflector",
+  "version": "1.0.0",
+  "bin": {
+    "ts-service-reflector": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "ts-morph": "^22.0.0"
+  }
+}

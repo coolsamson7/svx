@@ -1,0 +1,16 @@
+{
+  "name": "manifest-generator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/manifest-generator/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc",
+        "cwd": "tools/manifest-generator"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    }
+  }
+}

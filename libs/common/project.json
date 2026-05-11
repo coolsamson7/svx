@@ -1,0 +1,16 @@
+{
+  "name": "@svx/common",
+  "sourceRoot": "libs/common/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/common/src/index.ts",
+        "tsConfig": "libs/common/tsconfig.lib.json",
+        "outputPath": "dist/libs/common"
+      }
+    }
+  }
+}

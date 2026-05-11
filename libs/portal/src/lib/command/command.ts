@@ -1,8 +1,5 @@
-import { Environment, injectable } from "../di";
-import { GType } from "../lang";
-import { TypeDescriptor } from "../reflection";
-import { TraceLevel, Tracer } from "../tracer";
-import { registerMixins } from "../util";
+import { Environment, injectable } from "@svx/di";
+import { GType , TypeDescriptor, TraceLevel, Tracer, registerMixins} from "@svx/common";
 
 export type LockType = "command" | "group" | "view"
 

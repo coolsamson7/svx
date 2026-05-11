@@ -4,9 +4,19 @@
     "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "types": ["vitest/globals"],
+    "types": [
+      "reflect-metadata",
+      "vitest/globals"
+    ],
     "paths": {
-      "@svx/portal": ["libs/portal/src/index.ts"]
+      "@svx/common": ["libs/common/src/index.ts"],
+      "@svx/di": ["libs/di/src/index.ts"],
+      "@svx/validation": ["libs/validation/src/index.ts"],
+      "@svx/core": ["libs/core/src/index.ts"],
+      "@svx/portal": ["libs/portal/src/index.ts"],
+      "@svx/service-common": ["libs/service/common/src/index.ts"],
+      "@svx/service-nestjs": ["libs/service/nestjs/src/index.ts"],
+      "@svx/service-client": ["libs/service/client/src/index.ts"]
     }
   }
 }
