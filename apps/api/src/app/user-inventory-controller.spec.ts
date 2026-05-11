@@ -14,24 +14,26 @@ describe('UserInventoryController', () => {
 
     app = await Test.createTestingModule({
          imports: [
-           TypeOrmModule.forRoot({
-             type: "postgres",
-             host: "localhost",
-             port: 5432,
-             username: "postgres",
-             password: "postgres",
-             database: "postgres",
-             entities: [UserEntity, AddressEntity],
-             synchronize: true,
+           TypeOrmModule.forRootAsync({
+             useFactory: () => ({
+               type: "postgres",
+               host: "localhost",
+               port: 5432,
+               username: "postgres",
+               password: "postgres",
+               database: "postgres",
+               entities: [UserEntity, AddressEntity],
+               synchronize: true,
+             }),
+             dataSourceFactory: async (options) => {
+               if (!options) throw new Error('Invalid options passed');
+               return addTransactionalDataSource(new DataSource(options));
+             }
            }),
 
            UserInventoryModule
          ],
        }).compile();
-
-        const dataSource = app.get(DataSource);
-       
-        addTransactionalDataSource(dataSource);
 
        //service = app.get(UserInventoryService);
      });

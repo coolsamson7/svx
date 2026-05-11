@@ -16,7 +16,7 @@
   import { getContext, onMount } from 'svelte';
   import { Router } from 'sv-router';
 
-  import { Environment } from '@svx/portal';
+  import { Environment } from '@svx/di';
   import { FeatureRegistry, RouterManager } from '@svx/portal';
 
   import Navigation from './Navigation.svelte';

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getContext } from 'svelte';
-  import { Environment } from '@svx/portal';
+  import { Environment } from '@svx/di';
   import { RouterManager, FeatureRegistry } from '@svx/portal';
 
   // m3-svelte components

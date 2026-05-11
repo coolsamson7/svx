@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
+  Inject,
   Type,
   Module,
   DynamicModule,
@@ -210,7 +211,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
   // constructor
 
-  constructor(private channelFactory: ChannelFactory, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
+  constructor(@Inject(ChannelBuilder) private channelFactory: ChannelFactory, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
   }
 
   report() : string {
@@ -233,7 +234,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
       if (!descriptor) throw new Error(`No descriptor found for ${implementation.name}`)
 
-      descriptor.instance = await this.moduleRef.create(implementation);
+      descriptor.instance = this.moduleRef.get(implementation, { strict: false });
 
       if ( descriptor instanceof ComponentDescriptor) {
         descriptor.addresses = descriptor.instance.addresses

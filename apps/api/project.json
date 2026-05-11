@@ -1,7 +1,7 @@
 {
   "name": "api",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "api/src",
+  "sourceRoot": "apps/api/src",
   "projectType": "application",
   "tags": [],
   "targets": {
@@ -13,15 +13,25 @@
       }
     },
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/webpack:webpack",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "development",
       "options": {
-        "command": "webpack-cli build",
-        "args": ["--node-env=production"],
-        "cwd": "api"
+        "target": "node",
+        "compiler": "tsc",
+        "outputPath": "dist/api",
+        "main": "apps/api/src/main.ts",
+        "tsConfig": "apps/api/tsconfig.app.json",
+        "webpackConfig": "apps/api/webpack.config.js",
+        "generatePackageJson": true,
+        "sourceMap": true
       },
       "configurations": {
         "development": {
-          "args": ["--node-env=development"]
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
         }
       }
     },
