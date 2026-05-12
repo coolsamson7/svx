@@ -1,15 +1,27 @@
 import 'reflect-metadata'
 
-import {  ConsoleTrace, TraceLevel, Tracer } from "@svx/common"
+console.log("load servuce.json")
+import reflection from './service.json';
+TypeDescriptor.loadReflection(reflection as any);
+
+import { ConsoleTrace, TraceLevel, Tracer, TypeDescriptor } from '@svx/common';
 
 import {  Environment, module, onRunning, Module, injectable } from "@svx/di"
 
 import { Component, ComponentDescriptor} from "@svx/service-common"
 import { ComponentLocator, ServiceInstanceProvider} from "@svx/service-client"
+console.log("load inventory servuce")
+import { UserInventoryComponent, UserInventoryService } from './features/users/user-inventory.service';
+
+
+
+const td = TypeDescriptor.forType(UserInventoryService as any); // TODO
+
+console.log(td);
+
+import { FeatureRegistry } from '@svx/portal';
 
 import { mount } from 'svelte';
-
-const c = UserInventoryComponent
 
 new Tracer({
       enabled: true,
@@ -43,19 +55,21 @@ export class StaticComponentLocator extends ComponentLocator {
   }
 }
 
-// NEW
-
-//TODO Providers.registerClass('', RestChannel, true)
-//Providers.registerClass('', ServiceClient, true)
+// register providers for the service proxies
 
 ServiceInstanceProvider.registerServiceProviders()
-
-// NEW
 
 // start environment
 
 const environment = new Environment({module: ApplicationModule})
 await environment.start()
+
+console.log(environment.report())
+
+const service = environment.get<UserInventoryService>(UserInventoryService as any); //
+const rr = await service.findAll()
+
+
 
 // load local and remote manifests
 
@@ -77,8 +91,7 @@ console.log(environment.report())
 // mount app
 
 import './main.css';
-import { UserInventoryComponent } from './features/users/user-inventory.service';
-import { FeatureRegistry } from '@svx/portal';
+
 
 const { default: App } = await import('./App.svelte');
 

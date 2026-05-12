@@ -60,10 +60,10 @@ function printRoutes(app: INestApplication) {
   }
 }
 
-import { TypeDescriptor } from '../reflection';
+import { TypeDescriptor } from '@svx/common';
 
 import reflection from './service.json'
-TypeDescriptor.loadReflection(reflection)
+TypeDescriptor.loadReflection(reflection as any)
 
 // interface
 
