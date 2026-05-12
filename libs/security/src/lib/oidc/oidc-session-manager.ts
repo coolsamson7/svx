@@ -1,124 +1,75 @@
+import { Session } from '../session.interface';
+import { OIDCUser } from './oidc-user';
+import { Authentication } from '../authentication';
+import { SessionManager } from '../session-manager';
 
-import { OIDCUser } from "./oidc-user";
-import { OIDCAuthentication } from "./oidc-authentication";
-import { SessionManager } from "../session-manager";
-import { Ticket } from "../ticket.interface";
-
-export interface OIDCTicket extends Ticket {
-    token : string
-    refreshToken : string
+export interface OIDCTicket {
+  accessToken: string;
+  refreshToken?: string;
+  idToken?: string;
 }
-/* TODO FOO
-@Injectable({providedIn: 'root'})
-export class OIDCSessionManager extends SessionManager<OIDCUser, OIDCTicket> {
-    // constructor
+/*
 
-    constructor(@Inject(OIDCModuleConfigToken) oidcConfig : OIDCModuleConfig, private environment: ConfigurationManager, private router : Router, private oauthService : OAuthService, authentication : OIDCAuthentication) {
-        super(authentication);
+export class OIDCAuthentication implements Authentication<any, OIDCUser, OIDCTicket> {
+  // instance data
 
-        this.configure(oidcConfig.authConfig)
+  private keycloak: KeycloakInstance;
 
-        // subscribe to events
+  // constructor
 
-        oauthService.events.subscribe((e) => {
-            if ( Tracer.ENABLED)
-                Tracer.Trace("session.oidc", TraceLevel.FULL, "handle event {0}", e.type)
+  constructor(config: { url: string; realm: string; clientId: string }) {
+    this.keycloak = new (Keycloak as any)(config);
+  }
 
-            switch (e.type) {
-                case "discovery_document_loaded":
-                    this.ready$.next(true)
+  // implement
 
-                    if (!this.hasSession() && oauthService.hasValidAccessToken())
-                        this.loadUser();
-                    break;
+  async start(): Promise<Session<OIDCUser, OIDCTicket> | null> {
+    await this.keycloak.init({
+      onLoad: 'check-sso',
+      flow: 'standard',
+      checkLoginIframe: false,
+    });
 
-                case "token_received":
-                    this.checkRedirect()
-                    this.onTokenReceived()
-                    break;
-
-                case "logout":
-                    this.onLogout()
-                    break;
-
-                default:
-            }
-        });
+    if (!this.keycloak.authenticated) {
+      return null;
     }
 
-    override start() {
-        if ( Tracer.ENABLED)
-            Tracer.Trace("session.oidc", TraceLevel.FULL, "startup oidc session manager")
+    return this.buildSession();
+  }
 
-        this.oauthService.loadDiscoveryDocumentAndTryLogin().then(result => {
-            //if (this.oauthService.hasValidAccessToken())
-                //this.loadUser();
-        })
-    }
+  async login(): Promise<Session<OIDCUser, OIDCTicket>> {
+    // Redirect to login
+    await this.keycloak.login({
+      redirectUri: window.location.href,
+    });
 
-    private configure(authConfig : AuthConfig) {
-        // adjust configuration TODO
+    // In OIDC standard flow this line is never reached
+    throw new Error('Redirecting for OIDC login');
+  }
 
-        authConfig.issuer = this.environment.get<string>("oauth.server") + "/realms/" + this.environment.get<string>("oauth.client"),
-            authConfig.scope += " " + this.environment.get<string>("oauth.scopes", "")
+  async logout(): Promise<void> {
+    await this.keycloak.logout({
+      redirectUri: window.location.origin,
+    });
+  }
 
-        // tell oauth
+  // private
 
-        this.oauthService.configure(authConfig);
-        this.oauthService.tokenValidationHandler = new NullValidationHandler();
-        this.oauthService.setupAutomaticSilentRefresh()
-    }
-
-    private checkRedirect() {
-        if (this.oauthService.state!.length > 0) {
-            const url = decodeURIComponent(this.oauthService.state!);
-
-            if ( Tracer.ENABLED)
-                Tracer.Trace("session.oidc", TraceLevel.HIGH, "redirect to {0}", url)
-
-            this.oauthService.state = ""
-
-            this.router.navigateByUrl(url);
-        }
-    }
-
-    private onTokenReceived() {
-        this.loadUser()
-        this.checkRedirect()
-    }
-
-    private onLogout() {
-        this.closeSession()
-    }
-
-    private loadUser() {
-        if ( Tracer.ENABLED)
-            Tracer.Trace("session.oidc", TraceLevel.FULL, "load user profile")
-
-        this.oauthService.loadUserProfile().then((user : any) =>
-            this.setSession({
-                user: user['info'],
-                ticket: {
-                    token: this.oauthService.getAccessToken(),
-                    refreshToken: this.oauthService.getRefreshToken()
-                }
-            }))
-    }
-
-    // public
-
-    public override login() {
-        if ( Tracer.ENABLED)
-           Tracer.Trace("session.oidc", TraceLevel.HIGH, "login")
-
-        this.oauthService.initLoginFlow();
-    }
-
-    public override logout() {
-        if ( Tracer.ENABLED)
-           Tracer.Trace("session.oidc", TraceLevel.HIGH, "logout")
-
-        this.oauthService.logOut();
-    }
+  private buildSession(): Session<OIDCUser, OIDCTicket> {
+    return {
+      user: this.keycloak.idTokenParsed as OIDCUser,
+      ticket: {
+        accessToken: this.keycloak.token!,
+        refreshToken: this.keycloak.refreshToken,
+        idToken: this.keycloak.idToken,
+      },
+      expiry: this.keycloak.tokenParsed?.exp
+        ? this.keycloak.tokenParsed.exp * 1000
+        : undefined,
+      sessionLocals: {},
+    };
+  }
 }
+
+export type OIDCSessionManager = SessionManager<OIDCUser, OIDCTicket>;
 */

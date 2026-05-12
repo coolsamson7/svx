@@ -1,11 +1,13 @@
 
 import { BehaviorSubject, Observable, ReplaySubject, Subject, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
+
+import { Tracer, TraceLevel } from '@svx/common';
+
 import { Authentication, AuthenticationRequest } from './authentication';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
-import { Tracer, TraceLevel } from '@svx/common';
-import { injectable } from '@svx/di';
+
 
 export interface SessionEvent<U = any, T extends Ticket = Ticket> {
   type: 'opening' | 'opened' | 'closing' | 'closed';
@@ -15,7 +17,6 @@ export interface SessionEvent<U = any, T extends Ticket = Ticket> {
 /**
  * The session manager is the central service that keeps information on the current session.
  */
-@injectable()
 export class SessionManager<U = any, T extends Ticket = Ticket> {
   // instance data
 
