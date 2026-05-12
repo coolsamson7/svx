@@ -24,7 +24,7 @@ import { UserInventoryModule } from './user-inventory.module';
             UserEntity,
             AddressEntity,
           ],
-          synchronize: false,
+          synchronize: process.env['NODE_ENV'] !== 'production',
         };
       },
       async dataSourceFactory(options) {
