@@ -1,10 +1,8 @@
-const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
+const { composePlugins, withNx } = require('@nx/webpack');
 const nodeExternals = require('webpack-node-externals');
 const webpack = require('webpack');
 const { join, resolve } = require('path');
 
-// NestJS optional peer deps that may not be installed — ignore them at bundle time.
-// NestJS wraps these requires in try/catch so the app runs fine without them.
 const NESTJS_OPTIONAL_LAZY_IMPORTS = [
   '@nestjs/microservices',
   '@nestjs/microservices/microservices-module',
@@ -12,21 +10,23 @@ const NESTJS_OPTIONAL_LAZY_IMPORTS = [
   'class-transformer/storage',
 ];
 
-module.exports = {
-  output: {
+module.exports = composePlugins(withNx(), (config) => {
+  config.output = {
     path: join(__dirname, '../../dist/api'),
-    clean: true,
+    clean: process.env.NODE_ENV === 'production',
     ...(process.env.NODE_ENV !== 'production' && {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
-  },
-  externals: [
+  };
+
+  config.externals = [
     nodeExternals({
       allowlist: [/^@svx\//],
       modulesDir: resolve(__dirname, '../../node_modules'),
     }),
-  ],
-  plugins: [
+  ];
+
+  config.plugins.push(
     new webpack.IgnorePlugin({
       checkResource(resource) {
         if (!NESTJS_OPTIONAL_LAZY_IMPORTS.includes(resource)) return false;
@@ -38,18 +38,13 @@ module.exports = {
         }
       },
     }),
-    new NxAppWebpackPlugin({
-      target: 'node',
-      compiler: 'tsc',
-      main: './src/main.ts',
-      tsConfig: './tsconfig.app.json',
-      assets: ['./src/assets'],
-      optimization: false,
-      outputHashing: 'none',
-      generatePackageJson: true,
-      sourceMap: true,
-      externalDependencies: 'none',
-      skipTypeChecking: true,
-    }),
-  ],
-};
+  );
+
+  config.watchOptions = {
+    aggregateTimeout: 300,
+    poll: 1000,
+    ignored: /node_modules/,
+  };
+
+  return config;
+});

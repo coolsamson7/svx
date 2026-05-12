@@ -8,7 +8,7 @@
         "command": "vite",
         "cwd": "apps/shell"
       },
-      "dependsOn": ["@svx/portal:build"]
+      "dependsOn": ["@svx/portal:build", "api:generate-metadata"]
     },
     "generate-manifest": {
       "executor": "nx:run-commands",

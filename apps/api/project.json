@@ -14,6 +14,7 @@
     },
     "build": {
       "executor": "@nx/webpack:webpack",
+      "dependsOn": ["generate-metadata"],
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "development",
       "options": {
@@ -23,7 +24,7 @@
         "main": "apps/api/src/main.ts",
         "tsConfig": "apps/api/tsconfig.app.json",
         "webpackConfig": "apps/api/webpack.config.js",
-        "generatePackageJson": true,
+        "generatePackageJson": false,
         "sourceMap": true
       },
       "configurations": {
@@ -31,7 +32,8 @@
           "mode": "development"
         },
         "production": {
-          "mode": "production"
+          "mode": "production",
+          "generatePackageJson": true
         }
       }
     },
@@ -61,13 +63,15 @@
       "executor": "nx:noop"
     },
     "serve": {
-      "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "api:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "inspect": false,
+        "debounce": 500,
+        "watch": true
       },
       "configurations": {
         "development": {

@@ -7,5 +7,5 @@ import { Field } from "@svx/common";
 export class AddressEntity {
   @Field() @PrimaryGeneratedColumn() id!: number;
   @Field()  @Column() city!: string;
-  @Field() @ManyToOne(() => UserEntity, u => u.addresses) user!: UserEntity;
+  @ManyToOne(() => UserEntity, u => u.addresses, { onDelete: 'CASCADE' }) user!: UserEntity;
 }

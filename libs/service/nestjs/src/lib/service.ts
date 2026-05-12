@@ -250,7 +250,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
         }
 
         this.discovery.register(descriptor)
-        descriptor.instance.startup()
+        await descriptor.instance.startup()
       }
     }
   }

@@ -13,7 +13,15 @@ import { initializeTransactionalContext } from "typeorm-transactional";
 async function bootstrap() {
   initializeTransactionalContext();
 
-  const app = await NestFactory.create(ApplicationModule);
+  const app = await NestFactory.create(ApplicationModule, { logger: ['log', 'warn', 'error'] });
+  app.enableCors();
+  app.use((req: any, res: any, next: any) => {
+    res.on('finish', () => {
+      const body = req.body && Object.keys(req.body).length ? ' ' + JSON.stringify(req.body) : '';
+      Logger.log(`${req.method} ${req.url} ${res.statusCode}${body}`, 'HTTP');
+    });
+    next();
+  });
 
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
@@ -33,6 +41,16 @@ async function bootstrap() {
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`,
   );
+
+  process.on('SIGTERM', async () => {
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    await app.close();
+    process.exit(0);
+  });
 }
 
 bootstrap();

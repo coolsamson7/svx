@@ -1,0 +1,7 @@
+apps/api/services.json
+node_modules
+dist
+.nx
+**/*.__mf__temp/**
+tmp
+coverage
