@@ -13,10 +13,14 @@
       "@svx/di": ["libs/di/src/index.ts"],
       "@svx/validation": ["libs/validation/src/index.ts"],
       "@svx/core": ["libs/core/src/index.ts"],
+      "@svx/security": ["libs/security/src/index.ts"],
       "@svx/portal": ["libs/portal/src/index.ts"],
       "@svx/service-common": ["libs/service/common/src/index.ts"],
       "@svx/service-nestjs": ["libs/service/nestjs/src/index.ts"],
-      "@svx/service-client": ["libs/service/client/src/index.ts"]
+      "@svx/service-client": ["libs/service/client/src/index.ts"],
+
+      "@svx/user-interface": ["libs/user/interface/src/index.ts"],
+      "@svx/user-core": ["libs/user/core/src/index.ts"]
     }
   }
 }

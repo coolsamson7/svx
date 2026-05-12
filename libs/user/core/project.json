@@ -1,0 +1,17 @@
+{
+  "name": "@svx/user-core",
+  "sourceRoot": "libs/user/core/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "dependsOn": ["^build"],
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/user/core/src/index.ts",
+        "tsConfig": "libs/user/core/tsconfig.lib.json",
+        "outputPath": "dist/libs/user/core"
+      }
+    }
+  }
+}

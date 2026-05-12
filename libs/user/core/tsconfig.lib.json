@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../../dist/libs/user/core",
+    "declaration": true,
+    "types": []
+  },
+  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/jest.config.ts",
+    "src/test-setup.ts"
+  ]
+}

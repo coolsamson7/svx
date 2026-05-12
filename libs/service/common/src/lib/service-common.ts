@@ -25,7 +25,7 @@ export interface Channel {
 }
 
 export interface ChannelFactory<T extends Channel=Channel> {
-  create(url: string) : T 
+  create(url: string) : T
 }
 
 export abstract class CachingChannelFactory<T extends Channel> implements ChannelFactory<T> {
@@ -132,5 +132,8 @@ export interface ServiceDeclaration {
   options: ServiceOptions
 }
 
+export function ABSTRACT(): never {
+  throw new Error('NYI');
+}
 
 
