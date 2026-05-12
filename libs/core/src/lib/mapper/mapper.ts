@@ -421,6 +421,8 @@ class ClassTypeModel<T=any> extends TypeModel<T> {
     for ( const property of descriptor.getFields()) {
       const type = property.propertyType
 
+      if (!type) continue  // skip fields whose type metadata couldn't be resolved (e.g. circular imports)
+
       let typeModel
       if (type === Array) {
         typeModel = new ArrayTypeModel(ClassTypeModel.of(property.elementType))

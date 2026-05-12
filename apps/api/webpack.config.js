@@ -15,7 +15,7 @@ const NESTJS_OPTIONAL_LAZY_IMPORTS = [
 module.exports = {
   output: {
     path: join(__dirname, '../../dist/api'),
-    clean: true,
+    clean: process.env.NODE_ENV === 'production',
     ...(process.env.NODE_ENV !== 'production' && {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
@@ -46,7 +46,7 @@ module.exports = {
       assets: ['./src/assets'],
       optimization: false,
       outputHashing: 'none',
-      generatePackageJson: true,
+      generatePackageJson: false,
       sourceMap: true,
       externalDependencies: 'none',
       skipTypeChecking: true,

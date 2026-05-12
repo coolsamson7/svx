@@ -33,6 +33,16 @@ async function bootstrap() {
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`,
   );
+
+  process.on('SIGTERM', async () => {
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    await app.close();
+    process.exit(0);
+  });
 }
 
 bootstrap();

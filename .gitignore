@@ -35,6 +35,9 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
+# Generated metadata
+apps/api/services.json
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

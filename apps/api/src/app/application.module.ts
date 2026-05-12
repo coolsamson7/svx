@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
@@ -11,24 +11,32 @@ import { UserInventoryModule } from './user-inventory.module';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres',
-        host: 'localhost',
-        port: 5432,
-        username: 'postgres',
-        password: 'postgres',
-        database: 'postgres',
-        entities: [
-          UserEntity,
-          AddressEntity,
-        ],
-        // synchronize: true,
-        synchronize: false, // Turn off automatic schema sync
-        migrationsRun: true, // Run generated migrations sequentially on boot
-      }),
+      useFactory: () => {
+        Logger.log('Initializing TypeORM...', 'TypeOrmFactory');
+        return {
+          type: 'postgres',
+          host: 'localhost',
+          port: 5432,
+          username: 'postgres',
+          password: 'secure',
+          database: 'inventory_db',
+          entities: [
+            UserEntity,
+            AddressEntity,
+          ],
+          synchronize: process.env['NODE_ENV'] !== 'production',
+        };
+      },
       async dataSourceFactory(options) {
         if (!options) throw new Error('Invalid options passed');
-        return addTransactionalDataSource(new DataSource(options));
+        Logger.log('Creating DataSource...', 'TypeOrmFactory');
+        const dataSource = new DataSource(options);
+        try {
+          addTransactionalDataSource(dataSource);
+        } catch (err: any) {
+          if (!err?.message?.includes('has already added')) throw err;
+        }
+        return dataSource;
       }
     }),
 
