@@ -1,10 +1,10 @@
 import 'reflect-metadata'
 
-console.log("load servuce.json")
-import reflection from './service.json';
-TypeDescriptor.loadReflection(reflection as any);
-
 import { ConsoleTrace, TraceLevel, Tracer, TypeDescriptor } from '@svx/common';
+
+import reflection from '../../api/services.json';
+TypeDescriptor.loadReflection(reflection as any);
+TypeDescriptor.mergeChildDecorators('UserInventoryServiceController', 'UserInventoryService');
 
 import {  Environment, module, onRunning, Module, injectable } from "@svx/di"
 
@@ -51,7 +51,7 @@ export class StaticComponentLocator extends ComponentLocator {
   // implement
 
   locate(_component: ComponentDescriptor<Component>): string {
-    return "http://localhost:3000"
+    return "http://localhost:3000/api"
   }
 }
 

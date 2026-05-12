@@ -85,10 +85,10 @@ export class AxiosRestChannel implements Channel {
   private compileMethod(method: MethodDescriptor, prefix: string): CompiledCall {
     const httpDec    = method.decorators.find(d => d.decorator.name in HTTP_DECORATOR_TO_METHOD)
     const httpMethod = HTTP_DECORATOR_TO_METHOD[httpDec?.decorator.name ?? ''] ?? 'GET'
-    const basePath   = httpDec?.arguments?.[0]
+    const basePath   = httpDec?.arguments?.length
       ? stripQuotes(httpDec.arguments[0] as string)
-      : method.name
-    const template   = `/${prefix}/${basePath}`.replace(/\/+/g, '/')
+      : ''
+    const template   = `/${prefix}/${basePath}`.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
 
     const pathParams:  { index: number; key: string }[] = []
     const queryParams: { index: number; key: string }[] = []

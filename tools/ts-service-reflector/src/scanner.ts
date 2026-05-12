@@ -7,7 +7,7 @@ import {
   ParameterInfo,
 } from "./types";
 
-import { TypeResolver } from "./type-resolver";
+import { TypeResolver, toRelative, stripAbsolutePaths } from "./type-resolver";
 
 /* =========================================================
  * Decorator argument mapper
@@ -86,16 +86,10 @@ export function scan(tsconfigPath: string): OutputSchema {
 
   const classes: ClassInfo[] = [];
 
-  console.log("[reflector] compiler options:");
-  console.log(project.getCompilerOptions());
-
   for (const file of project.getSourceFiles()) {
 
     for (const cls of file.getClasses()) {
 
-      // include:
-      // - abstract service contracts
-      // - controller implementations
       const include =
         cls.getDecorator("DeclareService") ||
         cls.getDecorator("Controller");
@@ -103,11 +97,11 @@ export function scan(tsconfigPath: string): OutputSchema {
       if (!include)
         continue;
 
-      console.log(`[reflector] scanning: ${file.getFilePath()}`);
+      console.log(`[reflector] scanning: ${toRelative(file.getFilePath())}`);
 
       const classInfo: ClassInfo = {
         name: cls.getName() ?? "AnonymousClass",
-        filePath: file.getFilePath(),
+        filePath: toRelative(file.getFilePath()),
         decorators: cls.getDecorators().map(mapDecorator),
         methods: [],
       };
@@ -120,7 +114,7 @@ export function scan(tsconfigPath: string): OutputSchema {
 
         const methodInfo: MethodInfo = {
           name: method.getName(),
-          returnType: returnType.getText(),
+          returnType: stripAbsolutePaths(returnType.getText()),
           decorators: method.getDecorators().map(mapDecorator),
           parameters: [],
         };
@@ -133,7 +127,7 @@ export function scan(tsconfigPath: string): OutputSchema {
 
           const paramInfo: ParameterInfo = {
             name: param.getName(),
-            type: type.getText(),
+            type: stripAbsolutePaths(type.getText()),
             decorators: param.getDecorators().map(mapDecorator),
           };
 

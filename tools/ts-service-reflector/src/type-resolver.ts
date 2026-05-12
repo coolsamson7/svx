@@ -1,5 +1,17 @@
 import { Node, Type } from "ts-morph";
+import * as path from "path";
 import { TypeInfo } from "./types";
+
+const workspaceRoot = process.cwd();
+const workspaceRootPattern = new RegExp(workspaceRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/', 'g');
+
+export function toRelative(absolutePath: string): string {
+  return path.relative(workspaceRoot, absolutePath);
+}
+
+export function stripAbsolutePaths(typeStr: string): string {
+  return typeStr.replace(workspaceRootPattern, '');
+}
 
 export class TypeResolver {
   private types = new Map<string, TypeInfo>();
@@ -16,12 +28,12 @@ export class TypeResolver {
     const decl = symbol.getDeclarations()?.[0];
     if (!decl) return;
 
-    const filePath = decl.getSourceFile().getFilePath();
+    const filePath = toRelative(decl.getSourceFile().getFilePath());
 
     if (Node.isInterfaceDeclaration(decl)) {
       const properties = decl.getProperties().map(p => ({
         name: p.getName(),
-        type: p.getType().getText(),
+        type: stripAbsolutePaths(p.getType().getText()),
       }));
 
       this.types.set(name, {
@@ -35,7 +47,7 @@ export class TypeResolver {
     if (Node.isClassDeclaration(decl)) {
       const properties = decl.getProperties().map(p => ({
         name: p.getName(),
-        type: p.getType().getText(),
+        type: stripAbsolutePaths(p.getType().getText()),
       }));
 
       this.types.set(name, {
@@ -59,11 +71,11 @@ export class TypeResolver {
         kind: "type",
         name,
         filePath,
-        type: decl.getType().getText(),
+        type: stripAbsolutePaths(decl.getType().getText()),
       });
     }
 
-    // 🔁 recurse into generics + unions
+    // recurse into generics + unions
     type.getUnionTypes().forEach(t => this.resolve(t));
     type.getIntersectionTypes().forEach(t => this.resolve(t));
     type.getTypeArguments().forEach(t => this.resolve(t));

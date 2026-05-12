@@ -24,13 +24,16 @@ import { UserInventoryModule } from './user-inventory.module';
             UserEntity,
             AddressEntity,
           ],
-          synchronize: process.env['NODE_ENV'] !== 'production',
+          synchronize: false,
         };
       },
       async dataSourceFactory(options) {
         if (!options) throw new Error('Invalid options passed');
         Logger.log('Creating DataSource...', 'TypeOrmFactory');
         const dataSource = new DataSource(options);
+
+        await dataSource.initialize();
+
         try {
           addTransactionalDataSource(dataSource);
         } catch (err: any) {

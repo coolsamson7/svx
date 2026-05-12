@@ -269,36 +269,34 @@ export class TypeDescriptor<T> {
     // Merge method decorators + parameters from child class
     // up into parent class reflected data, then patch live instance.
     // -------------------------------------------------------
-    /*static mergeChildDecorators(childName: string, parentName?: string): void {
+    static mergeChildDecorators(childName: string, parentName: string): void {
         const child = TypeDescriptor.reflected.get(childName)
         if (!child) throw new Error(`No reflected data for '${childName}'`)
 
-        const targetName = parentName ?? child.superClass
-        if (!targetName) throw new Error(`'${childName}' has no superClass in reflected data`)
+        const existing = TypeDescriptor.reflected.get(parentName)
+        const parent: ReflectedClass = existing ?? { name: parentName, filePath: '', decorators: [], methods: [] }
+        if (!existing) TypeDescriptor.reflected.set(parentName, parent)
 
-        let parent = TypeDescriptor.reflected.get(targetName)
-        if (!parent) {
-            parent = { name: targetName, decorators: [], methods: [] }
-            TypeDescriptor.reflected.set(targetName, parent)
-        }
+        // merge class-level decorators
+        for (const dec of child.decorators)
+            if (!parent.decorators.some(d => d.name === dec.name))
+                parent.decorators.push(dec)
 
+        // merge method decorators and parameters
         for (const childMethod of child.methods) {
-            let parentMethod = parent.methods.find(m => m.name === childMethod.name)
-            if (!parentMethod) {
-                parentMethod = { name: childMethod.name, decorators: [], parameters: [] }
-                parent.methods.push(parentMethod)
-            }
+            const existingMethod = parent.methods.find(m => m.name === childMethod.name)
+            const parentMethod = existingMethod ?? { name: childMethod.name, returnType: childMethod.returnType, decorators: [], parameters: [] }
+            if (!existingMethod) parent.methods.push(parentMethod)
 
             for (const dec of childMethod.decorators)
                 if (!parentMethod.decorators.some(d => d.name === dec.name))
                     parentMethod.decorators.push(dec)
 
             for (const childParam of childMethod.parameters) {
-                let parentParam = parentMethod.parameters.find(p => p.name === childParam.name)
-                if (!parentParam) {
-                    parentParam = { name: childParam.name, type: childParam.type, decorators: [] }
-                    parentMethod.parameters.push(parentParam)
-                }
+                const existingParam = parentMethod.parameters.find(p => p.name === childParam.name)
+                const parentParam = existingParam ?? { name: childParam.name, type: childParam.type, decorators: [] }
+                if (!existingParam) parentMethod.parameters.push(parentParam)
+
                 for (const dec of childParam.decorators)
                     if (!parentParam.decorators.some(d => d.name === dec.name))
                         parentParam.decorators.push(dec)
@@ -306,8 +304,8 @@ export class TypeDescriptor<T> {
         }
 
         // patch live descriptor if already constructed
-        TypeDescriptor.instances.get(targetName)?.patchFromReflected()
-    }*/
+        TypeDescriptor.instances.get(parentName)?.patchFromReflected()
+    }
 
     static forType<T>(type: GType<T>): TypeDescriptor<T> {
         const proto = type.prototype as any
