@@ -15,11 +15,11 @@ import { UserInventoryModule } from './user-inventory.module';
         Logger.log('Initializing TypeORM...', 'TypeOrmFactory');
         return {
           type: 'postgres',
-          host: 'localhost',
-          port: 5432,
-          username: 'postgres',
-          password: 'secure',
-          database: 'inventory_db',
+          host: process.env['DB_HOST'] ?? 'localhost',
+          port: Number(process.env['DB_PORT'] ?? 5432),
+          username: process.env['DB_USER'] ?? 'postgres',
+          password: process.env['DB_PASSWORD'] ?? 'postgres',
+          database: process.env['DB_NAME'] ?? 'postgres',
           entities: [
             UserEntity,
             AddressEntity,
