@@ -49,14 +49,32 @@ export class AxiosRestChannel implements Channel {
   }
 
   set url(value: string | undefined) {
-      this.axios = axios.create({
+    this.axios = axios.create({
       baseURL: value,
       headers: { 'content-type': 'application/json' },
+    })
+    if (this.tokenProvider)
+      this.attachInterceptor()
+  }
+
+  setTokenProvider(provider: { getToken(): Promise<string | undefined> }): void {
+    this.tokenProvider = provider
+    if (this.axios != null)
+      this.attachInterceptor()
+  }
+
+  private attachInterceptor(): void {
+    this.axios.interceptors.request.use(async (config) => {
+      const token = await this.tokenProvider!.getToken()
+      if (token)
+        config.headers.Authorization = `Bearer ${token}`
+      return config
     })
   }
 
   private axios!: AxiosInstance
   private readonly calls = new Map<string, CompiledCall>()
+  private tokenProvider?: { getToken(): Promise<string | undefined> }
 
   // implement Channel
 
