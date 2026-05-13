@@ -6,8 +6,8 @@
       id:          'portal',
       label:       'Portal',
       permissions: [],
-      visibility: ["public", "private"],
       tags:        ['portal'],
+      visibility:  ['public', 'private'],
     },
     () => import('./Portal.svelte')
   );
@@ -19,13 +19,12 @@
 
   import { Environment } from '@svx/di';
   import { FeatureRegistry, RouterManager } from '@svx/portal';
-
   import Navigation from './Navigation.svelte';
+  import AuthButton from '../auth/AuthButton.svelte';
 
   const env           = getContext<Environment>('env');
   const registry      = env.get(FeatureRegistry);
   const routerManager = env.get(RouterManager);
-
   onMount(async () => {
     // Wait a tick so lazy features can register their routes first
     await Promise.resolve();
@@ -43,7 +42,7 @@
        <span class="logo-text">Portal</span>
      </div>
      <div class="portal-header-actions">
-       <slot name="header-actions" />
+       <AuthButton />
      </div>
    </header>
 
@@ -142,6 +141,12 @@
   }
 
   /* ── Footer ───────────────────────────────────────────── */
+  .portal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .portal-footer {
     display: flex;
     align-items: center;

@@ -9,12 +9,7 @@ import {
   ValueConfigurationSource,
 } from '@svx/common';
 
-import {
-  Authentication,
-  OIDCUser,
-  Session,
-  SessionManager,
-} from '@svx/security';
+import { SessionManager } from '@svx/security';
 
 import reflection from '../../api/services.json';
 
@@ -30,76 +25,44 @@ import {
   create,
 } from '@svx/di';
 
-import { Component, ComponentDescriptor} from "@svx/service-common"
-import { ComponentLocator, ServiceInstanceProvider} from "@svx/service-client"
-
-import { UserInventoryService } from '@svx/user-interface';
+import { Component, ComponentDescriptor } from '@svx/service-common';
+import { ComponentLocator, ServiceInstanceProvider, ServiceClient } from '@svx/service-client';
 
 import {
   DeploymentLoader,
   DeploymentManager,
   FeatureRegistry,
-  Manifest,
+  RouterManager,
   ManifestProcessor,
   RemoteDeploymentLoader,
 } from '@svx/portal';
 
+import { configureAuth, AuthModule, AuthService } from '@svx/auth';
+import { initAuthStore } from './features/auth/auth.store.svelte';
 import { mount } from 'svelte';
 
 new Tracer({
-      enabled: true,
-      trace: new ConsoleTrace('%d [%p]: %m\n'), // %f
-      paths: {
-        di: TraceLevel.FULL,
-        router: TraceLevel.FULL,
-        portal: TraceLevel.FULL,
-        application: TraceLevel.FULL
-      }
+  enabled: true,
+  trace: new ConsoleTrace('%d [%p]: %m\n'),
+  paths: {
+    di:          TraceLevel.FULL,
+    router:      TraceLevel.FULL,
+    portal:      TraceLevel.FULL,
+    application: TraceLevel.FULL,
+  }
 });
 
-export interface LoginRequest {
-  user?: string;
-  password?: string;
-}
-
-/**
- * No-op authentication service that returns a dummy user.
- */
-export class DummyAuthentication
-  implements Authentication<LoginRequest, OIDCUser, any>
-{
-  async login(request: LoginRequest): Promise<Session<OIDCUser, any>> {
-    return {
-      user: {
-        id: request.user,
-        username: request.user,
-        email: request.user + '@example.com',
-        roles: ['user'],
-        given_name: '',
-        family_name: '',
-        email_verified: '',
-        name: '',
-        preferred_username: '',
-        sub: '',
-      },
-      ticket: {},
-      sessionLocals: {},
-    };
-  }
-
-  async start(): Promise<Session<OIDCUser, any> | null> {
-    return null;
-  }
-
-  async logout(): Promise<void> {
-    // noop
-  }
-}
-
-// main module
+// configure OIDC before the environment starts
+configureAuth({
+  authority:                 import.meta.env.VITE_OIDC_AUTHORITY,
+  client_id:                 import.meta.env.VITE_OIDC_CLIENT_ID,
+  redirect_uri:              window.location.origin + '/callback',
+  scope:                     import.meta.env.VITE_OIDC_SCOPE ?? 'openid profile email',
+  post_logout_redirect_uri:  window.location.origin,
+});
 
 export const applicationConfig = {
-  deployment: 'local', // microfrontend local service
+  deployment: 'local',
   deployments: {
     local: {},
     service: {},
@@ -112,7 +75,7 @@ export const applicationConfig = {
   },
 };
 
-@module()
+@module({ imports: [AuthModule] })
 class ApplicationModule extends Module {
   @create()
   createConfigurationManager(): ConfigurationManager {
@@ -120,22 +83,12 @@ class ApplicationModule extends Module {
   }
 
   @create()
-  createSessionManager(): SessionManager<any, any> {
-    return new SessionManager(new DummyAuthentication());
-    /*return new SessionManager(new OIDCAuthentication({
-       url: "http://localhost:8080",
-       realm: "service",
-       clientId: "service-browser"
-    }));*/
-  }
-
-  @create()
   createDeploymentLoader(): DeploymentLoader {
-    return new RemoteDeploymentLoader([])
+    return new RemoteDeploymentLoader([]);
   }
 
   @create()
-  createDeploymentManager(loader: DeploymentLoader, featureRegistry: FeatureRegistry) : DeploymentManager {
+  createDeploymentManager(loader: DeploymentLoader, featureRegistry: FeatureRegistry): DeploymentManager {
     return new DeploymentManager({
       featureRegistry: featureRegistry,
       loader: loader,
@@ -145,29 +98,23 @@ class ApplicationModule extends Module {
         id: '',
         label: '',
         version: '',
-        features: []
-      }, // TODO,manifest as Manifest,
+        features: [],
+      },
       processor: new ManifestProcessor({
-        hasFeature: (feature) => true,
-        hasPermission: (permission) => true
-      })
+        hasFeature: (_feature) => true,
+        hasPermission: (_permission) => true,
+      }),
     });
-    }
-
-  // lifecycle
+  }
 
   @onRunning()
-  async setup(sessionManager: SessionManager): Promise<void> {
+  async setup(): Promise<void> {
     console.log('ApplicationModule.setup');
-
-    await sessionManager.start();
   }
 }
 
 @injectable()
 export class StaticComponentLocator extends ComponentLocator {
-  // implement
-
   locate(_component: ComponentDescriptor<Component>): string {
     return 'http://localhost:3000/api';
   }
@@ -177,40 +124,69 @@ export class StaticComponentLocator extends ComponentLocator {
 
 ServiceInstanceProvider.registerServiceProviders();
 
-// start environment
+// start environment — AuthModule.init() resolves session / processes callback here
 
 const environment = new Environment({ module: ApplicationModule });
 await environment.start();
 
 console.log(environment.report());
 
-const service = environment.get<UserInventoryService>(
-  UserInventoryService as any,
-); //
-//const rr = await service.findAll();
+// wire @svx/security SessionManager → @svx/portal permission filtering
 
-// load local and remote manifests
+const sessionManager = environment.get(SessionManager);
+initAuthStore(sessionManager);
+const registry       = environment.get(FeatureRegistry);
 
-const registry = environment.get(FeatureRegistry);
-const deploymentManager = environment.get(DeploymentManager);
+// Tags listed here act as feature flags — the user must have a Keycloak role
+// with the same name to see any feature carrying that tag.
+// To add a new flag: add the tag here + create the matching role in Keycloak.
+const featureFlagTags = new Set(['navigation', 'crud', 'beta']);
+
+registry.setPermissionChecker((feature) => {
+  const visibility = feature.visibility;
+  const requiresSession = visibility != null && !visibility.includes('public');
+
+  if (!requiresSession)             return true;
+  if (!sessionManager.hasSession()) return false;
+
+  const roles = new Set(sessionManager.currentSession().user.roles as string[]);
+
+  // feature-flag check: tag name must appear in user's roles
+  for (const tag of (feature.tags ?? [])) {
+    if (featureFlagTags.has(tag) && !roles.has(tag)) return false;
+  }
+
+  // explicit per-feature permission check
+  const permissions = feature.permissions ?? [];
+  return permissions.every(p => roles.has(p));
+});
+
+// route guard — re-checks the same permission logic at navigation time,
+// catching direct URL access that bypasses the feature registry filter
+
+const routerManager = environment.get(RouterManager);
+const authService   = environment.get(AuthService);
+
+routerManager.setGuard(async (feature) => {
+  if (registry.checkPermission(feature)) return;  // allowed — proceed
+
+  if (!sessionManager.hasSession()) {
+    await authService.login();  // triggers OIDC redirect — page leaves
+  } else {
+    // logged in but missing the required role — go back to home
+    throw routerManager.navigate('/home');
+  }
+});
+const serviceClient = environment.get(ServiceClient);
+serviceClient.setTokenProvider(authService);
+
+// load manifests and boot accessible components
 
 await registry.loadManifests(
   '/manifest.json',
-  //'http://localhost:4201/manifest.json'
+  // 'http://localhost:4201/manifest.json',  // remote micro-frontend
 );
-
-/* TODO await deploymentManager.loadDeployment({
-  application: 'portal',
-  client: deploymentManager.clientInfo(),
-});*/
-
-// force loading of local components
-
-await registry.bootComponents(import.meta.glob('./features/**/*.svelte')); // maybe subfolder is better
-
-// report
-
-console.log(environment.report());
+await registry.bootComponents(import.meta.glob('./features/**/*.svelte'));
 
 // mount app
 
@@ -220,7 +196,5 @@ const { default: App } = await import('./App.svelte');
 
 mount(App, {
   target: document.getElementById('app')!,
-  props: {
-    environment
-  }
+  props: { environment },
 });

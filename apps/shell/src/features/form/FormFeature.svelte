@@ -8,8 +8,9 @@
       router: {
         path: "form"
       },
-      permissions: [],//'admin', 'manager'],
-      tags:        ["navigation"]
+      permissions: ['admin'],
+      visibility:  ['private'],
+      tags:        ['navigation']
     },
     () => import('./FormFeature.svelte')   // self-reference for lazy loading
   );
