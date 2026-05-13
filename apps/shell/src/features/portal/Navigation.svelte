@@ -16,7 +16,7 @@
   const features = featureRegistry
       .finder()
       //.withoutParent()
-    .matchesSession(sessionManager.hasSession())
+      .matchesSession(sessionManager.hasSession())
       .withTag('navigation')
       .find();
 

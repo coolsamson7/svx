@@ -12,8 +12,6 @@ export class UserEntity {
   name!: string;
 
   @OneToMany(() => AddressEntity, a => a.user, { cascade: true })
-  //@OneToOne(() => AddressEntity, { cascade: true })
-  //@JoinColumn()
   @ArrayOf(AddressEntity)
   @Field() addresses!: AddressEntity[];
 }

@@ -16,10 +16,9 @@ import {
   SessionManager,
 } from '@svx/security';
 
-import reflection from '../../api/services.json';
+import user from './user.json';
 
-TypeDescriptor.loadReflection(reflection as any);
-TypeDescriptor.mergeChildDecorators('UserInventoryServiceController', 'UserInventoryService');
+AxiosRestChannel.loadReflection(user as ProxySchema);
 
 import {
   Environment,
@@ -31,7 +30,12 @@ import {
 } from '@svx/di';
 
 import { Component, ComponentDescriptor} from "@svx/service-common"
-import { ComponentLocator, ServiceInstanceProvider} from "@svx/service-client"
+import {
+  AxiosRestChannel,
+  ComponentLocator,
+  ProxySchema,
+  ServiceInstanceProvider,
+} from '@svx/service-client';
 
 import { UserInventoryService } from '@svx/user-interface';
 
@@ -39,7 +43,6 @@ import {
   DeploymentLoader,
   DeploymentManager,
   FeatureRegistry,
-  Manifest,
   ManifestProcessor,
   RemoteDeploymentLoader,
 } from '@svx/portal';
@@ -187,7 +190,7 @@ console.log(environment.report());
 const service = environment.get<UserInventoryService>(
   UserInventoryService as any,
 ); //
-//const rr = await service.findAll();
+const rr = await service.findAll();
 
 // load local and remote manifests
 

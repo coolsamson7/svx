@@ -33,8 +33,10 @@ export function extractController(cls: ClassDeclaration) {
     schema[method.getName()] = endpoint;
   }
 
+  const baseClass = cls.getExtends()?.getExpression().getText();
+
   return {
-    name: cls.getName() ?? 'AnonymousController',
+    name: baseClass ?? cls.getName() ?? 'AnonymousController',
 
     schema,
   };

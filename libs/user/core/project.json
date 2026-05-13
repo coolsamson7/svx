@@ -12,6 +12,14 @@
         "tsConfig": "libs/user/core/tsconfig.lib.json",
         "outputPath": "dist/libs/user/core"
       }
+    },
+    "generate-rest-proxies": {
+      "executor": "nx:run-commands",
+
+      "options": {
+        "command": "npx tsx --tsconfig tools/ts-rest-proxy-reflector/tsconfig.json tools/ts-rest-proxy-reflector/src/cli.ts --tsconfig {projectRoot}/tsconfig.lib.json --out {projectRoot}/rest-proxies.json",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }

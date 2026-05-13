@@ -1,0 +1,64 @@
+{
+  "UserInventoryService": {
+    "basePath": "users",
+    "findAll": {
+      "method": "GET",
+      "path": ""
+    },
+    "findOne": {
+      "method": "GET",
+      "path": ":id",
+      "params": [
+        {
+          "index": 0,
+          "in": "path",
+          "binding": "id"
+        }
+      ]
+    },
+    "create": {
+      "method": "POST",
+      "path": "",
+      "params": [
+        {
+          "index": 0,
+          "in": "body"
+        }
+      ]
+    },
+    "update": {
+      "method": "PUT",
+      "path": "",
+      "params": [
+        {
+          "index": 0,
+          "in": "body"
+        }
+      ]
+    },
+    "delete": {
+      "method": "DELETE",
+      "path": ":id",
+      "params": [
+        {
+          "index": 0,
+          "in": "path",
+          "binding": "id"
+        }
+      ]
+    }
+  },
+  "ServiceController": {
+    "basePath": "/service",
+    "invoke": {
+      "method": "POST",
+      "path": "",
+      "params": [
+        {
+          "index": 0,
+          "in": "body"
+        }
+      ]
+    }
+  }
+}
