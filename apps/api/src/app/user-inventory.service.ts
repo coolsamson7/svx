@@ -1,4 +1,5 @@
 import { Controller, Injectable, Get, Post, Put, Delete, Param, Body, ParseIntPipe } from "@nestjs/common";
+import { Permissions } from "@svx/auth-nestjs";
 import { Repository } from "typeorm";
 import { UserEntity } from "./user.entity";
 import { UserDto } from "./user.dto";
@@ -67,6 +68,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   // implement
 
   @Get()
+  @Permissions('users:read')
   @Transactional()
   async findAll(): Promise<UserDto[]> {
     const entities = await this.repo.find({ relations: ["addresses"] });
@@ -75,6 +77,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   }
 
   @Get(':id')
+  @Permissions('users:read')
   @Transactional()
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({
@@ -86,6 +89,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   }
 
   @Post()
+  @Permissions('users:write')
   @Transactional()
   async create(@Body() dto: UserDto): Promise<UserDto> {
     const entity = this.mapper.map<UserDto, UserEntity>(dto, { direction: "reverse"});
@@ -96,6 +100,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   }
 
   @Put()
+  @Permissions('users:write')
   @Transactional()
   async update(@Body() dto: UserDto): Promise<UserDto> {
    const entity = await this.repo.findOneOrFail({
@@ -111,6 +116,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   }
 
   @Delete(':id')
+  @Permissions('users:delete')
   @Transactional()
   async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.repo.delete(id);
