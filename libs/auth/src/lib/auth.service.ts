@@ -82,7 +82,7 @@ export class AuthService implements Authentication<void, OIDCUser, OIDCTicket> {
         given_name:         (user.profile.given_name          as string) ?? '',
         family_name:        (user.profile.family_name         as string) ?? '',
         email:              (user.profile.email               as string) ?? '',
-        email_verified:     (user.profile.email_verified      as string) ?? '',
+        email_verified:     (user.profile.email_verified      as unknown as string) ?? '',
         preferred_username: (user.profile.preferred_username  as string) ?? '',
         roles:              extract(profile),
       },

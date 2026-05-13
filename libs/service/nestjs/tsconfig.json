@@ -10,7 +10,6 @@
   "references": [
     { "path": "../../common" },
     { "path": "../common" },
-    { "path": "./tsconfig.lib.json" },
-    { "path": "./tsconfig.spec.json" }
+    { "path": "./tsconfig.lib.json" }
   ]
 }

@@ -97,7 +97,7 @@ describe("TypeDescriptor", () => {
 
         // properties
 
-        const properties = descriptor.getProperties()
+        const properties = descriptor.getFields()
 
         //expect(properties.length).toBe(1)
     })

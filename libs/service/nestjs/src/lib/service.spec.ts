@@ -8,13 +8,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import {
   Implementation,
- 
   ComponentRegistry,
-  
   ComponentModule,
   LocalComponentDiscovery,
   DefaultAddressResolution
-} from '@svx/service-common';
+} from '@svx/service-nestjs';
 
 import { Component, DeclareService, DeclareComponent,  Service, ChannelAddress, } from "@svx/service-common"
 

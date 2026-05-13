@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
+/// <reference types="reflect-metadata" />
 
 import { TraceLevel, Tracer } from "../tracer"
 import { StringBuilder } from "../util"

@@ -1,12 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "composite": false,
     "types": ["vitest/globals", "node"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
   "include": [
-    "src/**/*.spec.ts",
-    "src/**/*.test.ts"
+    "src/**/*.ts"
   ]
 }

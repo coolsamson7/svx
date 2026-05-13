@@ -83,7 +83,7 @@ describe("validation", () => {
                 {
                     firstName: "Andi",
                     //lastName: "Ernst",
-                },
+                } as any,
             ],
         })
     })
@@ -134,7 +134,7 @@ describe("validation", () => {
             productSchema.isValid({
                 foo: "Bar",
                 bar: "Ernst000000000000",
-            })
+            } as any)
         ).toBe(false)
     })
 
@@ -172,7 +172,7 @@ describe("validation", () => {
             schema.validate({
                 firstName: 1, // ouch
                 lastName: "Ernst", // length 2
-            })
+            } as any)
         } catch (error: any) {
             // should include the length violation
 
@@ -189,6 +189,6 @@ describe("validation", () => {
         schema.validate({
             firstName: "And", // ouch
             //lastName: undefined,
-        })
+        } as any)
     })
 })

@@ -771,8 +771,8 @@ it("compare with class-transformer", () => {
       const user1: User = { id: 1, name: "Alice", address: { city: "City A" } };
       const user2: User = { id: 2, name: "Bob",   address: { city: "City B" } };
 
-      const dto1 = mapper.map(user1);
-      const dto2 = mapper.map(user2);
+      const dto1: UserDto = mapper.map(user1);
+      const dto2: UserDto = mapper.map(user2);
 
       expect(dto1.name).toBe("Alice");
       expect(dto2.name).toBe("Bob");
