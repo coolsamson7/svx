@@ -17,8 +17,10 @@
     "@svx/di": "*",
     "@svx/core": "*",
     "@svx/common": "*",
+    "@svx/security": "*",
     "@svx/service-common": "*",
-    "@svx/service-client": "*"
+    "@svx/service-client": "*",
+    "@svx/user-interface": "*"
   },
   "devDependencies": {
     "vite": "^8.0.10"

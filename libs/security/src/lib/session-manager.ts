@@ -1,13 +1,8 @@
-
-import { BehaviorSubject, Observable, ReplaySubject, Subject, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
-
-import { Tracer, TraceLevel } from '@svx/common';
+import {Subject } from 'rxjs';
 
 import { Authentication, AuthenticationRequest } from './authentication';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
-
 
 export interface SessionEvent<U = any, T extends Ticket = Ticket> {
   type: 'opening' | 'opened' | 'closing' | 'closed';
@@ -17,140 +12,108 @@ export interface SessionEvent<U = any, T extends Ticket = Ticket> {
 /**
  * The session manager is the central service that keeps information on the current session.
  */
-export class SessionManager<U = any, T extends Ticket = Ticket> {
-  // instance data
+export class SessionManager<R = any, U = any, T extends Ticket = any> {
+  /**
+   * observable for session events
+   */
+  public readonly events$ = new Subject<SessionEvent<U, T>>();
 
-  public ready$ = new ReplaySubject<boolean>();
-  public authenticated$ = new BehaviorSubject<boolean>(false);
-  public session$ = new BehaviorSubject<Session<any, Ticket> | undefined>(
-    undefined,
-  );
-  public events$ = new Subject<SessionEvent<any, Ticket>>();
-
-  private session?: Session<U, T>;
+  private session: Session<U, T> | null = null;
 
   // constructor
 
-  constructor(private authentication: Authentication<U, T>) {}
+  /**
+   * Create a new `SessionManager`
+   * @param authentication the authentication
+   */
+  constructor(protected authentication: Authentication<R, U, T>) {}
 
   // public
 
-  start() {
-    if (Tracer.ENABLED) Tracer.Trace('session', TraceLevel.HIGH, 'start');
-
-    this.ready$.next(true);
-  }
-
-  login() {
-    // noop
-  }
-
-  logout() {
-    // noop
-  }
-
   /**
-   * retrieve a session locale value
-   * @param key the key
+   * give the {@link Authentication} the chance to satrtup and to return any valid session
+   * @returns a possible session
    */
-  get<TYPE>(key: string): TYPE {
-    return this.session![key];
+  async start(): Promise<Session<U, T> | null> {
+    const restored = await this.authentication.start();
+
+    if (restored) {
+      this.setSession(restored);
+    }
+
+    return this.session;
   }
 
   /**
-   * set a session locale value
-   * @param key the key
-   * @param value the value
-   */
-  set<TYPE>(key: string, value: TYPE): void {
-    this.session![key] = value;
-  }
-
-  /**
-   * return <code>true</code>, if there is an active session, <code>false</code> otherwise
+   *
+   * @returns return `true`, if there is an active session, `false` otherwise
    */
   hasSession(): boolean {
-    return this.session != undefined;
+    return this.session !== null;
   }
 
   /**
-   * return the current session
+   * return the active session
+   * @returns return the active session
    */
   currentSession(): Session<U, T> {
-    return this.session!;
+    if (!this.session) {
+      throw new Error('No active session');
+    }
+    return this.session;
   }
 
   /**
-   * return the current user.
+   *
+   * @param request open a session given request data.
+   * @returns a session
    */
-  getUser(): U {
-    return this.session!.user!;
-  }
+  async openSession(request: R): Promise<Session<U, T>> {
+    const session = await this.authentication.login(request);
+    this.setSession(session);
 
-  /**
-   * open a session by delegating to the configured {@link Authentication} object and return the created {@link Session}
-   * @param request the request
-   */
-  openSession(request: AuthenticationRequest): Observable<Session<U, T>> {
-    if (Tracer.ENABLED)
-      Tracer.Trace('session', TraceLevel.HIGH, 'open session');
-
-    return this.authentication
-      .authenticate(request)
-      .pipe(tap((session) => this.setSession(session)));
-  }
-
-  /**
-   * set the current session
-   * @param session
-   */
-  setSession(session: Session<U, T>) {
-    if (Tracer.ENABLED) Tracer.Trace('session', TraceLevel.HIGH, 'set session');
-
-    this.authenticated$.next(true);
-
-    // listener
-
-    this.events$.next({
-      type: 'opening',
-      session: session,
-    });
-
-    this.session$.next((this.session = session));
-
-    // listener
-
-    this.events$.next({
-      type: 'opened',
-      session: session,
-    });
+    return session;
   }
 
   /**
    * close the active session
    */
-  closeSession(): Observable<boolean> {
-    if (Tracer.ENABLED)
-      Tracer.Trace('session', TraceLevel.HIGH, 'close session');
+  async closeSession(): Promise<void> {
+    await this.authentication.logout();
 
-    if (this.session) {
-      const session = this.session;
+    this.clearSession();
+  }
 
-      this.events$.next({
-        type: 'closing',
-        session: session,
-      });
+  /**
+   * set a session value
+   * @param key a local key
+   * @param value a value
+   */
+  setSessionLocal(key: string, value: any) {
+    this.currentSession().sessionLocals[key] = value;
+  }
 
-      this.session$.next((this.session = undefined));
+  /**
+   * retieve a session local
+   * @param key the key
+   * @returns  the value
+   */
+  getSessionLocal(key: string) {
+    return this.currentSession().sessionLocals[key];
+  }
 
-      this.authenticated$.next(false);
+  // protected
 
-      this.events$.next({
-        type: 'closed',
-        session: session,
-      });
-    }
+  protected setSession(session: Session<U, T>) {
+    this.session = session;
 
-    return of(true);
+    this.events$.next({ type: 'opened', session });
+  }
+
+  protected clearSession() {
+    const session = this.session;
+
+    this.session = null;
+    this.events$.next({ type: 'closed', session: session! });
   }
 }

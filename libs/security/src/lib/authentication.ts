@@ -1,5 +1,3 @@
-import { Observable, throwError } from 'rxjs';
-
 import { Session } from "./session.interface";
 
 import { Ticket } from './ticket.interface';
@@ -32,14 +30,26 @@ export interface AuthenticationRequest {
 }
 
 /**
- * this interface covers the main authentication method.
+ *  `Authentication` is responsible to establish and delete a user session.
+ * @param R any information requires to trigger the login
+ * @params U the user type
+ * @params T the ticket type
  */
-export class Authentication<U = any, T extends Ticket = Ticket> {
-    /**
-     * return a combination of a user and ticket related to the specified authentication request.
-     * @param request the authentication request
-     */
-    authenticate(request : AuthenticationRequest) : Observable<Session<U, T>> {
-        return throwError(new AuthenticationException(request.user, 'no authentication configured'));
-    }
+export interface Authentication<R = any, U = any, T extends Ticket = Ticket> {
+  /**
+   * setup the authentication and possibly restore a valid session.
+   */
+  start(): Promise<Session<U, T> | null>;
+
+  /**
+   * request a session
+   * @param request any request information.
+   * @returns a valid session
+   */
+  login(request: R): Promise<Session<U, T>>;
+
+  /**
+   * logout
+   */
+  logout(): Promise<void>;
 }

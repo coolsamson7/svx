@@ -8,10 +8,10 @@ import {
   onDestroy,
   inject,
   create,
-  //config,
+  config,
   module,
   Module,
-  
+
 } from './index';
 
 import { ConfigurationManager, ValueConfigurationSource, ConsoleTrace, TraceLevel, Tracer  } from '@svx/common';
@@ -103,7 +103,7 @@ class RequestFoo {
 class Foo {
     static instances = 0;
 
-    constructor(public bar: Bar/*, @config("foo.bar") public value: string*/) {
+    constructor(public bar: Bar, @config("foo.bar") public value: string) {
         Foo.instances++;
     }
 }

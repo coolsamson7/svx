@@ -1,15 +1,17 @@
-import { throwError } from "rxjs";
+
 import { OIDCUser } from "./oidc-user";
 
 import { Authentication, AuthenticationRequest } from '../authentication';
 import { OIDCTicket } from "./oidc-session-manager";
-import { injectable } from '@svx/di';
+import { Session } from "../session.interface";
 
-@injectable()
-export class OIDCAuthentication implements Authentication<OIDCUser, OIDCTicket> {
-    // implement Authentication
+export abstract class OIDCAuthentication
+  implements Authentication<any, OIDCUser, OIDCTicket>
+{
+  abstract login(request: any): Promise<Session<OIDCUser, OIDCTicket>>;
 
-    authenticate(request : AuthenticationRequest) {
-        return throwError(new Error('authentication failed'));
-    }
+  abstract logout(): Promise<void>;
+
+  abstract start(): Promise<Session<OIDCUser, OIDCTicket> | null>;
+  // implement Authentication
 }

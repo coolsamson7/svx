@@ -46,8 +46,11 @@ export default defineConfig({
       '@svx/di': path.resolve(__dirname, '../../libs/di/src'),
       '@svx/validation': path.resolve(__dirname, '../../libs/validation/src'),
       '@svx/portal': path.resolve(__dirname, '../../libs/portal/src'),
+      '@svx/security': path.resolve(__dirname, '../../libs/security/src'),
       '@svx/service-common': path.resolve(__dirname, '../../libs/service/common/src'),
       '@svx/service-client': path.resolve(__dirname, '../../libs/service/client/src'),
+
+       '@svx/user-interface': path.resolve(__dirname, '../../libs/user/interface/src'),
     },
   },
 
