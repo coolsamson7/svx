@@ -10,6 +10,7 @@ import { Mapper, mapping, RelationSynchronizer, syncRelation, ApplyContext } fro
 import { Implementation } from "@svx/service-nestjs";
 
 import { AddressEntity } from "./entity/address.entity";
+import { Permissions } from "@svx/auth-nestjs";
 
 class AddressSynchronizer extends RelationSynchronizer<AddressDto, AddressEntity, number> {
   protected provide(source: AddressDto, ctx: ApplyContext): AddressEntity {
@@ -36,8 +37,6 @@ export class UserInventoryServiceController extends UserInventoryService {
     const synchronizer = new AddressSynchronizer(s => s.id!, t => t.id!);
 
     this.mapper = new Mapper(
-      // user
-
       mapping(UserEntity, UserDto, map => {
         map.from("id").to("id");
         map.from("name").to("name");
@@ -45,8 +44,6 @@ export class UserInventoryServiceController extends UserInventoryService {
           target: syncRelation(synchronizer)
         });
       }),
-
-      // address
 
       mapping(AddressEntity, AddressDto, map => {
          map.matching()
@@ -57,50 +54,48 @@ export class UserInventoryServiceController extends UserInventoryService {
   // implement
 
   @Get()
+  @Permissions('users:read')
   @Transactional()
   async findAll(): Promise<UserDto[]> {
     const entities = await this.repo.find({ relations: ["addresses"] });
-
     return this.mapper.mapList(entities);
   }
 
   @Get(':id')
+  @Permissions('users:read')
   @Transactional()
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({
       where: { id },
       relations: ["addresses"],
     });
-
     return this.mapper.map<UserEntity,UserDto>(entity);
   }
 
   @Post()
+  @Permissions('users:write')
   @Transactional()
   async create(@Body() dto: UserDto): Promise<UserDto> {
     const entity = this.mapper.map<UserDto, UserEntity>(dto, { direction: "reverse"});
-
-    const saved = await this.repo.save(entity);
-
+    const saved  = await this.repo.save(entity);
     return this.mapper.map<UserEntity, UserDto>(saved);
   }
 
   @Put()
+  @Permissions('users:write')
   @Transactional()
   async update(@Body() dto: UserDto): Promise<UserDto> {
    const entity = await this.repo.findOneOrFail({
       where: { id: dto.id! },
       relations: ["addresses"],
     });
-
     this.mapper.map(dto, {target: entity, direction: "reverse"});
-
     const saved = await this.repo.save(entity);
-
     return this.mapper.map(saved);
   }
 
   @Delete(':id')
+  @Permissions('users:delete')
   @Transactional()
   async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.repo.delete(id);

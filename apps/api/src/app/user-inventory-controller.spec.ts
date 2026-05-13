@@ -5,6 +5,7 @@ import { AddressEntity } from './address.entity';
 import { UserInventoryModule } from './user-inventory.module';
 import { addTransactionalDataSource, initializeTransactionalContext } from 'typeorm-transactional';
 import { DataSource } from 'typeorm';
+import { UserInventoryServiceController } from './user-inventory.service';
 
 describe('UserInventoryController', () => {
   let app: TestingModule;
@@ -40,7 +41,7 @@ describe('UserInventoryController', () => {
 
   describe('user inventory controller', () => {
     it('should return users', async () => {
-      const controller = app.get<UserInventoryController>(UserInventoryController);
+      const controller = app.get(UserInventoryServiceController);
 
       const users = await controller.findAll();
       console.log(users);

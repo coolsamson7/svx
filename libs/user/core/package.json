@@ -10,6 +10,7 @@
   "dependencies": {
     "@svx/common": "*",
     "@svx/service-common": "*",
-    "@svx/user-interface": "*"
+    "@svx/user-interface": "*",
+    "@svx/auth-nestjs": "*"
   }
 }
