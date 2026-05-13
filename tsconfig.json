@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "libs/common" },
+    { "path": "libs/di" },
+    { "path": "libs/validation" },
+    { "path": "libs/core" },
+    { "path": "libs/security" },
+    { "path": "libs/auth" },
+    { "path": "libs/portal" },
+    { "path": "libs/service/common" },
+    { "path": "libs/service/nestjs" },
+    { "path": "libs/service/client" },
+    { "path": "libs/user/interface" },
+    { "path": "libs/user/core" },
+    { "path": "apps/shell" },
+    { "path": "apps/api" },
+    { "path": "apps/remote" }
+  ]
+}
