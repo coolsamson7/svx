@@ -6,6 +6,8 @@
     { "path": "../../libs/common" },
     { "path": "../../libs/service/common" },
     { "path": "../../libs/service/nestjs" },
+    { "path": "../../libs/user/interface" },
+    { "path": "../../libs/user/core" },
     { "path": "./tsconfig.app.json"  },
     { "path": "./tsconfig.spec.json" }
   ],
