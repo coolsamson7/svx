@@ -12,6 +12,8 @@
     { "path": "../../libs/core" },
     { "path": "../../libs/service/common" },
     { "path": "../../libs/service/nestjs" },
-    { "path": "../../libs/portal" }
+    { "path": "../../libs/portal" },
+    { "path": "../../libs/auth" },
+    { "path": "../../libs/service/client" }
   ]
 }

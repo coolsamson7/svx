@@ -50,7 +50,8 @@ export default defineConfig({
       '@svx/service-common': path.resolve(__dirname, '../../libs/service/common/src'),
       '@svx/service-client': path.resolve(__dirname, '../../libs/service/client/src'),
 
-       '@svx/user-interface': path.resolve(__dirname, '../../libs/user/interface/src'),
+      '@svx/user-interface': path.resolve(__dirname, '../../libs/user/interface/src'),
+      '@svx/auth': path.resolve(__dirname, '../../libs/auth/src'),
     },
   },
 

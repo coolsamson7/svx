@@ -15,10 +15,9 @@
 
   const features = featureRegistry
       .finder()
-      //.withoutParent()
-    .matchesSession(sessionManager.hasSession())
       .withTag('navigation')
-      .find();
+      .find()
+      .filter(f => featureRegistry.checkPermission(f));
 
   // Icon map: tries to match feature.icon, falls back to a default
   const iconFallback = 'widgets';

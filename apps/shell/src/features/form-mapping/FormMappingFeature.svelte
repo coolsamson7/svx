@@ -6,7 +6,8 @@
       id:          'form-mapping',
       label:       'Databinding',
       router:      { path: 'form-mapping' },
-      permissions: [],
+      permissions: ['admin'],
+      visibility:  ['private'],
       tags:        ['navigation'],
     },
     () => import('./FormMappingFeature.svelte')

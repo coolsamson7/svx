@@ -4,13 +4,15 @@
 
   defineFeature(
     {
-      id:          'users',
-      label:       'Users',
-      permissions: [],//'admin', 'manager'],
-      tags:        ['users', 'crud'],
-      version:     '1.0.0',
+      id: 'users',
+      label: 'Users',
+      permissions: ['users:read'],
+      tags: ['navigation', 'crud'],
+      router: { path: 'users' },
+      version: '1.0.0',
+      visibility: ['private'],
     },
-    () => import('./UserFeature.svelte')   // self-reference for lazy loading
+    () => import('./UserFeature.svelte'),
   );
 </script>
 
