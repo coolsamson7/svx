@@ -1,10 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from './user.entity';
-import { AddressEntity } from './address.entity';
-import { UserInventoryModule } from './user-inventory.module';
 import { addTransactionalDataSource, initializeTransactionalContext } from 'typeorm-transactional';
 import { DataSource } from 'typeorm';
+import { UserModule, UserEntity, AddressEntity, UserInventoryServiceController } from '@svx/user-core';
 
 describe('UserInventoryController', () => {
   let app: TestingModule;
@@ -31,7 +29,7 @@ describe('UserInventoryController', () => {
              }
            }),
 
-           UserInventoryModule
+           UserModule
          ],
        }).compile();
 
@@ -40,7 +38,7 @@ describe('UserInventoryController', () => {
 
   describe('user inventory controller', () => {
     it('should return users', async () => {
-      const controller = app.get<UserInventoryController>(UserInventoryController);
+      const controller = app.get(UserInventoryServiceController);
 
       const users = await controller.findAll();
       console.log(users);

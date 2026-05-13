@@ -1,12 +1,9 @@
 import { Test } from "@nestjs/testing";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { UserEntity } from "./user.entity";
-import { UserInventoryService } from "./user-inventory.service";
-import { AddressEntity } from "./address.entity";
-import { UserDto } from "./user.dto";
-import { AddressDto } from "./address.dto";
 import { DataSource } from "typeorm";
 import { addTransactionalDataSource, initializeTransactionalContext } from "typeorm-transactional";
+import { UserEntity, AddressEntity, UserInventoryServiceController } from "@svx/user-core";
+import { UserDto, AddressDto, UserInventoryService } from "@svx/user-interface";
 
 
 
@@ -37,52 +34,36 @@ describe("UserService", () => {
 
         TypeOrmModule.forFeature([UserEntity, AddressEntity]),
       ],
-      providers: [UserInventoryService],
+      providers: [UserInventoryServiceController],
     }).compile();
 
-    service = app.get(UserInventoryService);
+    service = app.get(UserInventoryServiceController);
   });
 
-  it("should find all", async () => {
-    const users = await service.findAll();
-    console.log(users);
-
-    const addressDto = new AddressDto()
-
+  it("should create, update and re-read a user", async () => {
+    const addressDto = new AddressDto();
     addressDto.city = "Cologne";
 
     const userDto: UserDto = new UserDto();
-
     userDto.name = "John Doe";
     userDto.addresses = [addressDto];
 
     const created = await service.create(userDto);
+    console.log("created user " + created.id);
 
-    console.log(" created user " + created.id);
+    const user = await service.findOne(created.id!);
+    console.log("reread user " + user.id);
 
-    await service.findOne(created.id!).then(user => {
-      console.log("reread user " + user.id);
+    user.name = user.name + "X";
+    console.log("update user " + user.id + " with name " + user.name);
 
-      // change it
+    const updated = await service.update(user);
+    console.log("updated user " + updated.id + " with name " + updated.name);
 
-      user.name = user.name + "X";
+    const reread = await service.findOne(updated.id!);
+    console.log("check reread updated user " + reread.id + " with name " + reread.name);
 
-      console.log("update user " + user.id + " with name " + user.name);
-
-      service.update(user).then(updated => {
-        console.log("updated user " + updated.id + " with name " + updated.name);
-
-        // reread
-
-        console.log("reread user " + updated.id);
-
-        const updatedUser = service.findOne(updated.id!).then(u => {
-           console.log("check reread updated user " + updated.id + " with name " + updated.name);
-
-          if (u.name !== updated.name)
-            throw new Error("Name was not updated");
-        });
-      });
-    })
+    if (reread.name !== updated.name)
+      throw new Error("Name was not updated");
   });
 });
