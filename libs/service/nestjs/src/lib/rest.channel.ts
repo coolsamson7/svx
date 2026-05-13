@@ -8,7 +8,30 @@ import { TypeDescriptor, MethodDescriptor, Returns } from '@svx/common';
 import { ServiceDescriptor, Channel, CachingChannelFactory } from '@svx/service-common';
 
 /* =========================================================
- * Constants
+ * Proxy schema types  (mirrors rest-proxies.json shape)
+ * ========================================================= */
+
+export interface ProxyParam {
+  index:    number;
+  in:       'path' | 'query' | 'body' | 'header';
+  binding?: string;
+}
+
+export interface ProxyMethod {
+  method:  string;
+  path:    string;
+  params?: ProxyParam[];
+}
+
+export interface ProxyService {
+  basePath: string;
+  [methodName: string]: ProxyMethod | string;
+}
+
+export type ProxySchema = Record<string, ProxyService>;
+
+/* =========================================================
+ * Constants  (fallback path only)
  * ========================================================= */
 
 const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
@@ -54,6 +77,17 @@ export class RestChannelFactory extends CachingChannelFactory<RestChannel> {
 
 @Injectable()
 export class RestChannel implements Channel {
+  // static
+
+  private static schemas = new Map<string, ProxyService>()
+
+  static loadReflection(data: ProxySchema): void {
+    for (const [name, service] of Object.entries(data))
+      RestChannel.schemas.set(name, service)
+  }
+
+  // instance data
+
   url?: string
 
   private calls = new Map<string, CompiledCall>()
@@ -76,12 +110,65 @@ export class RestChannel implements Channel {
    * ========================================================= */
 
   private compileAll(descriptor: ServiceDescriptor): void {
-    const typeDesc   = TypeDescriptor.forType(descriptor.type as any)
-    const controller = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
-    const prefix     = controller ? stripQuotes(controller.arguments[0] as string) : ''
+    const service = RestChannel.schemas.get(descriptor.name)
 
-    for (const method of typeDesc.getMethods())
-      this.calls.set(method.name, this.compileMethod(method, prefix))
+    if (service) {
+      const typeDesc = TypeDescriptor.forType(descriptor.type as any)
+      const { basePath, ...methodEntries } = service
+
+      for (const [name, entry] of Object.entries(methodEntries))
+        this.calls.set(name, this.compileFromProxy(
+          entry as ProxyMethod,
+          basePath as string,
+          typeDesc.getMethod(name),
+        ))
+    } else {
+      // fallback: derive routing from TypeDescriptor decorators
+      const typeDesc   = TypeDescriptor.forType(descriptor.type as any)
+      const controller = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
+      const prefix     = controller ? stripQuotes(controller.arguments[0] as string) : ''
+
+      for (const method of typeDesc.getMethods())
+        this.calls.set(method.name, this.compileMethod(method, prefix))
+    }
+  }
+
+  private compileFromProxy(
+    proxy:    ProxyMethod,
+    basePath: string,
+    method?:  MethodDescriptor,
+  ): CompiledCall {
+    const template = `/${basePath}/${proxy.path}`.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
+
+    const pathParams:  { index: number; key: string }[] = []
+    const queryParams: { index: number; key: string }[] = []
+    let   bodyIndex:   number | undefined
+
+    for (const p of proxy.params ?? []) {
+      if (p.in === 'path')
+        pathParams.push({ index: p.index, key: p.binding ?? `arg${p.index}` })
+      else if (p.in === 'body')
+        bodyIndex = p.index
+      else if (p.in === 'query')
+        queryParams.push({ index: p.index, key: p.binding ?? `arg${p.index}` })
+    }
+
+    const buildUrl       = this.makeUrlBuilder(template, pathParams)
+    const extractBody    = this.makeBodyExtractor(bodyIndex)
+    const extractQuery   = this.makeQueryExtractor(queryParams)
+    const handleResponse = this.makeResponseHandler(method ? this.resolveReturnType(method) : undefined)
+
+    return async (args: Args): Promise<any> => {
+      const res = await firstValueFrom(
+        this.http.request({
+          method: proxy.method,
+          url:    `${this.url}${buildUrl(args)}`,
+          data:   extractBody(args),
+          params: extractQuery(args),
+        })
+      )
+      return handleResponse(res.data)
+    }
   }
 
   private compileMethod(method: MethodDescriptor, prefix: string): CompiledCall {
