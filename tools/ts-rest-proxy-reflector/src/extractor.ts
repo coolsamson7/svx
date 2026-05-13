@@ -8,7 +8,7 @@ import { HTTP_DECORATORS, PARAM_DECORATORS } from './decorators';
 
 import { ProxyMethod, ProxyParam } from './types';
 
-import { stripAbsolutePaths, stripQuotes } from './utils';
+import { stripQuotes } from './utils';
 
 /* =========================================================
  * Controller extraction
@@ -57,8 +57,6 @@ function extractMethod(method: MethodDeclaration): ProxyMethod | null {
       path,
 
       params: extractParams(method),
-
-      returns: stripAbsolutePaths(method.getReturnType().getText()),
     };
   }
 
@@ -100,8 +98,6 @@ function extractParam(
       in: location,
 
       binding: stripQuotes(decorator.getArguments()[0]?.getText()),
-
-      type: stripAbsolutePaths(param.getType().getText()),
     };
   }
 
