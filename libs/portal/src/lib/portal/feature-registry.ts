@@ -71,6 +71,10 @@ type FederationContainer = {
   init(shareScope: any): Promise<void>;
 };
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export type PermissionChecker = (feature: FeatureMeta) => boolean
+
 // ── Feature Registry ────────────────────────────────────────────────────────
 
 @injectable()
@@ -89,6 +93,7 @@ export class FeatureRegistry {
   features = new Map<string, FeatureData>();
 
   #remoteCache = new Map<string, FederationContainer>();
+  #permissionChecker?: PermissionChecker;
 
   // constructor
 
@@ -104,10 +109,19 @@ export class FeatureRegistry {
 
   // public
 
+  setPermissionChecker(checker: PermissionChecker): void {
+    this.#permissionChecker = checker;
+  }
+
+  checkPermission(feature: FeatureMeta): boolean {
+    if (!this.#permissionChecker) return true;
+    return this.#permissionChecker(feature);
+  }
+
   async bootComponents(
     importers: Record<string, () => Promise<any>>,
   ): Promise<void> {
-    const localFeatures = this.findFeatures((f) => f.remote == undefined);
+    const localFeatures = [...this.features.values()].filter((f) => f.remote == undefined);
 
     await Promise.all(
       localFeatures
@@ -123,7 +137,11 @@ export class FeatureRegistry {
   }
 
   findFeatures(filter: (f: FeatureMeta) => boolean): FeatureData[] {
-    return [...this.features.values()].filter(filter);
+    return [...this.features.values()].filter(f => {
+      if (!filter(f)) return false;
+      if (!this.#permissionChecker) return true;
+      return this.#permissionChecker(f);
+    });
   }
 
   async loadRemote(remote: string): Promise<FederationContainer> {

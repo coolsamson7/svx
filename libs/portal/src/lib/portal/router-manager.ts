@@ -1,7 +1,8 @@
-import { Environment, injectable, onRunning } from '@svx/di';
-import { createRouter } from 'sv-router';
-import { FeatureRegistry } from './feature-registry';
+import { Environment, injectable } from '@svx/di';
+import { createRouter, type HooksContext }    from 'sv-router';
+import { FeatureRegistry, FeatureMeta }       from './feature-registry';
 
+export type RouteGuard = (feature: FeatureMeta, ctx: HooksContext) => void | Promise<void>
 
 @injectable({eager: false})
 export class RouterManager {
@@ -9,6 +10,9 @@ export class RouterManager {
 
   router:   ReturnType<typeof createRouter> | null = null;
   registry: FeatureRegistry;
+
+  #guard?:         RouteGuard
+  #pathToFeature = new Map<string, FeatureMeta>()
 
   // constructor
 
@@ -34,28 +38,34 @@ export class RouterManager {
     return this.#get().p;
   }
 
-  // lifecylce
+  setGuard(fn: RouteGuard): void {
+    this.#guard = fn;
+  }
 
-  @onRunning()
   buildRouter() {
     const config: Record<string, any> = {};
 
-    // find features with routes
-
-    const features = this.registry.findFeatures((f) => f.router != undefined);
+    const features = [...this.registry.features.values()].filter((f) => f.router != undefined);
 
     for (const feature of features) {
       const path = feature.router?.path!;
+      const key  = (path.startsWith('/') ? path : `/${path}`).replace(/\/+/g, '/');
 
-      const key = (path.startsWith('/') ? path : `/${path}`).replace(/\/{2,}/g, '/');
-
-      config[key] = feature.loader!;
+      if (feature.loader) config[key] = feature.loader;
+      this.#pathToFeature.set(key, feature);
     }
 
-    // Catch-all fallback route (sv-router wildcard keys start with `*`)
-    //TODO config['*'] = () => import('./PageNotFound.svelte');
-
-    this.router = createRouter(config);
+    this.router = createRouter({
+      ...config,
+      hooks: {
+        beforeLoad: async (ctx: HooksContext) => {
+          if (!this.#guard) return;
+          const feature = this.#pathToFeature.get(ctx.pathname);
+          if (!feature) return;
+          await this.#guard(feature, ctx);
+        },
+      },
+    });
   }
 
   // private

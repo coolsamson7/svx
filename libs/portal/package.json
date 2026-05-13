@@ -8,6 +8,7 @@
     "./*": "./src/*.ts"
   },
    "dependencies": {
+    "@svx/security": "*",
     "@svx/common": "*",
     "@svx/di": "*"
   }
