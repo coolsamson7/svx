@@ -3,10 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 
-import { UserEntity } from './user.entity';
-import { AddressEntity } from './address.entity';
-
-import { UserInventoryModule } from './user-inventory.module';
+import { UserModule, UserEntity, AddressEntity } from '@svx/user-core';
 
 @Module({
   imports: [
@@ -43,7 +40,7 @@ import { UserInventoryModule } from './user-inventory.module';
       }
     }),
 
-    UserInventoryModule,
+    UserModule,
   ],
 })
 export class ApplicationModule {}
