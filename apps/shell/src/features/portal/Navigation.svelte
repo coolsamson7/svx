@@ -2,14 +2,23 @@
   import { getContext } from 'svelte';
   import { Environment } from '@svx/di';
   import { RouterManager, FeatureRegistry } from '@svx/portal';
+  import { SessionManager } from '@svx/security';
 
   // m3-svelte components
 
-  const env           = getContext<Environment>('env');
-  const routerManager = env.get(RouterManager);
-  const registry      = env.get(FeatureRegistry);
+  const env             = getContext<Environment>('env');
+  const routerManager   = env.get(RouterManager);
+  const featureRegistry = env.get(FeatureRegistry);
+  const sessionManager  = env.get(SessionManager);
 
-  const features = registry.findFeatures(f => (f.tags ?? []).includes("navigation"));
+  //const features = featureRegistry.findFeatures(f => (f.tags ?? []).includes("navigation"));
+
+  const features = featureRegistry
+      .finder()
+      //.withoutParent()
+    .matchesSession(sessionManager.hasSession())
+      .withTag('navigation')
+      .find();
 
   // Icon map: tries to match feature.icon, falls back to a default
   const iconFallback = 'widgets';

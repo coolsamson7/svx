@@ -6,6 +6,7 @@
       id:          'portal',
       label:       'Portal',
       permissions: [],
+      visibility: ["public", "private"],
       tags:        ['portal'],
     },
     () => import('./Portal.svelte')
