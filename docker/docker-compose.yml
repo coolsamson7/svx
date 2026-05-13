@@ -1,0 +1,42 @@
+# version removed — obsolete attribute warning
+services:
+  #----------------------------------------------------------------
+  db:
+    image: 'postgres:17-alpine'
+    container_name: db
+    ports:
+      - '5433:5432'   # 5432 may be taken by another local Postgres
+    expose:
+      - '5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - svx-network
+  #----------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_HOSTNAME: keycloak
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - '8080:8080'
+    expose:
+      - '8080'
+    links:
+      - db
+    depends_on:
+      - db
+    volumes:
+      - ./keycloak/:/opt/keycloak/data/import:ro
+    entrypoint: '/opt/keycloak/bin/kc.sh start-dev --import-realm'
+    networks:
+      - svx-network
+  #----------------------------------------------------------------
+networks:
+  svx-network:
+volumes:
+  postgres:
