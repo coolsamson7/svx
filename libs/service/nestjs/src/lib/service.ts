@@ -211,7 +211,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
   // constructor
 
-  constructor(@Inject(ChannelBuilder) private channelFactory: ChannelFactory, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
+  constructor(@Inject(ChannelBuilder) private channelFactory: ChannelBuilder, private moduleRef: ModuleRef, private discovery: ComponentDiscovery, private addressResolution: AddressResolution) {
   }
 
   report() : string {
@@ -291,7 +291,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
             builder.bind((name, ...args) => (descriptor.instance as any)[name](...args))
           }
           else {
-            const channel = this.channelFactory.create(address.uri)
+            const channel = this.channelFactory.create(address.channel, address.uri)
             builder.bind((name, ...args) => channel.call(descriptor, name, ...args))
           }
         })

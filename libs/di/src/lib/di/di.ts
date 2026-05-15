@@ -1424,7 +1424,6 @@ class ResolveContext {
     const provider = this.providers.get(type) || null;
 
     if (provider === null) {
-      console.error(`[DI] Provider for ${type?.name} not found. Available:`, [...this.providers.keys()].map((k: any) => k?.name));
       throw new DIRegistrationException(`Provider for ${type.name || 'unknown'} is not defined`);
     }
 
