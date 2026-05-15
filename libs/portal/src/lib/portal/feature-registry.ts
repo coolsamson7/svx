@@ -34,6 +34,7 @@ export interface FeatureMeta {
   version?: string;
   visibility?: Array<string>; // better
   clients?: ClientConstraints | null;
+  children?: FeatureMeta[];
   _source?: {
     file: string;
     line: number;
@@ -121,7 +122,9 @@ export class FeatureRegistry {
   async bootComponents(
     importers: Record<string, () => Promise<any>>,
   ): Promise<void> {
-    const localFeatures = [...this.features.values()].filter((f) => f.remote == undefined);
+    const localFeatures = [...this.features.values()].filter(
+      (f) => f.remote == undefined,
+    );
 
     await Promise.all(
       localFeatures
@@ -137,7 +140,7 @@ export class FeatureRegistry {
   }
 
   findFeatures(filter: (f: FeatureMeta) => boolean): FeatureData[] {
-    return [...this.features.values()].filter(f => {
+    return [...this.features.values()].filter((f) => {
       if (!filter(f)) return false;
       if (!this.#permissionChecker) return true;
       return this.#permissionChecker(f);
@@ -175,61 +178,80 @@ export class FeatureRegistry {
     return this;
   }
 
-  async loadManifest(url: string): Promise<this> {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw res.statusText;
-    }
-
-    const manifest: Manifest = await res.json();
+  registerManifest(manifest: Manifest): this {
     const remote = manifest.remote;
 
-    const idToExpose = (id: string): string => {
-      return `./${id.charAt(0).toUpperCase()}${id.slice(1)}`;
-    };
+    const idToExpose = (id: string): string =>
+      `./${id.charAt(0).toUpperCase()}${id.slice(1)}`;
 
     for (const meta of manifest.features) {
       if (remote) {
-        // copy remote
-
         meta.remote = remote;
 
         const data: FeatureData = {
           ...meta,
           loader: async (): Promise<{ default: Component }> => {
-            // load remote
-
-            let container = await this.loadRemote(meta.remote!);
-
-            const exposed = idToExpose(meta.id);
-
-            console.log(exposed);
-
-            console.log(container);
-
-            // get exposed component
-
-            const factory = await container.get(exposed);
-
-            console.log(factory);
-
+            const container = await this.loadRemote(meta.remote!);
+            const factory = await container.get(idToExpose(meta.id));
             data.component = factory().default;
-
-            console.log(data.component);
-
             return { default: data.component! };
           },
         };
 
-        this.defineFeature(data);
-      } else this.defineFeature(meta); // the defineFeature call will overwrite it!
+        this.register(data);
+      } else {
+        this.register(meta);
+      }
     }
+
+    return this;
+  }
+
+  async loadManifest(url: string): Promise<this> {
+    const res = await fetch(url);
+    if (!res.ok) throw res.statusText;
+
+    const manifest: Manifest = await res.json();
+
+    this.registerManifest(manifest);
 
     console.log(
       `[FeatureRegistry] loaded ${manifest.features.length} features from ${manifest.id}`,
     );
 
     return this;
+  }
+
+  register(...features: FeatureMeta[]) {
+    // local function
+
+    const register = (
+      feature: FeatureMeta,
+      parent: FeatureMeta | null = null,
+    ) => {
+      // fix qualified name
+
+      if (parent) feature.id = parent.id + '.' + feature.id;
+
+      // register
+
+      this.features.set(feature.id, feature);
+
+      // i18n
+
+      /*if (feature.i18n && !feature.label) {
+        feature.label = this.translator.translate(
+          'portal:' + feature.i18n + '.label',
+        );
+      }*/
+
+      // recursion
+
+      if (feature.children)
+        for (const child of feature.children) register(child, feature);
+    };
+
+    features.forEach((f) => register(f));
   }
 
   defineFeature(feature: FeatureMeta, loader?: ComponentLoader): this {

@@ -1,0 +1,83 @@
+{
+  "generated": "2026-04-28T10:36:28.214Z",
+  "project": "shell",
+  "id": "shell",
+  "Label": "shell",
+  "version": "1.0.0",
+  "features": [
+    {
+      "id": "users",
+      "label": "Users",
+      "permissions": [],
+      "tags": ["navigation", "crud"],
+      "version": "1.0.0",
+      "_source": {
+        "file": "features/users/UserFeature.svelte",
+        "line": 4
+      }
+    },
+    {
+      "id": "portal",
+      "label": "Portal",
+      "permissions": [],
+      "visibility": ["public"],
+      "tags": ["portal"],
+      "_source": {
+        "file": "features/portal/Portal.svelte",
+        "line": 4
+      }
+    },
+    {
+      "id": "pageNotFound",
+      "label": "Home",
+      "router": {
+        "path": "unknown"
+      },
+      "permissions": [],
+      "tags": [],
+      "_source": {
+        "file": "features/page-not-found/PageNotFound.svelte",
+        "line": 4
+      }
+    },
+    {
+      "id": "home",
+      "label": "Home",
+      "router": {
+        "path": "home"
+      },
+      "permissions": [],
+      "tags": ["navigation"],
+      "_source": {
+        "file": "features/home/Home.svelte",
+        "line": 4
+      }
+    },
+    {
+      "id": "form-mapping",
+      "label": "Databinding",
+      "router": {
+        "path": "form-mapping"
+      },
+      "permissions": [],
+      "tags": ["navigation"],
+      "_source": {
+        "file": "features/form-mapping/FormMappingFeature.svelte",
+        "line": 4
+      }
+    },
+    {
+      "id": "form",
+      "label": "Form",
+      "router": {
+        "path": "form"
+      },
+      "permissions": [],
+      "tags": ["navigation"],
+      "_source": {
+        "file": "features/form/FormFeature.svelte",
+        "line": 4
+      }
+    }
+  ]
+}

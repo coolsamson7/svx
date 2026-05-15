@@ -148,34 +148,14 @@ export class DeploymentManager {
 
     this.deployment.modules[this.localManifest.id!].loaded = true;
 
-    // copy module / uri
+    // register each module's features with federation loaders for remote modules
 
-    for (const moduleName in this.deployment.modules) {
-      const module = this.deployment.modules[moduleName];
-
-      for (const feature of module.features as FeatureMeta[]) {
-        // copy module / uri
-
-        feature.remote = module.remote;
-        // Use the module key from the deployment (moduleName), not the module.module property
-        // The moduleName is the webpack module federation container name
-        //TODO feature.module = moduleName;
-
-        // check label
-
+    for (const module of Object.values(this.deployment.modules)) {
+      for (const feature of module.features as FeatureMeta[])
         if (!feature.label) feature.label = feature.id;
-      }
+
+      this.featureRegistry.registerManifest(module);
     }
-
-    // merge all features from deployment
-
-    const features = Object.values(this.deployment.modules).flatMap(
-      (m) => m.features,
-    );
-
-    // register features in the registry
-
-    //TODO FOO this.featureRegistry.register(...features);
 
     // done
 

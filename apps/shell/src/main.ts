@@ -17,6 +17,7 @@ import {
 } from '@svx/security';
 
 import user from './user.json';
+import manifest from './manifest.json';
 
 AxiosRestChannel.loadReflection(user as ProxySchema);
 
@@ -43,6 +44,7 @@ import {
   DeploymentLoader,
   DeploymentManager,
   FeatureRegistry,
+  Manifest,
   ManifestProcessor,
   RemoteDeploymentLoader,
 } from '@svx/portal';
@@ -142,14 +144,7 @@ class ApplicationModule extends Module {
     return new DeploymentManager({
       featureRegistry: featureRegistry,
       loader: loader,
-      localManifest: {
-        generated: '',
-        loaded: false,
-        id: '',
-        label: '',
-        version: '',
-        features: []
-      }, // TODO,manifest as Manifest,
+      localManifest: manifest as never,
       processor: new ManifestProcessor({
         hasFeature: (feature) => true,
         hasPermission: (permission) => true
@@ -190,22 +185,22 @@ console.log(environment.report());
 const service = environment.get<UserInventoryService>(
   UserInventoryService as any,
 ); //
-const rr = await service.findAll();
+//const rr = await service.findAll();
 
 // load local and remote manifests
 
 const registry = environment.get(FeatureRegistry);
 const deploymentManager = environment.get(DeploymentManager);
 
-await registry.loadManifests(
+/*await registry.loadManifests(
   '/manifest.json',
   //'http://localhost:4201/manifest.json'
-);
+);*/
 
-/* TODO await deploymentManager.loadDeployment({
+await deploymentManager.loadDeployment({
   application: 'portal',
   client: deploymentManager.clientInfo(),
-});*/
+});
 
 // force loading of local components
 

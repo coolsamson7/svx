@@ -8,12 +8,12 @@
         "command": "vite",
         "cwd": "apps/shell"
       },
-      "dependsOn": ["@svx/portal:build", "api:generate-metadata"]
+      "dependsOn": ["@svx/portal:build"]
     },
     "generate-manifest": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx tsx --tsconfig tools/manifest-generator/tsconfig.json tools/manifest-generator/src/generate.ts {projectRoot} {projectRoot}/public/manifest.json",
+        "command": "npx tsx --tsconfig tools/manifest-generator/tsconfig.json tools/manifest-generator/src/generate.ts {projectRoot} {projectRoot}/src/manifest.json",
         "cwd": "{workspaceRoot}"
       }
     }

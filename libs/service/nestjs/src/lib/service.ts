@@ -291,7 +291,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
             builder.bind((name, ...args) => (descriptor.instance as any)[name](...args))
           }
           else {
-            const channel = this.channelFactory.create(address.channel, address.uri)
+            const channel = this.channelFactory.create(address.uri)
             builder.bind((name, ...args) => channel.call(descriptor, name, ...args))
           }
         })
