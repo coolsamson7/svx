@@ -3,6 +3,13 @@
   "sourceRoot": "libs/service/nestjs/src",
   "projectType": "library",
   "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/service/nestjs/vitest.config.ts",
+        "reportsDirectory": "../../coverage/libs/service/nestjs"
+      }
+    },
     "build": {
       "executor": "@nx/js:tsc",
       "dependsOn": ["^build"],

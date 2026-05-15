@@ -14,7 +14,7 @@ import {
   DefaultAddressResolution
 } from '@svx/service-nestjs';
 
-import { Component, DeclareService, DeclareComponent,  Service, ChannelAddress, } from "@svx/service-common"
+import { Component, DeclareService, DeclareComponent,  Service, ChannelAddress, ABSTRACT } from "@svx/service-common"
 
 import "./http.channel"
 import "./rest.channel"
@@ -58,16 +58,17 @@ function printRoutes(app: INestApplication) {
   }
 }
 
-import { TypeDescriptor } from '@svx/common';
+import { RestChannel } from './rest.channel';
 
-import reflection from './service.json'
-TypeDescriptor.loadReflection(reflection as any)
+import proxies from './service-rest-proxies.json'
+import { ProxySchema } from './rest.channel'
+RestChannel.loadReflection(proxies as unknown as ProxySchema)
 
 // interface
 
 @DeclareService({ name: "user-service" })
 export abstract class UserService extends Service {
-  abstract createUser(name: string): Promise<string>;
+  createUser(name: string): Promise<string> { return ABSTRACT() }
 }
 
 @DeclareComponent({ name: "user-component", services: [UserService] })
@@ -121,10 +122,11 @@ describe('Service', () => {
         ComponentModule.forRoot({
           components: [UserComponent],
           discovery: LocalComponentDiscovery,
-          addressResolution: new DefaultAddressResolution("clocal", "rest") // CHNAGE HERE
+          addressResolution: new DefaultAddressResolution("clocal", "rest")
         }),
       ],
       controllers: [UserServiceImpl],
+      providers: [UserComponentImpl, UserServiceImpl],
     }).compile();
 
   componentRegistry = moduleRef.get(ComponentRegistry);

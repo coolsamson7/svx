@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.spec.ts', '**/*.test.ts'],
+    exclude: ['libs/service/nestjs/**', 'node_modules/**'],
 
     hookTimeout: 30000,
     testTimeout: 30000,

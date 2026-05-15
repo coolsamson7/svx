@@ -110,7 +110,7 @@ export class RestChannel implements Channel {
    * ========================================================= */
 
   private compileAll(descriptor: ServiceDescriptor): void {
-    const service = RestChannel.schemas.get(descriptor.name)
+    const service = RestChannel.schemas.get((descriptor.type as any).name) ?? RestChannel.schemas.get(descriptor.name)
 
     if (service) {
       const typeDesc = TypeDescriptor.forType(descriptor.type as any)
