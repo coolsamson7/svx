@@ -3,9 +3,12 @@
   "compilerOptions": {
     "outDir": "../../dist/libs/auth",
     "declaration": true,
-    "types": []
+    "types": [],
+    "rootDir": ".."
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts"
+  ],
   "exclude": [
     "**/*.spec.ts",
     "**/*.test.ts"

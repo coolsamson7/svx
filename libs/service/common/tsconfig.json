@@ -4,12 +4,6 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "strict": true,
-    "composite": true
-  },
-  "references": [
-    { "path": "../../common" },
-    { "path": "../../di" },
-    { "path": "./tsconfig.lib.json" }
-  ]
+    "strict": true
+  }
 }

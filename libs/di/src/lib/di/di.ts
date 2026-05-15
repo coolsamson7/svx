@@ -612,6 +612,10 @@ export interface ModuleOptions {
     * optional list iof imported moudes
     */
    imports?: any[];
+   /**
+    * optional parent module — its environment is created and started before this module's environment
+    */
+   parent?: any;
    // internal actually
    register?: boolean;
    type?: any;
@@ -1492,9 +1496,16 @@ export class Environment {
    * @param options environment options
    */
   constructor(options: EnvironmentOptions = {}) {
-    const { module, parent = null  } = options;
+    const { module } = options;
+    let { parent = null } = options;
 
     Module.resolve();
+
+    if (parent === null && module) {
+      const parentModule = Module.byType.get(module)?.parent;
+      if (parentModule)
+        parent = new Environment({ module: parentModule });
+    }
 
     const addProvider = (type: any, provider: AbstractInstanceProvider<any>) => {
       if (Tracer.ENABLED)

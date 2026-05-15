@@ -5,7 +5,6 @@ import {
   ConsoleTrace,
   TraceLevel,
   Tracer,
-  TypeDescriptor,
   ValueConfigurationSource,
 } from '@svx/common';
 
@@ -19,8 +18,6 @@ import {
 import user from './user.json';
 import manifest from './manifest.json';
 
-AxiosRestChannel.loadReflection(user as ProxySchema);
-
 import {
   Environment,
   module,
@@ -28,6 +25,7 @@ import {
   Module,
   injectable,
   create,
+  config,
 } from '@svx/di';
 
 import { Component, ComponentDescriptor} from "@svx/service-common"
@@ -38,13 +36,12 @@ import {
   ServiceInstanceProvider,
 } from '@svx/service-client';
 
-import { UserInventoryService } from '@svx/user-interface';
+AxiosRestChannel.loadReflection(user as ProxySchema);
 
 import {
   DeploymentLoader,
   DeploymentManager,
   FeatureRegistry,
-  Manifest,
   ManifestProcessor,
   RemoteDeploymentLoader,
 } from '@svx/portal';
@@ -101,31 +98,33 @@ export class DummyAuthentication
   }
 }
 
-// main module
-
-export const applicationConfig = {
-  deployment: 'local', // microfrontend local service
-  deployments: {
-    local: {},
-    service: {},
-    microfrontend: {
-      remotes: [{ name: 'microfrontend', url: 'http://localhost:3001' }],
-    },
-  },
-  server: {
-    url: 'http://localhost:8000/',
-  },
-};
 
 @module()
-class ApplicationModule extends Module {
+class InfrastructureModule extends Module {
   @create()
   createConfigurationManager(): ConfigurationManager {
-    return new ConfigurationManager(new ValueConfigurationSource({}));
+    return new ConfigurationManager(new ValueConfigurationSource({
+      "authentication": {
+        "url": "http://localhost:8080",
+        "realm":  "service",
+        "clientId":  "service-browser"
+      }
+    }));
   }
 
+  @onRunning()
+  async startup(configurationManager: ConfigurationManager) {
+    await configurationManager.load()
+  }
+}
+
+// main module
+
+@module({parent: InfrastructureModule})
+class ApplicationModule extends Module {
   @create()
-  createSessionManager(): SessionManager<any, any> {
+  createSessionManager(@config("authentication.url") url: string): SessionManager<any, any> {
+    console.log(url)
     return new SessionManager(new DummyAuthentication());
     /*return new SessionManager(new OIDCAuthentication({
        url: "http://localhost:8080",
@@ -182,20 +181,10 @@ await environment.start();
 
 console.log(environment.report());
 
-const service = environment.get<UserInventoryService>(
-  UserInventoryService as any,
-); //
-//const rr = await service.findAll();
-
 // load local and remote manifests
 
 const registry = environment.get(FeatureRegistry);
 const deploymentManager = environment.get(DeploymentManager);
-
-/*await registry.loadManifests(
-  '/manifest.json',
-  //'http://localhost:4201/manifest.json'
-);*/
 
 await deploymentManager.loadDeployment({
   application: 'portal',
@@ -213,6 +202,7 @@ console.log(environment.report());
 // mount app
 
 import './main.css';
+import { URL } from 'url';
 
 const { default: App } = await import('./App.svelte');
 

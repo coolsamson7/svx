@@ -3,9 +3,15 @@
   "compilerOptions": {
     "outDir": "../../../dist/libs/service/nestjs",
     "declaration": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "rootDir": "../.."
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte"
+  ],
   "exclude": [
     "**/*.spec.ts",
     "**/*.test.ts",

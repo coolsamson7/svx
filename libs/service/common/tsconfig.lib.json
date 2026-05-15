@@ -3,8 +3,12 @@
   "compilerOptions": {
     "outDir": "../../../dist/libs/service/common",
     "declaration": true,
+    "rootDir": "../.."
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte"
+  ],
   "exclude": [
     "**/*.spec.ts",
     "**/*.test.ts",

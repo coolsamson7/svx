@@ -6,12 +6,6 @@
     "moduleResolution": "bundler",
     "strict": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "composite": true
-  },
-  "references": [
-    { "path": "../../common" },
-    { "path": "../interface" },
-    { "path": "./tsconfig.lib.json" }
-  ]
+    "emitDecoratorMetadata": true
+  }
 }
