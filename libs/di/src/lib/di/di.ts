@@ -1424,6 +1424,7 @@ class ResolveContext {
     const provider = this.providers.get(type) || null;
 
     if (provider === null) {
+      console.error(`[DI] Provider for ${type?.name} not found. Available:`, [...this.providers.keys()].map((k: any) => k?.name));
       throw new DIRegistrationException(`Provider for ${type.name || 'unknown'} is not defined`);
     }
 
@@ -1724,6 +1725,22 @@ export class Environment {
   /**
    * Start the environment by executing ON_RUNNING lifecycle phase
    */
+  static async run(options: EnvironmentOptions): Promise<Environment> {
+    let { parent, module: mod } = options;
+
+    if (!parent && mod) {
+      const parentModule = Module.byType.get(mod)?.parent;
+      if (parentModule) {
+        parent = new Environment({ module: parentModule });
+        await parent.start();
+      }
+    }
+
+    const env = new Environment({ ...options, parent });
+    await env.start();
+    return env;
+  }
+
   async start(): Promise<void> {
     if (this.state == EnvironmentState.created) {
       if (Tracer.ENABLED)

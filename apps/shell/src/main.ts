@@ -99,10 +99,11 @@ export class DummyAuthentication
 }
 
 
-@module()
+@module({name: "infrastructure"})
 class InfrastructureModule extends Module {
   @create()
   createConfigurationManager(): ConfigurationManager {
+     console.log("create config sources")
     return new ConfigurationManager(new ValueConfigurationSource({
       "authentication": {
         "url": "http://localhost:8080",
@@ -114,17 +115,18 @@ class InfrastructureModule extends Module {
 
   @onRunning()
   async startup(configurationManager: ConfigurationManager) {
+    console.log("load config sources")
     await configurationManager.load()
   }
 }
 
 // main module
 
-@module({parent: InfrastructureModule})
+@module({ parent: InfrastructureModule})
 class ApplicationModule extends Module {
   @create()
   createSessionManager(@config("authentication.url") url: string): SessionManager<any, any> {
-    console.log(url)
+    console.log(`authentication.url= ${url}`)
     return new SessionManager(new DummyAuthentication());
     /*return new SessionManager(new OIDCAuthentication({
        url: "http://localhost:8080",
@@ -176,8 +178,7 @@ ServiceInstanceProvider.registerServiceProviders();
 
 // start environment
 
-const environment = new Environment({ module: ApplicationModule });
-await environment.start();
+const environment = await Environment.run({ module: ApplicationModule });
 
 console.log(environment.report());
 
