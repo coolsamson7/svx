@@ -7,9 +7,7 @@ import {
   Module,
   DynamicModule,
   OnModuleInit,
-  Controller,
   Get,
-  Param,
   Query,
 } from '@nestjs/common';
 
@@ -139,21 +137,28 @@ export class ChannelModule {
   }
 }
 
+type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
-@Injectable()
-export abstract class AbstractNestComponent extends Component {
-  _channelBuilder?: ChannelBuilder;
-  _descriptor?: ComponentDescriptor<any>;
+export function NestComponent<TBase extends AbstractConstructor<Component>>(
+  Base: TBase,
+) {
+  abstract class Mixin extends Base {
+    @Inject(ChannelBuilder)
+    channelBuilder!: ChannelBuilder;
 
-  @Get('channel-metadata')
-  async getChannelMetadata(@Query('channel') channel = 'rest'): Promise<any> {
-    return this.channelMetadata(channel, this._descriptor);
+    protected constructor(...args: any[]) {
+      super(...args);
+    }
+
+    @Get('channel-metadata')
+    async getChannelMetadata(@Query('channel') channel = 'rest') {
+      const descriptor = ServiceRegistry.instance.findServiceDescriptor(
+        this.constructor as any,
+      ) as ComponentDescriptor<Component>;
+      return this.channelBuilder.metadataFor(channel, descriptor);
+    }
   }
-
-  async channelMetadata(channel: string, descriptor?: ComponentDescriptor<any>): Promise<any> {
-    if (!descriptor || !this._channelBuilder) return undefined;
-    return this._channelBuilder.metadataFor(channel, descriptor);
-  }
+  return Mixin;
 }
 
 export abstract class AddressResolution {
@@ -162,7 +167,7 @@ export abstract class AddressResolution {
 
 @Injectable()
 export class DefaultAddressResolution extends AddressResolution {
-  private priority: string[];
+  private readonly priority: string[];
 
   constructor(...priority: string[]) {
     super();
@@ -277,13 +282,6 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
           ];
         }
 
-        // wire ChannelBuilder into AbstractNestComponent subclasses
-        // TODO
-        if (descriptor.instance instanceof AbstractNestComponent) {
-          descriptor.instance._channelBuilder = this.channelFactory;
-          descriptor.instance._descriptor = descriptor;
-        }
-
         this.discovery.register(descriptor)
         await descriptor.instance.startup()
       }
@@ -364,6 +362,8 @@ export class ComponentModule {
       const { components } = options;
 
       const services = ServiceRegistry.serviceDeclarations.map(s => s.type);
+      const implementations = ComponentRegistry.serviceImplementations;
+      const controllers = implementations.filter(impl => Reflect.getMetadata('path', impl) !== undefined);
 
       const providers: any[] = [
         {
@@ -375,7 +375,8 @@ export class ComponentModule {
           useValue: options.addressResolution,
         },
 
-        ...components,                                   // register each component class
+        ...components,
+        ...implementations,
 
         ComponentRegistry,
 
@@ -390,6 +391,7 @@ export class ComponentModule {
         module: ComponentModule,
         imports: [ChannelModule.register()],
         providers,
+        controllers,
         exports: [
           ChannelModule,
           ComponentRegistry,

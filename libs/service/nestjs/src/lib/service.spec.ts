@@ -12,10 +12,17 @@ import {
   ComponentModule,
   LocalComponentDiscovery,
   DefaultAddressResolution,
-  AbstractNestComponent,
+  NestComponent,
 } from '@svx/service-nestjs';
 
-import { DeclareService, DeclareComponent, Service, ChannelAddress, ABSTRACT } from "@svx/service-common"
+import {
+  DeclareService,
+  DeclareComponent,
+  Service,
+  ChannelAddress,
+  ABSTRACT,
+  Component,
+} from '@svx/service-common';
 
 import "./http.channel"
 import "./rest.channel"
@@ -96,14 +103,14 @@ export abstract class UserService extends Service {
 }
 
 @DeclareComponent({ name: "user-component", services: [UserService] })
-export abstract class UserComponent extends AbstractNestComponent {}
+export abstract class UserComponent extends Component {}
 
 // ─── Implementation ──────────────────────────────────────────────────────────
 
 @Injectable()
 @Implementation()
 @Controller('user-component')
-export class UserComponentImpl extends UserComponent {
+export class UserComponentImpl extends NestComponent(UserComponent) {
   async startup() {}
   async shutdown() {}
 
@@ -172,9 +179,7 @@ describe('Service', () => {
           discovery: LocalComponentDiscovery,
           addressResolution: new DefaultAddressResolution("clocal", "rest")
         }),
-      ],
-      controllers: [UserServiceImpl, UserComponentImpl],
-      providers: [UserComponentImpl, UserServiceImpl],
+      ]
     }).compile();
 
     componentRegistry = moduleRef.get(ComponentRegistry);
