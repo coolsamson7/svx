@@ -1,8 +1,10 @@
 import 'reflect-metadata'
 
 import {
+  catchError,
   ConfigurationManager,
   ConsoleTrace,
+  ErrorManager,
   TraceLevel,
   Tracer,
   ValueConfigurationSource,
@@ -133,6 +135,15 @@ class ApplicationModule extends Module {
   }
 
   @create()
+  createErrorManager() : ErrorManager {
+    const manager = new ErrorManager()
+
+    manager.registerHandler(this)
+
+    return manager
+  }
+
+  @create()
   createDeploymentLoader(): DeploymentLoader {
     return new RemoteDeploymentLoader([])
   }
@@ -157,6 +168,13 @@ class ApplicationModule extends Module {
     console.log('ApplicationModule.setup');
 
     await sessionManager.start();
+  }
+
+  // error handling
+
+  @catchError()
+  handle(error: any) {
+    console.log(error);
   }
 }
 
