@@ -19,6 +19,6 @@ import { UserComponentImpl } from './user.component';
     }),
   ],
   providers: [UserComponentImpl],
-  controllers: [UserInventoryServiceController],
+  controllers: [UserInventoryServiceController, UserComponentImpl],
 })
 export class UserModule {}

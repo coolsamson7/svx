@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel } from './service';
 import { TypeDescriptor, MethodDescriptor, Returns } from '@svx/common';
-import { ServiceDescriptor, Channel, CachingChannelFactory } from '@svx/service-common';
+import { ComponentDescriptor, Component, ServiceDescriptor, Channel, CachingChannelFactory } from '@svx/service-common';
 
 /* =========================================================
  * Proxy schema types  (mirrors rest-proxies.json shape)
@@ -39,6 +39,43 @@ const HTTP_DECORATOR_TO_METHOD: Record<string, string> = {
   Patch: 'PATCH', Options: 'OPTIONS', Head: 'HEAD', All: 'GET',
 }
 
+const NEST_METHOD_TO_STRING: Record<number, string> = {
+  0: 'GET', 1: 'POST', 2: 'PUT', 3: 'DELETE', 4: 'PATCH', 6: 'OPTIONS', 7: 'HEAD',
+}
+const ROUTE_ARGS_KEY = '__routeArguments__'
+const PARAM_TYPE = 5, BODY_TYPE = 3, QUERY_TYPE = 4
+
+export function extractNestJSRestSchema(implType: any): ProxyService {
+  const basePath: string = Reflect.getMetadata('path', implType) ?? ''
+  const service: ProxyService = { basePath }
+
+  for (const methodName of Object.getOwnPropertyNames(implType.prototype)) {
+    if (methodName === 'constructor') continue
+
+    const handler      = implType.prototype[methodName]
+    const routePath: string | undefined  = Reflect.getMetadata('path',   handler)
+    const requestMethod: number | undefined = Reflect.getMetadata('method', handler)
+
+    if (routePath === undefined || requestMethod === undefined) continue
+
+    const params: ProxyParam[] = []
+    const routeArgs = Reflect.getMetadata(ROUTE_ARGS_KEY, implType, methodName) ?? {}
+
+    for (const [key, meta] of Object.entries(routeArgs) as [string, any][]) {
+      const paramType = Number(key.split(':')[0])
+      const { index, data } = meta
+
+      if      (paramType === PARAM_TYPE) params.push({ index, in: 'path',  binding: data })
+      else if (paramType === BODY_TYPE)  params.push({ index, in: 'body' })
+      else if (paramType === QUERY_TYPE) params.push({ index, in: 'query', binding: data })
+    }
+
+    service[methodName] = { method: NEST_METHOD_TO_STRING[requestMethod] ?? 'GET', path: routePath, params }
+  }
+
+  return service
+}
+
 const stripQuotes = (s: string) => s.replace(/^["']|["']$/g, '')
 
 /* =========================================================
@@ -67,11 +104,26 @@ export class RestChannelFactory extends CachingChannelFactory<RestChannel> {
   // implement
 
   createChannel(url: string) {
-    const channel =  new RestChannel(this.http)
-
+    const channel = new RestChannel(this.http)
     channel.url = url
-
     return channel
+  }
+
+  createWithMetadata(url: string, schema: ProxySchema): RestChannel {
+    const channel = new RestChannel(this.http)
+    channel.url = url
+    channel.instanceSchema = schema
+    return channel
+  }
+
+  metadataFor(descriptor: ComponentDescriptor<Component>): ProxySchema {
+    const schema: ProxySchema = {}
+    for (const svc of descriptor.services) {
+      const implType = svc.instance?.constructor
+      if (implType)
+        schema[svc.name] = extractNestJSRestSchema(implType as any)
+    }
+    return schema
   }
 }
 
@@ -89,6 +141,7 @@ export class RestChannel implements Channel {
   // instance data
 
   url?: string
+  instanceSchema?: ProxySchema
 
   private calls = new Map<string, CompiledCall>()
 
@@ -110,27 +163,49 @@ export class RestChannel implements Channel {
    * ========================================================= */
 
   private compileAll(descriptor: ServiceDescriptor): void {
-    const service = RestChannel.schemas.get((descriptor.type as any).name) ?? RestChannel.schemas.get(descriptor.name)
+    // 1. instance schema pre-loaded by channelMetadata (highest priority)
+    const instanceService = this.instanceSchema?.[(descriptor.type as any).name]
+                         ?? this.instanceSchema?.[descriptor.name]
+    if (instanceService) {
+      this.compileService(instanceService, TypeDescriptor.forType(descriptor.type as any))
+      return
+    }
 
-    if (service) {
-      const typeDesc = TypeDescriptor.forType(descriptor.type as any)
-      const { basePath, ...methodEntries } = service
+    // 2. static schema from loadReflection
+    const schema = RestChannel.schemas.get((descriptor.type as any).name)
+                ?? RestChannel.schemas.get(descriptor.name)
+    if (schema) {
+      this.compileService(schema, TypeDescriptor.forType(descriptor.type as any))
+      return
+    }
 
-      for (const [name, entry] of Object.entries(methodEntries))
-        this.calls.set(name, this.compileFromProxy(
-          entry as ProxyMethod,
-          basePath as string,
-          typeDesc.getMethod(name),
-        ))
+    // 3. NestJS Reflect metadata fallback (server-side, no AbstractNestComponent)
+    const implType     = (descriptor.instance?.constructor ?? descriptor.type) as any
+    const nestjsPrefix = Reflect.getMetadata('path', implType) as string | undefined
+
+    if (nestjsPrefix !== undefined) {
+      this.compileFromNestJSController(implType)
     } else {
-      // fallback: derive routing from TypeDescriptor decorators
-      const typeDesc   = TypeDescriptor.forType(descriptor.type as any)
+      const typeDesc   = TypeDescriptor.forType(implType)
       const controller = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
       const prefix     = controller ? stripQuotes(controller.arguments[0] as string) : ''
 
       for (const method of typeDesc.getMethods())
         this.calls.set(method.name, this.compileMethod(method, prefix))
     }
+  }
+
+  private compileService(service: ProxyService, typeDesc: ReturnType<typeof TypeDescriptor.forType>): void {
+    const { basePath, ...methodEntries } = service
+    for (const [name, entry] of Object.entries(methodEntries))
+      this.calls.set(name, this.compileFromProxy(entry as ProxyMethod, basePath as string, typeDesc.getMethod(name)))
+  }
+
+  private compileFromNestJSController(implType: any): void {
+    const service = extractNestJSRestSchema(implType)
+    const { basePath, ...methodEntries } = service
+    for (const [name, entry] of Object.entries(methodEntries))
+      this.calls.set(name, this.compileFromProxy(entry as ProxyMethod, basePath as string, undefined))
   }
 
   private compileFromProxy(

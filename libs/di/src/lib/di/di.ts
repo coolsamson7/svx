@@ -4,7 +4,7 @@
  * It manages instances and their lifecycles.
  */
 
-import { TraceLevel, Tracer, DecoratorDescriptor, MethodDescriptor, TypeDescriptor } from '@svx/common';
+import { TraceLevel, Tracer, DecoratorDescriptor, MethodDescriptor, TypeDescriptor, AbstractType } from '@svx/common';
 
 /**
  * Scope interface representing how instance lifecycle is managed
@@ -1787,7 +1787,7 @@ export class Environment {
    * @param type the desired type
    * @returns the instance 
     */
-  get<T>(type: new(...args: any[]) => T): T {
+  get<T>(type: AbstractType<T>): T {
     const provider = this.providers.get(type as any);
 
     if (!provider) {

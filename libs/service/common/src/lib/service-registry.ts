@@ -9,6 +9,8 @@ export class ServiceRegistry {
     static readonly serviceDeclarations:      ServiceDeclaration[]      = []
     //static readonly serviceImplementations:   AbstractType<Service>[]   = []
 
+    static instance : ServiceRegistry;
+
     // static methods
 
     static declareComponent(target: AbstractType<Component>, options: ComponentOptions): void {
@@ -29,23 +31,29 @@ export class ServiceRegistry {
 
     constructor() {
       this.setup()
+
+      ServiceRegistry.instance = this
     }
 
     // public
 
-    findServiceDescriptor(type: AbstractType<Service>): ServiceDescriptor {
+    findComponentByName(name: string): ComponentDescriptor<Component> | undefined {
+      return this.components.get(name)
+    }
+
+    findServiceDescriptor<T extends Service>(type: AbstractType<T>): ServiceDescriptor<T> {
       let current = type;
 
       while (
         current &&
         current !== Function.prototype &&
-        current !== Object &&
+        //current !== Object &&
         current !== Object.prototype
       ) {
         const descriptor = this.byType.get(current);
 
         if (descriptor) {
-          return descriptor;
+          return descriptor as ServiceDescriptor<T>;
         }
 
         current = Object.getPrototypeOf(current);

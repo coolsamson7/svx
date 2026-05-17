@@ -7,6 +7,10 @@ import {
   Module,
   DynamicModule,
   OnModuleInit,
+  Controller,
+  Get,
+  Param,
+  Query,
 } from '@nestjs/common';
 
 import { AbstractType, CachingChannelFactory, Channel, ChannelAddress, ChannelFactory, Component, ComponentDescriptor, Service, ServiceDescriptor, ServiceRegistry } from '@svx/service-common';
@@ -43,7 +47,7 @@ export class ChannelBuilder {
       throw new Error(`No factory declared for channel ${channel}`)
     }
 
-    return type 
+    return type
   }
 
   private findFactory(channel: string) : ChannelFactory {
@@ -60,18 +64,26 @@ export class ChannelBuilder {
     return `${channel}:${url ?? ''}`;
   }
 
-  create(channel: string, url?: string): Channel {
+  create(channel: string, url?: string, metadata?: any): Channel {
     const key = this.buildCacheKey(channel, url);
 
     const cached = this.cache.get(key);
     if (cached)
       return cached;
 
-    const instance = this.findFactory(channel).create(url!)
+    const factory = this.findFactory(channel);
+    const instance = metadata && (factory as any).createWithMetadata
+      ? (factory as any).createWithMetadata(url!, metadata)
+      : factory.create(url!)
 
     this.cache.set(key, instance);
 
     return instance;
+  }
+
+  metadataFor(channel: string, descriptor: ComponentDescriptor<Component>): Promise<any> | undefined {
+    const factory = this.findFactory(channel);
+    return factory.metadataFor?.(descriptor);
   }
 }
 
@@ -127,6 +139,22 @@ export class ChannelModule {
   }
 }
 
+
+@Injectable()
+export abstract class AbstractNestComponent extends Component {
+  _channelBuilder?: ChannelBuilder;
+  _descriptor?: ComponentDescriptor<any>;
+
+  @Get('channel-metadata')
+  async getChannelMetadata(@Query('channel') channel = 'rest'): Promise<any> {
+    return this.channelMetadata(channel, this._descriptor);
+  }
+
+  async channelMetadata(channel: string, descriptor?: ComponentDescriptor<any>): Promise<any> {
+    if (!descriptor || !this._channelBuilder) return undefined;
+    return this._channelBuilder.metadataFor(channel, descriptor);
+  }
+}
 
 export abstract class AddressResolution {
   abstract select(addresses: ChannelAddress[]): ChannelAddress;
@@ -239,7 +267,7 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
       if ( descriptor instanceof ComponentDescriptor) {
         descriptor.addresses = descriptor.instance.addresses
 
-        // 👇 ensure local channel exists when an instance is available
+        // ensure local channel exists when an instance is available
         const hasLocal = descriptor.addresses.some(a => a.channel === 'local');
 
         if (!hasLocal && descriptor.instance) {
@@ -247,6 +275,13 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
             new ChannelAddress('local', 'local'),
             ...descriptor.addresses,
           ];
+        }
+
+        // wire ChannelBuilder into AbstractNestComponent subclasses
+        // TODO
+        if (descriptor.instance instanceof AbstractNestComponent) {
+          descriptor.instance._channelBuilder = this.channelFactory;
+          descriptor.instance._descriptor = descriptor;
         }
 
         this.discovery.register(descriptor)
@@ -257,6 +292,10 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
   private pickAddress(component: ComponentDescriptor<Component>) : ChannelAddress {
     return this.addressResolution.select(component.addresses)
+  }
+
+  findDescriptor<T extends Component>(component: AbstractType<T>) : ComponentDescriptor<T> {
+    return this.serviceRegistry.findServiceDescriptor<T>(component) as ComponentDescriptor<T>
   }
 
   // public
@@ -284,14 +323,15 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
       }
       else {
         // lazy — first call picks address, binds all
-        builder.lazy(() => {
+        builder.lazy(async () => {
           const address = this.pickAddress(descriptor.componentDescriptor)
 
           if (address.channel === 'local') {
             builder.bind((name, ...args) => (descriptor.instance as any)[name](...args))
           }
           else {
-            const channel = this.channelFactory.create(address.channel, address.uri)
+            const metadata = await descriptor.componentDescriptor.instance?.channelMetadata(address.channel, descriptor.componentDescriptor)
+            const channel = this.channelFactory.create(address.channel, address.uri, metadata)
             builder.bind((name, ...args) => channel.call(descriptor, name, ...args))
           }
         })
@@ -348,9 +388,14 @@ export class ComponentModule {
 
       return {
         module: ComponentModule,
-        imports:   [ChannelModule.register()],
+        imports: [ChannelModule.register()],
         providers,
-        exports:   [ComponentRegistry, ...components, ...services],
+        exports: [
+          ChannelModule,
+          ComponentRegistry,
+          ...components,
+          ...services,
+        ],
       };
     }
 }

@@ -104,46 +104,57 @@ export class AxiosRestChannel implements Channel {
   }
 
   private axios!: AxiosInstance
-  private readonly calls = new Map<string, CompiledCall>()
+  private readonly calls        = new Map<string, CompiledCall>()
+  private readonly compilations = new Map<string, Promise<void>>()
   private tokenProvider?: { getToken(): Promise<string | undefined> }
 
   // implement Channel
 
-  call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
-    if (this.calls.size === 0)
-      this.compileAll(descriptor)
+  async call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
+    let compile = this.compilations.get(descriptor.name)
+    if (!compile) {
+      compile = this.compileAll(descriptor)
+      this.compilations.set(descriptor.name, compile)
+    }
+    await compile
 
     const fn = this.calls.get(method)
     if (!fn)
       throw new Error(`No REST mapping for '${method}' on service '${descriptor.name}'`)
-
     return fn(args)
   }
 
   // private
 
-  private compileAll(descriptor: ServiceDescriptor): void {
-    const service = AxiosRestChannel.schemas.get(descriptor.name)
-
-    if (service) {
-      const typeDesc = TypeDescriptor.forType(descriptor.type as any)
-      const { basePath, ...methodEntries } = service
-
-      for (const [name, entry] of Object.entries(methodEntries))
-        this.calls.set(name, this.compileFromProxy(
-          entry as ProxyMethod,
-          basePath as string,
-          typeDesc.getMethod(name),
-        ))
-    } else {
-      // fallback: derive routing from TypeDescriptor decorators
-      const typeDesc   = TypeDescriptor.forType(descriptor.type as any)
-      const controller = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
-      const prefix     = controller ? stripQuotes(controller.arguments[0] as string) : ''
-
-      for (const method of typeDesc.getMethods())
-        this.calls.set(method.name, this.compileMethod(method, prefix))
+  private async compileAll(descriptor: ServiceDescriptor): Promise<void> {
+    const componentName = (descriptor as any).componentDescriptor?.name
+    if (componentName) {
+      const { data } = await this.axios.get(`/${componentName}/channel-metadata`, { params: { channel: 'rest' } })
+      const service = (data as ProxySchema)[(descriptor.type as any).name] ?? (data as ProxySchema)[descriptor.name]
+      if (service) {
+        this.compileService(service, TypeDescriptor.forType(descriptor.type as any))
+        return
+      }
     }
+
+    const staticService = AxiosRestChannel.schemas.get((descriptor.type as any).name)
+                       ?? AxiosRestChannel.schemas.get(descriptor.name)
+    if (staticService) {
+      this.compileService(staticService, TypeDescriptor.forType(descriptor.type as any))
+      return
+    }
+
+    const typeDesc   = TypeDescriptor.forType(descriptor.type as any)
+    const controller = typeDesc.decorators.find(d => d.decorator.name === 'Controller')
+    const prefix     = controller ? stripQuotes(controller.arguments[0] as string) : ''
+    for (const method of typeDesc.getMethods())
+      this.calls.set(method.name, this.compileMethod(method, prefix))
+  }
+
+  private compileService(service: ProxyService, typeDesc: ReturnType<typeof TypeDescriptor.forType>): void {
+    const { basePath, ...methodEntries } = service
+    for (const [name, entry] of Object.entries(methodEntries))
+      this.calls.set(name, this.compileFromProxy(entry as ProxyMethod, basePath as string, typeDesc.getMethod(name)))
   }
 
   private compileFromProxy(

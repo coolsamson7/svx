@@ -10,6 +10,8 @@ export abstract class Component extends Service {
   abstract startup(): Promise<void>;
   abstract shutdown(): Promise<void>;
   abstract get addresses(): ChannelAddress[];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async channelMetadata(_channel: string, _descriptor?: ComponentDescriptor<any>): Promise<any> { return undefined }
 }
 
 export class ChannelAddress {
@@ -26,6 +28,7 @@ export interface Channel {
 
 export interface ChannelFactory<T extends Channel=Channel> {
   create(url: string) : T
+  metadataFor?(descriptor: ComponentDescriptor<any>): Promise<any> | any
 }
 
 export abstract class CachingChannelFactory<T extends Channel> implements ChannelFactory<T> {

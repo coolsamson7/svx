@@ -35,14 +35,17 @@ export class ProxyBuilder<T extends Service> {
   }
 
   // ── lazy: first call to any method triggers init() ───────
-  // init() is expected to call bind(), replacing all stubs.
-  // The triggering call is then re-dispatched to the new stub.
-  lazy(init: () => void): this {
+  // init() may be async; the first call awaits it, then re-dispatches.
+  // Concurrent first calls share the same init promise (called once).
+  lazy(init: () => Promise<void> | void): this {
+    let initPromise: Promise<void> | undefined
+
     for (const method of this._methods) {
       const name = method.name
-      this._proxy[name] = (...args: any[]) => {
-        init()                               // replaces all stubs via bind()
-        return (this._proxy as any)[name](...args)  // re-call the new stub
+      this._proxy[name] = async (...args: any[]) => {
+        if (!initPromise) initPromise = Promise.resolve(init())
+        await initPromise
+        return (this._proxy as any)[name](...args)
       }
     }
     return this

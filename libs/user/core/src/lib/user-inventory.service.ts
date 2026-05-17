@@ -56,7 +56,7 @@ export class UserInventoryServiceController extends UserInventoryService {
 
   // implement
 
-  @Get()
+  @Get("all")
   @Transactional()
   async findAll(): Promise<UserDto[]> {
     const entities = await this.repo.find({ relations: ["addresses"] });
@@ -64,7 +64,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.mapList(entities);
   }
 
-  @Get(':id')
+  @Get('find/:id')
   @Transactional()
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({
@@ -75,7 +75,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map<UserEntity,UserDto>(entity);
   }
 
-  @Post()
+  @Post("create")
   @Transactional()
   async create(@Body() dto: UserDto): Promise<UserDto> {
     const entity = this.mapper.map<UserDto, UserEntity>(dto, { direction: "reverse"});
@@ -85,7 +85,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map<UserEntity, UserDto>(saved);
   }
 
-  @Put()
+  @Put("update")
   @Transactional()
   async update(@Body() dto: UserDto): Promise<UserDto> {
    const entity = await this.repo.findOneOrFail({
@@ -100,7 +100,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map(saved);
   }
 
-  @Delete(':id')
+  @Delete('delete/:id')
   @Transactional()
   async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.repo.delete(id);

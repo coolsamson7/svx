@@ -15,7 +15,8 @@ import {
   SessionManager,
 } from '@svx/security';
 
-import user from './user.json';
+import { UserInventoryService } from "@svx/user-interface"
+
 import manifest from './manifest.json';
 
 import {
@@ -30,13 +31,9 @@ import {
 
 import { Component, ComponentDescriptor} from "@svx/service-common"
 import {
-  AxiosRestChannel,
   ComponentLocator,
-  ProxySchema,
   ServiceInstanceProvider,
 } from '@svx/service-client';
-
-AxiosRestChannel.loadReflection(user as ProxySchema);
 
 import {
   DeploymentLoader,
@@ -181,6 +178,21 @@ ServiceInstanceProvider.registerServiceProviders();
 const environment = await Environment.run({ module: ApplicationModule });
 
 console.log(environment.report());
+
+// testing
+
+const service = environment.get<UserInventoryService>(UserInventoryService)
+let all = await service.findAll();
+await service.create({
+  name: 'Andi',
+  addresses: [{
+    city: 'Cologne'
+  }]
+})
+
+all = await service.findAll();
+
+console.log(all)
 
 // load local and remote manifests
 

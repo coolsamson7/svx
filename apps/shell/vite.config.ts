@@ -27,6 +27,7 @@ export default defineConfig({
     }),
     svelte(),
     swc.vite({
+      sourceMaps: true,
       jsc: {
         parser: {
           syntax: 'typescript',
