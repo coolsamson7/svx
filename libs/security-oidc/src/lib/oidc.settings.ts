@@ -1,6 +1,6 @@
 import { AbstractInstanceProvider, Providers } from '@svx/di'
 
-export class AuthSettings {
+export class OIDCSettings {
   authority!:                  string
   client_id!:                  string
   redirect_uri!:               string
@@ -9,15 +9,15 @@ export class AuthSettings {
   rolesExtractor?:             (profile: Record<string, unknown>) => string[]
 }
 
-class AuthSettingsProvider extends AbstractInstanceProvider<AuthSettings> {
-  constructor(private readonly settings: AuthSettings) { super() }
+class OIDCSettingsProvider extends AbstractInstanceProvider<OIDCSettings> {
+  constructor(private readonly settings: OIDCSettings) { super() }
 
-  override getType()  { return AuthSettings }
+  override getType()  { return OIDCSettings }
   override isEager()  { return true }
   override getScope() { return 'singleton' }
   override create()   { return this.settings }
 }
 
-export function configureAuth(settings: AuthSettings): void {
-  Providers.register(new AuthSettingsProvider(settings))
+export function configureOIDC(settings: OIDCSettings): void {
+  Providers.register(new OIDCSettingsProvider(settings))
 }

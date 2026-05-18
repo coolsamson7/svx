@@ -1,11 +1,11 @@
 import { Module, module, onRunning, create } from '@svx/di'
 import { SessionManager }                    from '@svx/security'
-import { AuthService }                       from './auth.service'
+import { OIDCAuthService }                   from './oidc.service'
 import type { OIDCUser, OIDCTicket }         from '@svx/security'
 
-@module({ name: 'auth' })
-export class AuthModule extends Module {
-  constructor(private readonly authService: AuthService) {
+@module({ name: 'security-oidc' })
+export class OIDCModule extends Module {
+  constructor(private readonly authService: OIDCAuthService) {
     super()
   }
 

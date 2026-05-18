@@ -6,11 +6,12 @@
     {
       id:          'users',
       label:       'Users',
-      permissions: [],//'admin', 'manager'],
-      tags:        ['users', 'crud'],
+      router:      { path: 'users' },
+      permissions: ['users:read'],
+      tags:        ['navigation'],
       version:     '1.0.0',
     },
-    () => import('./UserFeature.svelte')   // self-reference for lazy loading
+    () => import('./UserFeature.svelte')
   );
 </script>
 
