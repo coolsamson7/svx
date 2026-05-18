@@ -1,3 +1,4 @@
+import './api.package'
 import { ApplicationModule } from './app/application.module';
 /**
  * This is not a production server yet!

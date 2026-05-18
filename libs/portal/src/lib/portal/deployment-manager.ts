@@ -1,7 +1,7 @@
 import { FeatureDescriptor, FeatureRegistry, Manifest } from './feature-registry';
 import { ClientInfo, detectClient } from '../util/client-detector';
 import { FilterContext, ManifestProcessor } from './manifest-filter';
-import { TraceLevel, Tracer } from '@svx/common';
+import { TraceLevel, Tracer, PackageRegistry } from '@svx/common';
 
 export interface Deployment {
   modules: { [key: string]: Manifest };
@@ -147,6 +147,12 @@ export class DeploymentManager {
     }
 
     this.deployment.modules[this.localManifest.id!].loaded = true;
+
+    // pre-register remote packages as not-yet-loaded; the MFE marks itself loaded via @DeclareLibrary
+    for (const [name, module] of Object.entries(this.deployment.modules)) {
+      if (module.remote)
+        PackageRegistry.preRegister({ name, version: module.version, type: 'application' })
+    }
 
     // register each module's features with federation loaders for remote modules
 

@@ -4,6 +4,7 @@
     "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
     "types": [
       "reflect-metadata",
       "vitest/globals"

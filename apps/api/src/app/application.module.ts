@@ -1,5 +1,6 @@
 import { Module, Logger } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PackagesController } from './packages.controller';
 import { DataSource } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 
@@ -42,5 +43,6 @@ import { UserModule, UserEntity, AddressEntity } from '@svx/user-core';
 
     UserModule,
   ],
+  controllers: [PackagesController],
 })
 export class ApplicationModule {}

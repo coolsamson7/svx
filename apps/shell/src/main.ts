@@ -1,4 +1,10 @@
 import 'reflect-metadata'
+import './shell.package'
+
+import { PackageRegistry } from '@svx/common'
+
+if (import.meta.env.DEV)
+  (window as any).packages = () => PackageRegistry.report()
 
 import {
   catchError,
