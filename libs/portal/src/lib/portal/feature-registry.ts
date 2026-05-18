@@ -367,18 +367,13 @@ export class FeatureFinder {
     return this;
   }
 
-  matchesSession(session: boolean): FeatureFinder {
-    if (session)
-      // When user is logged in, show both 'public' and 'private' features
-      this.filter.push((feature) => {
-        const visibility = feature.visibility || ['public', 'private'];
-        return visibility.includes('public') || visibility.includes('private');
-      });
-    else
-      // When user is NOT logged in, show only 'public' features
-      this.filter.push((feature) =>
-        (feature.visibility || ['public']).includes('public'),
-      );
+  matchesSession(session: boolean, roles?: Set<string>): FeatureFinder {
+    this.filter.push((feature) => {
+      const isPublic = (feature.visibility ?? []).includes('public');
+      if (isPublic) return true;
+      if (!session) return false;
+      return (feature.permissions ?? []).every(p => roles?.has(p) ?? true);
+    });
 
     return this;
   }

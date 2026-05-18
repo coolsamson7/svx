@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "../../dist/libs/security-credentials",
+    "outDir": "../../../dist/libs/security/oidc",
     "declaration": true,
     "types": [],
     "rootDir": ".."
