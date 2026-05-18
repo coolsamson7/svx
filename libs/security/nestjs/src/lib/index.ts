@@ -1,0 +1,6 @@
+export { AuthNestjsSettings, discoverJwksUri } from './security-nestjs.settings'
+export { SecurityNestjsModule }                from './security-nestjs.module'
+export { JwtAuthGuard }                        from './jwt-auth.guard'
+export { PermissionsGuard }                    from './permissions.guard'
+export { Permissions, PERMISSIONS_KEY }        from './permissions.decorator'
+export { Public }                              from './public.decorator'
