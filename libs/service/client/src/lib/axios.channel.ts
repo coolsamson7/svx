@@ -80,6 +80,7 @@ export class AxiosRestChannel implements Channel {
   private readonly calls        = new Map<string, CompiledCall>();
   private readonly compilations = new Map<string, Promise<void>>();
   private readonly ready        = new Set<string>();
+  private readonly metaFetches  = new Map<string, Promise<ProxySchema>>();
   private tokenProvider?: { getToken(): Promise<string | undefined> };
 
   // constructor
@@ -173,18 +174,17 @@ export class AxiosRestChannel implements Channel {
   private async compileAll(descriptor: ServiceDescriptor): Promise<void> {
     const componentName = (descriptor as any).componentDescriptor?.name;
     if (componentName) {
-      const { data } = await this.axios.get(
-        `/${componentName}/channel-metadata`,
-        { params: { channel: 'rest' } },
-      );
-      const service =
-        (data as ProxySchema)[(descriptor.type as any).name] ??
-        (data as ProxySchema)[descriptor.name];
+      let fetch = this.metaFetches.get(componentName);
+      if (!fetch) {
+        fetch = this.axios
+          .get(`${componentName}/channel-metadata`, { params: { channel: 'rest' } })
+          .then(({ data }) => data as ProxySchema);
+        this.metaFetches.set(componentName, fetch);
+      }
+      const schema = await fetch;
+      const service = schema[(descriptor.type as any).name] ?? schema[descriptor.name];
       if (service) {
-        this.compileService(
-          service,
-          TypeDescriptor.forType(descriptor.type as any),
-        );
+        this.compileService(service, TypeDescriptor.forType(descriptor.type as any));
         return;
       }
     }

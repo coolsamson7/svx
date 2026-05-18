@@ -142,15 +142,15 @@ export class RestChannel implements Channel {
   url?: string
   instanceSchema?: ProxySchema
 
-  private compiled = false
-  private calls    = new Map<string, CompiledCall>()
+  private readonly compiled = new Set<string>()
+  private calls             = new Map<string, CompiledCall>()
 
   constructor(private readonly http: HttpService) {}
 
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
-    if (!this.compiled) {
+    if (!this.compiled.has(descriptor.name)) {
       this.compileAll(descriptor)
-      this.compiled = true
+      this.compiled.add(descriptor.name)
     }
 
     const fn = this.calls.get(method)!
@@ -164,10 +164,15 @@ export class RestChannel implements Channel {
 
   private compileAll(descriptor: ServiceDescriptor): void {
     // 1. instance schema pre-loaded by channelMetadata (highest priority)
-    const instanceService = this.instanceSchema?.[(descriptor.type as any).name]
-                         ?? this.instanceSchema?.[descriptor.name]
-    if (instanceService) {
-      this.compileService(instanceService, TypeDescriptor.forType(descriptor.type as any))
+    // compile all services from the component in one pass
+    if (this.instanceSchema) {
+      const services: ServiceDescriptor[] = (descriptor as any).componentDescriptor?.services ?? [descriptor]
+      for (const svc of services) {
+        const svcSchema = this.instanceSchema[(svc.type as any).name] ?? this.instanceSchema[svc.name]
+        if (svcSchema)
+          this.compileService(svcSchema, TypeDescriptor.forType(svc.type as any))
+        this.compiled.add(svc.name)
+      }
       return
     }
 
