@@ -6,13 +6,12 @@
     {
       id:          'pageNotFound',
       label:       'Page Not Found',
-      router: {
-        path: "unknown"
-      },
-      permissions: [],//'admin', 'manager'],
-      tags:        []
+      router:      { path: 'unknown' },
+      permissions: [],
+      visibility:  ['public'],
+      tags:        ['not-found'],
     },
-    () => import('./PageNotFound.svelte')   // self-reference for lazy loading
+    () => import('./PageNotFound.svelte')
   );
 </script>
 

@@ -9,8 +9,9 @@
       router: {
         path: "home"
       },
-      permissions: [],//'admin', 'manager'],
-      tags:        ["navigation"]
+      permissions: [],
+      visibility:  ['public'],
+      tags:        ['navigation']
     },
     () => import('./Home.svelte')   // self-reference for lazy loading
   );

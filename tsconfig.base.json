@@ -22,8 +22,8 @@
 
       "@svx/user-interface": ["libs/user/interface/src/index.ts"],
       "@svx/user-core": ["libs/user/core/src/index.ts"],
-      "@svx/auth": ["libs/auth/src/index.ts"],
-      "@svx/auth-nestjs": ["libs/auth-nestjs/src/index.ts"]
+      "@svx/security-oidc": ["libs/security-oidc/src/index.ts"],
+      "@svx/security-credentials": ["libs/security-credentials/src/index.ts"]
     }
   }
 }

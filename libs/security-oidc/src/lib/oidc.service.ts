@@ -1,17 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { injectable }                             from '@svx/di'
-import { UserManager, type User }                 from 'oidc-client-ts'
-import { Authentication, OIDCUser, OIDCTicket, Session } from '@svx/security'
-import { AuthSettings }                           from './auth.settings'
+import { injectable }                                      from '@svx/di'
+import { UserManager, type User }                          from 'oidc-client-ts'
+import { Authentication, OIDCUser, OIDCTicket, Session }   from '@svx/security'
+import { OIDCSettings }                                    from './oidc.settings'
 
 const defaultRolesExtractor = (profile: Record<string, unknown>): string[] =>
   ((profile['realm_access'] as any)?.roles ?? []) as string[]
 
 @injectable()
-export class AuthService implements Authentication<void, OIDCUser, OIDCTicket> {
+export class OIDCAuthService implements Authentication<void, OIDCUser, OIDCTicket> {
   private readonly userManager: UserManager
 
-  constructor(private readonly settings: AuthSettings) {
+  constructor(private readonly settings: OIDCSettings) {
     this.userManager = new UserManager({
       authority:                settings.authority,
       client_id:                settings.client_id,
@@ -23,15 +22,12 @@ export class AuthService implements Authentication<void, OIDCUser, OIDCTicket> {
     })
   }
 
-  // implement Authentication
-
   async start(): Promise<Session<OIDCUser, OIDCTicket> | null> {
     const callbackPath = new URL(this.settings.redirect_uri).pathname
     let oidcUser: User | null
 
     if (window.location.pathname === callbackPath) {
       oidcUser = await this.userManager.signinRedirectCallback()
-      history.replaceState({}, document.title, '/')
     } else {
       oidcUser = await this.userManager.getUser()
     }
@@ -42,7 +38,6 @@ export class AuthService implements Authentication<void, OIDCUser, OIDCTicket> {
 
   async login(_request: void): Promise<Session<OIDCUser, OIDCTicket>> {
     await this.userManager.signinRedirect()
-    // redirect happens — never reached
     throw new Error('OIDC redirect in progress')
   }
 
@@ -50,7 +45,6 @@ export class AuthService implements Authentication<void, OIDCUser, OIDCTicket> {
     return this.userManager.signoutRedirect()
   }
 
-  // reads the current (auto-renewed) token — used by ServiceClient interceptor
   async getToken(): Promise<string | undefined> {
     const user = await this.userManager.getUser()
     return user?.access_token ?? undefined
@@ -60,14 +54,11 @@ export class AuthService implements Authentication<void, OIDCUser, OIDCTicket> {
     return this.userManager
   }
 
-  // private
-
   private buildSession(user: User): Session<OIDCUser, OIDCTicket> {
-    const extract  = this.settings.rolesExtractor ?? defaultRolesExtractor
-    const profile  = user.profile as Record<string, unknown>
+    const extract = this.settings.rolesExtractor ?? defaultRolesExtractor
+    const profile = user.profile as Record<string, unknown>
 
-    // Keycloak puts realm_access in the access token but not the userinfo endpoint —
-    // decode the JWT payload to get it when it's missing from the profile.
+    // Keycloak puts realm_access in the access token but not the userinfo endpoint
     if (!profile['realm_access'] && user.access_token) {
       try {
         const payload = JSON.parse(atob(user.access_token.split('.')[1]))

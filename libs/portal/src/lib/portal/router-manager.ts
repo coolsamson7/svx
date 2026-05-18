@@ -1,6 +1,7 @@
 import { Environment, injectable } from '@svx/di';
 import { createRouter, type HooksContext }    from 'sv-router';
 import { FeatureRegistry, FeatureDescriptor }       from './feature-registry';
+import { SessionManager } from '@svx/security';
 
 export type RouteGuard = (feature: FeatureDescriptor, ctx: HooksContext) => void | Promise<void>
 
@@ -40,6 +41,42 @@ export class RouterManager {
 
   setGuard(fn: RouteGuard): void {
     this.#guard = fn;
+  }
+
+  navigateAfterLogin(): void {
+    const saved = sessionStorage.getItem('redirect_after_login');
+    if (!saved) return;
+    sessionStorage.removeItem('redirect_after_login');
+    if (this.router) {
+      this.navigate(saved as `/${string}`);
+    } else {
+      history.replaceState({}, '', saved);
+    }
+  }
+
+  useSecurityGuard(sessionManager: SessionManager<any, any, any>): void {
+    this.setGuard(async (feature) => {
+      const isPublic = (feature.visibility ?? []).includes('public');
+      if (isPublic) return;
+
+      if (!sessionManager.hasSession()) {
+        sessionStorage.setItem('redirect_after_login', window.location.pathname + window.location.search);
+        const loginFeature = this.registry.finder().withTag('login').findOptional();
+        if (loginFeature?.router) {
+          this.navigate(('/' + loginFeature.router.path) as `/${string}`);
+        } else {
+          await sessionManager.openSession(undefined);
+        }
+        return;
+      }
+
+      const roles = new Set(sessionManager.currentSession().user.roles as string[]);
+      const allowed = (feature.permissions ?? []).every(p => roles.has(p));
+      if (!allowed) {
+        const target = this.registry.finder().withTag('unauthorized').findOptional();
+        if (target?.router) this.navigate(('/' + target.router.path) as `/${string}`);
+      }
+    });
   }
 
   buildRouter() {
