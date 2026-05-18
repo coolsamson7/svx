@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "composite": true
+  },
+  "references": [
+    { "path": "./tsconfig.lib.json" }
+  ]
+}
