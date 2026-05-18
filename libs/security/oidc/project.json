@@ -1,6 +1,6 @@
 {
   "name": "@svx/security-oidc",
-  "sourceRoot": "libs/security-oidc/src",
+  "sourceRoot": "libs/security/oidc/src",
   "projectType": "library",
   "targets": {
     "build": {
@@ -8,9 +8,9 @@
       "dependsOn": ["^build"],
       "outputs": ["{options.outputPath}"],
       "options": {
-        "main": "libs/security-oidc/src/index.ts",
-        "tsConfig": "libs/security-oidc/tsconfig.lib.json",
-        "outputPath": "dist/libs/security-oidc"
+        "main": "libs/security/oidc/src/index.ts",
+        "tsConfig": "libs/security/oidc/tsconfig.lib.json",
+        "outputPath": "dist/libs/security/oidc"
       }
     }
   }

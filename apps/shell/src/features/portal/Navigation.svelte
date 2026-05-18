@@ -17,13 +17,8 @@
   const features = featureRegistry
       .finder()
       .withTag('navigation')
-      .find()
-      .filter(f => {
-        const isPublic = (f.visibility ?? []).includes('public');
-        if (isPublic) return true;
-        if (!session) return false;
-        return (f.permissions ?? []).every(p => roles.has(p));
-      });
+      .matchesSession(!!session, roles)
+      .find();
 
   // Icon map: tries to match feature.icon, falls back to a default
   const iconFallback = 'widgets';
