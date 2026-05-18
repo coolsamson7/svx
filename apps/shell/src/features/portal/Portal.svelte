@@ -126,9 +126,7 @@
   /* ── Sidebar ──────────────────────────────────────────── */
   .portal-sidebar {
     overflow-y: auto;
-    background: var(--md-sys-color-surface);
     border-right: 1px solid var(--md-sys-color-outline-variant);
-    background: var(--md-sys-color-surface-container);
     background: var(--md-sys-color-surface-container);
   }
 
@@ -136,7 +134,6 @@
   .portal-main {
     overflow-y: auto;
     padding: 1.5rem;
-    background: var(--md-sys-color-surface-container-lowest);
     min-height: 0;
     background: var(--md-sys-color-surface-container-lowest);
   }
@@ -149,10 +146,8 @@
     padding: 0 1.5rem;
     height: 40px;
     border-top: 1px solid var(--md-sys-color-outline-variant);
-    background: var(--md-sys-color-surface-container);
-    color: white;
-
     background: var(--md-sys-color-primary);
+    color: white;
   }
 
   .footer-icon {

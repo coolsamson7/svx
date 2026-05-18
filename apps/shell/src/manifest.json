@@ -8,8 +8,9 @@
     {
       "id": "users",
       "label": "Users",
-      "permissions": [],
-      "tags": ["navigation", "crud"],
+      "router": { "path": "users" },
+      "permissions": ["users:read"],
+      "tags": ["navigation"],
       "version": "1.0.0",
       "_source": {
         "file": "features/users/UserFeature.svelte",
@@ -29,14 +30,29 @@
     },
     {
       "id": "pageNotFound",
-      "label": "Home",
+      "label": "Page Not Found",
       "router": {
         "path": "unknown"
       },
       "permissions": [],
-      "tags": [],
+      "visibility": ["public"],
+      "tags": ["not-found"],
       "_source": {
         "file": "features/page-not-found/PageNotFound.svelte",
+        "line": 4
+      }
+    },
+    {
+      "id": "unauthorized",
+      "label": "Unauthorized",
+      "router": {
+        "path": "unauthorized"
+      },
+      "permissions": [],
+      "visibility": ["public"],
+      "tags": ["unauthorized"],
+      "_source": {
+        "file": "features/unauthorized/Unauthorized.svelte",
         "line": 4
       }
     },
@@ -47,6 +63,7 @@
         "path": "home"
       },
       "permissions": [],
+      "visibility": ["public"],
       "tags": ["navigation"],
       "_source": {
         "file": "features/home/Home.svelte",

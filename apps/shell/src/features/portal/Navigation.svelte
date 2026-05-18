@@ -11,14 +11,19 @@
   const featureRegistry = env.get(FeatureRegistry);
   const sessionManager  = env.get(SessionManager);
 
-  //const features = featureRegistry.findFeatures(f => (f.tags ?? []).includes("navigation"));
+  const session = sessionManager.hasSession() ? sessionManager.currentSession() : null;
+  const roles   = new Set<string>((session?.user.roles as string[]) ?? []);
 
   const features = featureRegistry
       .finder()
-      //.withoutParent()
-      .matchesSession(sessionManager.hasSession())
       .withTag('navigation')
-      .find();
+      .find()
+      .filter(f => {
+        const isPublic = (f.visibility ?? []).includes('public');
+        if (isPublic) return true;
+        if (!session) return false;
+        return (f.permissions ?? []).every(p => roles.has(p));
+      });
 
   // Icon map: tries to match feature.icon, falls back to a default
   const iconFallback = 'widgets';
@@ -45,6 +50,28 @@
         <span class="nav-label">{feature.label}</span>
       </button>
     {/each}
+  </div>
+
+  <div class="nav-footer">
+    {#if session}
+      <div class="user-info">
+        <span class="material-symbols-rounded nav-icon">account_circle</span>
+        <span class="nav-label">{session.user.name || session.user.preferred_username}</span>
+      </div>
+      <button class="nav-item" onclick={() => sessionManager.closeSession()}>
+        <span class="indicator">
+          <span class="material-symbols-rounded nav-icon">logout</span>
+        </span>
+        <span class="nav-label">Logout</span>
+      </button>
+    {:else}
+      <button class="nav-item" onclick={() => sessionManager.openSession(undefined)}>
+        <span class="indicator">
+          <span class="material-symbols-rounded nav-icon">login</span>
+        </span>
+        <span class="nav-label">Login</span>
+      </button>
+    {/if}
   </div>
 </nav>
 
@@ -154,6 +181,31 @@
 
   .nav-item.active .nav-icon {
     font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  /* ── Footer ─────────────────────────────────── */
+  .nav-footer {
+    margin-top: auto;
+    padding: 12px 12px 0;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 0 16px 0 0;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .user-info .nav-icon {
+    width: 56px;
+    flex-shrink: 0;
+    text-align: center;
   }
 
   /* ── Label ──────────────────────────────────── */

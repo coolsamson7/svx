@@ -48,6 +48,8 @@ export default defineConfig({
       '@svx/validation': path.resolve(__dirname, '../../libs/validation/src'),
       '@svx/portal': path.resolve(__dirname, '../../libs/portal/src'),
       '@svx/security': path.resolve(__dirname, '../../libs/security/src'),
+      '@svx/security-oidc': path.resolve(__dirname, '../../libs/security-oidc/src'),
+      '@svx/security-credentials': path.resolve(__dirname, '../../libs/security-credentials/src'),
       '@svx/service-common': path.resolve(__dirname, '../../libs/service/common/src'),
       '@svx/service-client': path.resolve(__dirname, '../../libs/service/client/src'),
 
