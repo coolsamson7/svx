@@ -354,6 +354,7 @@ export interface ComponentModuleOptions {
   discovery:  AbstractType<ComponentDiscovery>
   components: AbstractType<Component>[]
   addressResolution: AddressResolution
+  imports?: any[]
 }
 
 @Module({})
@@ -389,7 +390,7 @@ export class ComponentModule {
 
       return {
         module: ComponentModule,
-        imports: [ChannelModule.register()],
+        imports: [ChannelModule.register(), ...(options.imports ?? [])],
         providers,
         controllers,
         exports: [

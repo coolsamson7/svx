@@ -1,4 +1,4 @@
-import { FeatureMeta, FeatureRegistry, Manifest } from './feature-registry';
+import { FeatureDescriptor, FeatureRegistry, Manifest } from './feature-registry';
 import { ClientInfo, detectClient } from '../util/client-detector';
 import { FilterContext, ManifestProcessor } from './manifest-filter';
 import { TraceLevel, Tracer } from '@svx/common';
@@ -43,7 +43,7 @@ export interface DeploymentManagerOptions {
    */
   loader: DeploymentLoader;
   /**
-   * the lcoal {@link Manifest}
+   * the local {@link Manifest}
    */
   localManifest: Manifest;
   /**
@@ -151,7 +151,7 @@ export class DeploymentManager {
     // register each module's features with federation loaders for remote modules
 
     for (const module of Object.values(this.deployment.modules)) {
-      for (const feature of module.features as FeatureMeta[])
+      for (const feature of module.features as FeatureDescriptor[])
         if (!feature.label) feature.label = feature.id;
 
       this.featureRegistry.registerManifest(module);

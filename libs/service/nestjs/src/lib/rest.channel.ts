@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable } from '@nestjs/common';
 import { HttpModule, HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel } from './service';
 import { TypeDescriptor, MethodDescriptor, Returns } from '@svx/common';
@@ -143,17 +142,18 @@ export class RestChannel implements Channel {
   url?: string
   instanceSchema?: ProxySchema
 
-  private calls = new Map<string, CompiledCall>()
+  private compiled = false
+  private calls    = new Map<string, CompiledCall>()
 
   constructor(private readonly http: HttpService) {}
 
   call(descriptor: ServiceDescriptor, method: string, ...args: any[]): Promise<any> {
-    if (this.calls.size === 0)
+    if (!this.compiled) {
       this.compileAll(descriptor)
+      this.compiled = true
+    }
 
-    const fn = this.calls.get(method)
-    if (!fn)
-      throw new Error(`No REST mapping for '${method}' on service '${descriptor.name}'`)
+    const fn = this.calls.get(method)!
 
     return fn(args)
   }
@@ -232,17 +232,17 @@ export class RestChannel implements Channel {
     const extractBody    = this.makeBodyExtractor(bodyIndex)
     const extractQuery   = this.makeQueryExtractor(queryParams)
     const handleResponse = this.makeResponseHandler(method ? this.resolveReturnType(method) : undefined)
+    const http           = this.http.axiosRef
+    const baseUrl        = this.url
 
     return async (args: Args): Promise<any> => {
-      const res = await firstValueFrom(
-        this.http.request({
-          method: proxy.method,
-          url:    `${this.url}${buildUrl(args)}`,
-          data:   extractBody(args),
-          params: extractQuery(args),
-        })
-      )
-      return handleResponse(res.data)
+      const { data } = await http.request({
+        method: proxy.method,
+        url:    `${baseUrl}${buildUrl(args)}`,
+        data:   extractBody(args),
+        params: extractQuery(args),
+      })
+      return handleResponse(data)
     }
   }
 
@@ -270,23 +270,21 @@ export class RestChannel implements Channel {
         bodyIndex = p.index
     }
 
-    // precompute the four functions — no logic survives into the hot path
-    const buildUrl      = this.makeUrlBuilder(template, pathParams)
-    const extractBody   = this.makeBodyExtractor(bodyIndex)
-    const extractQuery  = this.makeQueryExtractor(queryParams)
+    const buildUrl       = this.makeUrlBuilder(template, pathParams)
+    const extractBody    = this.makeBodyExtractor(bodyIndex)
+    const extractQuery   = this.makeQueryExtractor(queryParams)
     const handleResponse = this.makeResponseHandler(this.resolveReturnType(method))
+    const http           = this.http.axiosRef
+    const baseUrl        = this.url
 
-    // hot path: 4 calls + 1 await — zero branching, zero loops, zero metadata
     return async (args: Args): Promise<any> => {
-      const res = await firstValueFrom(
-        this.http.request({
-          method: httpMethod,
-          url:    `${this.url}${buildUrl(args)}`,
-          data:   extractBody(args),
-          params: extractQuery(args),
-        })
-      )
-      return handleResponse(res.data)
+      const { data } = await http.request({
+        method: httpMethod,
+        url:    `${baseUrl}${buildUrl(args)}`,
+        data:   extractBody(args),
+        params: extractQuery(args),
+      })
+      return handleResponse(data)
     }
   }
 

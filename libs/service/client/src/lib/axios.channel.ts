@@ -77,8 +77,9 @@ export class AxiosRestChannel implements Channel {
   // instance
 
   private axios: AxiosInstance;
-  private readonly calls = new Map<string, CompiledCall>();
+  private readonly calls        = new Map<string, CompiledCall>();
   private readonly compilations = new Map<string, Promise<void>>();
+  private readonly ready        = new Set<string>();
   private tokenProvider?: { getToken(): Promise<string | undefined> };
 
   // constructor
@@ -136,12 +137,15 @@ export class AxiosRestChannel implements Channel {
     method: string,
     ...args: any[]
   ): Promise<any> {
-    let compile = this.compilations.get(descriptor.name);
-    if (!compile) {
-      compile = this.compileAll(descriptor);
-      this.compilations.set(descriptor.name, compile);
+    if (!this.ready.has(descriptor.name)) {
+      let compile = this.compilations.get(descriptor.name);
+      if (!compile) {
+        compile = this.compileAll(descriptor);
+        this.compilations.set(descriptor.name, compile);
+      }
+      await compile;
+      this.ready.add(descriptor.name);
     }
-    await compile;
 
     const fn = this.calls.get(method);
     if (!fn)

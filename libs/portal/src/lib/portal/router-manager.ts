@@ -1,8 +1,8 @@
 import { Environment, injectable } from '@svx/di';
 import { createRouter, type HooksContext }    from 'sv-router';
-import { FeatureRegistry, FeatureMeta }       from './feature-registry';
+import { FeatureRegistry, FeatureDescriptor }       from './feature-registry';
 
-export type RouteGuard = (feature: FeatureMeta, ctx: HooksContext) => void | Promise<void>
+export type RouteGuard = (feature: FeatureDescriptor, ctx: HooksContext) => void | Promise<void>
 
 @injectable({eager: false})
 export class RouterManager {
@@ -12,7 +12,7 @@ export class RouterManager {
   registry: FeatureRegistry;
 
   #guard?:         RouteGuard
-  #pathToFeature = new Map<string, FeatureMeta>()
+  #pathToFeature = new Map<string, FeatureDescriptor>()
 
   // constructor
 

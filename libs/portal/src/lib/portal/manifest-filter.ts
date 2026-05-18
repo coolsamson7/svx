@@ -1,4 +1,4 @@
-import { FeatureMeta, Manifest } from './feature-registry';
+import { FeatureDescriptor, Manifest } from './feature-registry';
 import { ClientInfo } from '../util/client-detector';
 
 /**
@@ -16,15 +16,15 @@ export interface ManifestFilter {
 }
 
 /**
- * a `FeatureFilter` is used to filter {@link FeatureMeta}
+ * a `FeatureFilter` is used to filter {@link FeatureDescriptor}
  */
 export interface FeatureFilter {
   /**
    * return `true`, if the specified feature is accpeted.
-   * @param feature the {@link FeatureMeta}
+   * @param feature the {@link FeatureDescriptor}
    * @param context the {@link FilterContext}
    */
-  accept(feature: FeatureMeta, context: FilterContext): boolean;
+  accept(feature: FeatureDescriptor, context: FilterContext): boolean;
 }
 
 export class FeaturePermissionFilter implements FeatureFilter {
@@ -34,7 +34,7 @@ export class FeaturePermissionFilter implements FeatureFilter {
 
   // implement
 
-  accept(feature: FeatureMeta, context: FilterContext): boolean {
+  accept(feature: FeatureDescriptor, context: FilterContext): boolean {
     if (feature.permissions)
       for (const permission of feature.permissions)
         if (!this.hasPermission(permission)) return false;
@@ -46,7 +46,7 @@ export class FeaturePermissionFilter implements FeatureFilter {
 export class FeatureClientInfoFilter implements FeatureFilter {
   // implement
 
-  accept(feature: FeatureMeta, context: FilterContext): boolean {
+  accept(feature: FeatureDescriptor, context: FilterContext): boolean {
     if (!feature.clients) return true;
 
     const constraints = feature.clients;
@@ -97,7 +97,7 @@ export class FeatureClientInfoFilter implements FeatureFilter {
 export class FeatureEnabledFilter implements FeatureFilter {
   // implement
 
-  accept(feature: FeatureMeta, context: FilterContext): boolean {
+  accept(feature: FeatureDescriptor, context: FilterContext): boolean {
     if (feature.enabled !== undefined && !feature.enabled) return false;
 
     return true;
@@ -111,7 +111,7 @@ export class FeatureFeatureFilter implements FeatureFilter {
 
   // implement
 
-  accept(feature: FeatureMeta, context: FilterContext): boolean {
+  accept(feature: FeatureDescriptor, context: FilterContext): boolean {
     if (!this.hasFeature(feature.id))
       return false;
 
@@ -198,7 +198,7 @@ export class ManifestProcessor {
     const filteredFeatures = manifest.features.filter((feature) => {
       // apply all feature filters
       for (const filter of this.featureFilters) {
-        if (!filter.accept(feature as FeatureMeta, context)) return false;
+        if (!filter.accept(feature as FeatureDescriptor, context)) return false;
       }
 
       return true;

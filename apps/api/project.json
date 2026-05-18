@@ -76,6 +76,10 @@
         "development": {
           "buildTarget": "api:build:development"
         },
+        "debug": {
+          "buildTarget": "api:build:development",
+          "inspect": true
+        },
         "production": {
           "buildTarget": "api:build:production"
         }

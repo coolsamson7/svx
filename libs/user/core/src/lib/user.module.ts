@@ -11,12 +11,11 @@ import './user.component';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, AddressEntity]),
-
     ComponentModule.forRoot({
       components: [UserComponent],
       discovery: LocalComponentDiscovery,
       addressResolution: new DefaultAddressResolution('local', 'rest'),
+      imports: [TypeOrmModule.forFeature([UserEntity, AddressEntity])],
     }),
   ],
 })

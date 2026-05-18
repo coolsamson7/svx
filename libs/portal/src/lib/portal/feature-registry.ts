@@ -23,7 +23,7 @@ export interface ClientConstraints {
   capabilities?: Array<string> | null;
 }
 
-export interface FeatureMeta {
+export interface FeatureDescriptor {
   id: string;
   label: string;
   enabled?: boolean;
@@ -34,7 +34,7 @@ export interface FeatureMeta {
   version?: string;
   visibility?: Array<string>; // better
   clients?: ClientConstraints | null;
-  children?: FeatureMeta[];
+  children?: FeatureDescriptor[];
   _source?: {
     file: string;
     line: number;
@@ -43,7 +43,7 @@ export interface FeatureMeta {
 
 // this is the data used internally
 
-interface FeatureData extends FeatureMeta {
+interface FeatureData extends FeatureDescriptor {
   loader?: ComponentLoader
   component?: Component
 }
@@ -56,10 +56,10 @@ export interface Manifest {
   label: string;
   version: string;
   remote?: string;
-  features: FeatureMeta[];
+  features: FeatureDescriptor[];
 }
 
-export function defineFeature(meta: FeatureMeta, loader: ComponentLoader): void {
+export function defineFeature(meta: FeatureDescriptor, loader: ComponentLoader): void {
   if (FeatureRegistry.instance)
     FeatureRegistry.instance.defineFeature(meta, loader);
 
@@ -74,7 +74,7 @@ type FederationContainer = {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type PermissionChecker = (feature: FeatureMeta) => boolean
+export type PermissionChecker = (feature: FeatureDescriptor) => boolean
 
 // ── Feature Registry ────────────────────────────────────────────────────────
 
@@ -114,7 +114,7 @@ export class FeatureRegistry {
     this.#permissionChecker = checker;
   }
 
-  checkPermission(feature: FeatureMeta): boolean {
+  checkPermission(feature: FeatureDescriptor): boolean {
     if (!this.#permissionChecker) return true;
     return this.#permissionChecker(feature);
   }
@@ -139,7 +139,7 @@ export class FeatureRegistry {
     );
   }
 
-  findFeatures(filter: (f: FeatureMeta) => boolean): FeatureData[] {
+  findFeatures(filter: (f: FeatureDescriptor) => boolean): FeatureData[] {
     return [...this.features.values()].filter((f) => {
       if (!filter(f)) return false;
       if (!this.#permissionChecker) return true;
@@ -160,22 +160,6 @@ export class FeatureRegistry {
     }
 
     return container!;
-  }
-
-  async loadManifests(...urls: string[]): Promise<this> {
-    for (const url of urls)
-      try {
-        await this.loadManifest(url);
-      } catch (e) {
-        Tracer.Trace(
-          'router',
-          TraceLevel.LOW,
-          'failed to load manifest {0}',
-          url,
-        );
-      }
-
-    return this;
   }
 
   registerManifest(manifest: Manifest): this {
@@ -207,27 +191,12 @@ export class FeatureRegistry {
     return this;
   }
 
-  async loadManifest(url: string): Promise<this> {
-    const res = await fetch(url);
-    if (!res.ok) throw res.statusText;
-
-    const manifest: Manifest = await res.json();
-
-    this.registerManifest(manifest);
-
-    console.log(
-      `[FeatureRegistry] loaded ${manifest.features.length} features from ${manifest.id}`,
-    );
-
-    return this;
-  }
-
-  register(...features: FeatureMeta[]) {
+  register(...features: FeatureDescriptor[]) {
     // local function
 
     const register = (
-      feature: FeatureMeta,
-      parent: FeatureMeta | null = null,
+      feature: FeatureDescriptor,
+      parent: FeatureDescriptor | null = null,
     ) => {
       // fix qualified name
 
@@ -254,7 +223,7 @@ export class FeatureRegistry {
     features.forEach((f) => register(f));
   }
 
-  defineFeature(feature: FeatureMeta, loader?: ComponentLoader): this {
+  defineFeature(feature: FeatureDescriptor, loader?: ComponentLoader): this {
     if (Tracer.ENABLED) {
       Tracer.Trace('portal', TraceLevel.HIGH, 'define feature {0}', feature.id);
     }
@@ -273,7 +242,7 @@ export class FeatureRegistry {
     return this.features.get(id);
   }
 
-  getFeatures(): FeatureMeta[] {
+  getFeatures(): FeatureDescriptor[] {
     return [...this.features.values()];
   }
 
@@ -309,7 +278,7 @@ export class FeatureRegistry {
     return new FeatureFinder(this);
   }
 
-  filter(f: FeatureFinderFilter): FeatureMeta[] {
+  filter(f: FeatureFinderFilter): FeatureDescriptor[] {
     return Array.from(this.features.values()).filter(f);
   }
 }
@@ -384,7 +353,7 @@ export function clientMatchesConstraints(
 
 
 
-export type FeatureFinderFilter = (feature: FeatureMeta) => boolean;
+export type FeatureFinderFilter = (feature: FeatureDescriptor) => boolean;
 
 export class FeatureFinder {
   filter: FeatureFinderFilter[] = [];
@@ -442,7 +411,7 @@ export class FeatureFinder {
 
   // find
 
-  findOptional(): FeatureMeta | undefined {
+  findOptional(): FeatureDescriptor | undefined {
     const result = this.find();
 
     if (result.length == 1) return result[0];
@@ -456,7 +425,7 @@ export class FeatureFinder {
       );
   }
 
-  findOne(): FeatureMeta {
+  findOne(): FeatureDescriptor {
     const result = this.find();
 
     if (result.length == 1) return result[0];
@@ -469,7 +438,7 @@ export class FeatureFinder {
       );
   }
 
-  find(): FeatureMeta[] {
+  find(): FeatureDescriptor[] {
     return this.registry.filter((feature) => {
       for (const filter of this.filter)
         if (!filter(feature)) {

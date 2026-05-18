@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { injectable }    from '@svx/di'
-import { AxiosRestChannel } from './axios.channel'
+import { AxiosChannelFactory, AxiosRestChannel } from './axios.channel'
 
 import {
   AbstractType,
@@ -32,7 +32,7 @@ export class ServiceClient {
 
   // constructor
 
-  constructor(private componentLocator: ComponentLocator) {
+  constructor(private componentLocator: ComponentLocator, private channelFactory: AxiosChannelFactory) {
   }
 
   // public
@@ -51,8 +51,7 @@ export class ServiceClient {
     const url = this.componentLocator.locate(component)
     let channel = this.channels.get(url)
     if (!channel) {
-      const axiosChannel = new AxiosRestChannel()
-      axiosChannel.url = url
+      const axiosChannel = this.channelFactory.create(url)
       if (this.tokenProvider)
         axiosChannel.setTokenProvider(this.tokenProvider)
       this.channels.set(url, axiosChannel)
