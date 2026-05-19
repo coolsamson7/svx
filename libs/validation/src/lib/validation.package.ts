@@ -1,5 +1,5 @@
 import pkg from '../../package.json'
 import { DeclareLibrary, AbstractPackage } from '@svx/common'
 
-@DeclareLibrary({ name: pkg.name, version: pkg.version })
+@DeclareLibrary(pkg)
 export class ValidationPackage extends AbstractPackage {}

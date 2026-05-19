@@ -1,4 +1,4 @@
-import { Controller, Injectable, Get, Post, Put, Delete, Param, Body, ParseIntPipe } from "@nestjs/common";
+import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe } from "@nestjs/common";
 import { Repository } from "typeorm";
 import { UserEntity } from "./entity/user.entity";
 import { UserDto, AddressDto, UserInventoryService } from '@svx/user-interface';
@@ -21,7 +21,6 @@ class AddressSynchronizer extends RelationSynchronizer<AddressDto, AddressEntity
   }
 }
 
-@Injectable()
 @Implementation()
 @Controller("users")
 export class UserInventoryServiceController extends UserInventoryService {
