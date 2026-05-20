@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "../../dist/libs/security",
     "declaration": true,
-    "types": [],
+    "types": ["node"],
     "rootDir": ".."
   },
   "include": [
