@@ -162,7 +162,10 @@ export abstract class TypeModel<T = any> implements Hashable {
   getPaths(): string[] {
     const result: string[] = [];
 
-    const compute = (typeModel: TypeModel, prefix = "") => {
+    const compute = (typeModel: TypeModel, prefix = "", visited = new Set<TypeModel>()) => {
+      if (visited.has(typeModel)) return
+      visited.add(typeModel)
+
       for (const fieldName in typeModel.properties) {
         const field = typeModel.properties[fieldName];
 
@@ -170,10 +173,10 @@ export abstract class TypeModel<T = any> implements Hashable {
         result.push(path);
 
         if (field.isArray()) {
-          compute(field.getElementType()!, path);
+          compute(field.getElementType()!, path, visited);
         }
         else if (field.isObject()) {
-          compute(field, path);
+          compute(field, path, visited);
         }
       }
     };
@@ -406,8 +409,8 @@ class ClassTypeModel<T=any> extends TypeModel<T> {
   static of<T>(type: GType<T>) {
     let result = ClassTypeModel.classes.get(type)
     if (!result) {
-
       ClassTypeModel.classes.set(type, result = new ClassTypeModel<T>(type))
+      result.analyze(TypeDescriptor.forType(type))
     }
 
     return result
@@ -419,20 +422,19 @@ class ClassTypeModel<T=any> extends TypeModel<T> {
 
   private analyze(descriptor: TypeDescriptor<T>) {
     for ( const property of descriptor.getFields()) {
-      const type = property.propertyType
+      const info = property.fieldType
 
-      if (!type) continue  // skip fields whose type metadata couldn't be resolved (e.g. circular imports)
+      if (!info.type) continue  // skip fields whose type metadata couldn't be resolved (e.g. circular imports)
 
       let typeModel
-      if (type === Array) {
-        typeModel = new ArrayTypeModel(ClassTypeModel.of(property.elementType))
+      if (info.isArray()) {
+        typeModel = new ArrayTypeModel(ClassTypeModel.of(info.elementType))
       }
-      else if (isPrimitiveCtor(type)) {
-        typeModel = PrimitiveTypeModel.forName(type.name)
+      else if (isPrimitiveCtor(info.type)) {
+        typeModel = PrimitiveTypeModel.forName(info.type.name)
       }
       else {
-        // class
-        typeModel = ClassTypeModel.of(type)
+        typeModel = ClassTypeModel.of(info.type)
       }
 
       this.properties[property.name] = typeModel
@@ -442,9 +444,9 @@ class ClassTypeModel<T=any> extends TypeModel<T> {
   // constructor
 
   constructor(ctor: GType<T>) {
-    super(ctor.name); // ?
+    super(ctor.name);
 
-    this.analyze(this.descriptor = TypeDescriptor.forType(ctor));
+    this.descriptor = TypeDescriptor.forType(ctor);
   }
 
   // implement

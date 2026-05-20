@@ -1111,7 +1111,7 @@ export class ClassInstanceProvider<T> extends InstanceProvider<T> {
           this.host,
           methodDescriptor.method,
           methodDescriptor.name,
-          methodDescriptor.returnType,
+          methodDescriptor.returnType?.type,
           eager,
           scope
         ));

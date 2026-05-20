@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer';
 import { DeclareChannel } from './service';
-import { TypeDescriptor, MethodDescriptor, Returns } from '@svx/common';
+import { TypeDescriptor, MethodDescriptor } from '@svx/common';
 import { ComponentDescriptor, Component, ServiceDescriptor, Channel, CachingChannelFactory } from '@svx/service-common';
 
 /* =========================================================
@@ -351,11 +351,10 @@ export class RestChannel implements Channel {
   }
 
   private resolveReturnType(method: MethodDescriptor): ClassConstructor<any> | undefined {
-    const dec = method.getDecorator(Returns)
-    if (dec) return dec.arguments[0] as ClassConstructor<any>
+    if (method.elementType) return method.elementType
 
-    if (!method.async && method.returnType !== Promise)
-      return method.returnType
+    if (method.returnType?.type !== Promise)
+      return method.returnType?.type
 
     return undefined
   }

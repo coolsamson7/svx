@@ -2,7 +2,7 @@ import "reflect-metadata"
 import { number, object, string, InferObject, array } from "@svx/validation";
 import { mapping, Mapper, ApplyContext } from "./mapper";
 import { RelationSynchronizer } from "./relation-synchronizer"
-import { ArrayOf, ElementType, TypeDescriptor } from "@svx/common";
+import { TypeDescriptor } from "@svx/common";
 import { plainToInstance } from "class-transformer";
 
 /* =========================================================
@@ -112,12 +112,10 @@ describe("Mapper - Array support", () => {
   }
 
   class GroupEntity {
-    @field()  @ArrayOf(UserEntity)
-    users!: UserEntity[];
+    @field()  users!: UserEntity[];
   }
 
   class GroupDTO {
-    @ElementType(UserDTO)
     @field()  users!: UserDTO[];
   }
 
@@ -362,7 +360,6 @@ describe("apply()", () => {
     }
 
     class Container {
-      @ArrayOf(ItemEntity)
       @field() items!: ItemEntity[];
 
       constructor(items: ItemEntity[]) {

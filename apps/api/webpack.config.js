@@ -11,6 +11,15 @@ const NESTJS_OPTIONAL_LAZY_IMPORTS = [
 ];
 
 module.exports = composePlugins(withNx(), (config) => {
+  config.module ??= {};
+  config.module.rules ??= [];
+  config.module.rules.unshift({
+    test: /\.ts$/,
+    exclude: /node_modules/,
+    enforce: 'pre',
+    loader: resolve(__dirname, '../../tools/ts-descriptor-transformer/webpack-loader.js'),
+  });
+
   config.output = {
     path: join(__dirname, '../../dist/api'),
     clean: process.env.NODE_ENV === 'production',

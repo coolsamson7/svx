@@ -1,11 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
-
 import { UserEntity } from "./user.entity";
-import { Field } from "@svx/common";
+import { Reflectable } from "@svx/common";
 
-@Entity()
+@Reflectable() @Entity()
 export class AddressEntity {
-  @Field() @PrimaryGeneratedColumn() id!: number;
-  @Field()  @Column() city!: string;
+  @PrimaryGeneratedColumn() id!: number;
+  @Column() city!: string;
   @ManyToOne(() => UserEntity, u => u.addresses, { onDelete: 'CASCADE' }) user!: UserEntity;
 }

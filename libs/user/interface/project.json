@@ -3,14 +3,25 @@
   "sourceRoot": "libs/user/interface/src",
   "projectType": "library",
   "targets": {
+    "test": {
+      "inputs": ["default", "^production", {"externalDependencies": ["vitest"]}, {"env": "CI"}]
+    },
     "build": {
       "executor": "@nx/js:tsc",
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "ts-descriptor-transformer:build"],
       "outputs": ["{options.outputPath}"],
       "options": {
         "main": "libs/user/interface/src/index.ts",
         "tsConfig": "libs/user/interface/tsconfig.lib.json",
-        "outputPath": "dist/libs/user/interface"
+        "outputPath": "dist/libs/user/interface",
+        "transformers": [
+          {
+            "name": "ts-descriptor-transformer",
+            "options": {
+              "decorators": ["Reflectable", "DeclareService", "DeclareComponent"]
+            }
+          }
+        ]
       }
     }
   }

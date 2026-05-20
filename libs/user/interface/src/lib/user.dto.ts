@@ -1,9 +1,9 @@
-import { Field, ArrayOf } from '@svx/common';
-
+import { Reflectable } from '@svx/common';
 import { AddressDto } from './address.dto';
 
+@Reflectable()
 export class UserDto {
-  @Field() id?: number;
-  @Field() name!: string;
-  @ArrayOf(AddressDto) @Field() addresses!: AddressDto[];
+  id?: number;
+  name!: string;
+  addresses!: AddressDto[];
 }

@@ -11,6 +11,8 @@ import { configureOIDC } from '@svx/security-oidc';
 import { Environment } from '@svx/di';
 import { DeploymentManager, FeatureRegistry } from '@svx/portal';
 import { mount } from 'svelte';
+import { TypeDescriptor } from '@svx/common/lib/reflection/type-descriptor';
+import { UserInventoryService } from '@svx/user-interface';
 import './bootstrap/component-locator';
 import { ApplicationModule } from './bootstrap/application.module';
 
@@ -44,6 +46,13 @@ await deploymentManager.loadDeployment({
 });
 
 await registry.bootComponents(import.meta.glob('./features/**/*.svelte'));
+
+const t = TypeDescriptor.forType(UserInventoryService as any)
+console.log(t)
+
+const s = environment.get(UserInventoryService)
+
+s.findAll().then(users => console.log(users))
 
 import './main.css';
 

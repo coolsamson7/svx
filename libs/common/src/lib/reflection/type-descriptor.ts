@@ -5,48 +5,6 @@
 import { TraceLevel, Tracer } from "../tracer"
 import { StringBuilder } from "../util"
 import { GType } from "../lang"
-import { ReflectedClass, ReflectorOutput } from "./reflector.interface";
-
-/* =========================================================
- * INTERNAL METADATA KEYS
- * ========================================================= */
-
-const ELEMENT_TYPE_KEY = Symbol("elementType")
-
-/* =========================================================
- * DECORATORS
- * ========================================================= */
-
-export function ElementType(type: Function) {
-    return function (target: any, property: string) {
-        Reflect.defineMetadata(ELEMENT_TYPE_KEY, type, target, property)
-        TypeDescriptor
-            .forType(target.constructor)
-            .addPropertyDecorator(target, property, ElementType, type)
-    }
-}
-
-export const ArrayOf = ElementType
-
-export function Returns(type: any) {
-    return function (target: any, key: string | symbol, _descriptor: PropertyDescriptor) {
-        TypeDescriptor
-            .forType(target.constructor)
-            .addMethodDecorator(target, key as string, Returns, type);
-    };
-}
-
-export const Field = (): any => {
-    return function (target: any, propertyKey: string) {
-        TypeDescriptor.forType(target.constructor).addPropertyDecorator(target, propertyKey, Field)
-    }
-}
-
-export function Method(): any {
-  return (target: any, property: string) => {
-    TypeDescriptor.forType(target.constructor).addMethodDecorator(target, property, Method)
-  };
-}
 
 /* =========================================================
  * PROPERTY SYSTEM
@@ -92,6 +50,21 @@ export abstract class PropertyDescriptor {
 }
 
 /* =========================================================
+ * TYPE INFO
+ * ========================================================= */
+
+export class TypeInfo {
+    constructor(
+        public readonly type: any,
+        public readonly typeArgs?: any[]
+    ) {}
+
+    get elementType(): any | undefined { return this.typeArgs?.[0] }
+    isArray(): boolean { return this.type === Array }
+    isSet():   boolean { return this.type === Set }
+}
+
+/* =========================================================
  * PARAMETER DESCRIPTOR
  * ========================================================= */
 
@@ -101,7 +74,7 @@ export class ParameterDescriptor {
     constructor(
         public index:     number,
         public name:      string,
-        public paramType: any,          // runtime type from design:paramtypes or JSON type string
+        public paramType: TypeInfo,
     ) {}
 
     addDecorator(decorator: Function, args: any[]) {
@@ -128,15 +101,11 @@ export class ParameterDescriptor {
             .map(d => `@${d.decorator.name}(${d.arguments.join(', ')})`)
             .join(' ')
 
-        const typeName = typeof this.paramType === 'string'
-            ? this.paramType                          // from JSON: "string", "number", etc.
-            : this.paramType?.name ?? 'any'           // from reflect-metadata: actual type
-
         builder
             .append(decorators ? `${decorators} ` : '')
             .append(this.name)
             .append(': ')
-            .append(typeName)
+            .append(this.paramType.type?.name ?? 'any')
     }
 }
 
@@ -146,20 +115,17 @@ export class ParameterDescriptor {
 
 export class MethodDescriptor extends PropertyDescriptor {
     public async      = false
-    public parameters: ParameterDescriptor[] = []   // ← proper typed array, not (method as any)
+    public parameters: ParameterDescriptor[] = []
+    public returnType?: TypeInfo
+    private paramsFilled = false
 
     get paramTypes(): any[] {
-        if (this.type === PropertyType.CONSTRUCTOR)
-            return Reflect.getMetadata('design:paramtypes', this.owner) || []
-
-        return Reflect.getMetadata('design:paramtypes', this.owner.prototype, this.name) || []
+        if (!this.paramsFilled) this.buildParametersFromMetadata()
+        return this.parameters.map(p => p.paramType.type)
     }
 
-    get returnType(): any {
-        if (this.type === PropertyType.CONSTRUCTOR)
-            return this.owner
-
-        return Reflect.getMetadata('design:returntype', this.owner.prototype, this.name)
+    get elementType(): any | undefined {
+        return this.returnType?.elementType
     }
 
     constructor(
@@ -170,19 +136,23 @@ export class MethodDescriptor extends PropertyDescriptor {
     ) {
         super(name, type)
         this.async = method.constructor.name === 'AsyncFunction'
+        const rt = type === PropertyType.CONSTRUCTOR
+            ? owner
+            : Reflect.getMetadata('design:returntype', owner.prototype, name)
+        if (rt) this.returnType = new TypeInfo(rt)
     }
 
-    // -------------------------------------------------------
-    // Build ParameterDescriptors from reflect-metadata.
-    // Called after construction when runtime types are available.
-    // JSON-loaded methods get their parameters from loadReflectionFromJSON.
-    // -------------------------------------------------------
     buildParametersFromMetadata(): void {
-        if (this.parameters.length > 0) return   // already populated (e.g. from JSON)
+        if (this.paramsFilled) return
+        this.paramsFilled = true
+        if (this.parameters.length > 0) return
 
-        const types = this.paramTypes
-        types.forEach((paramType, index) => {
-            this.parameters.push(new ParameterDescriptor(index, `arg${index}`, paramType))
+        const types: any[] = this.type === PropertyType.CONSTRUCTOR
+            ? Reflect.getMetadata('design:paramtypes', this.owner) || []
+            : Reflect.getMetadata('design:paramtypes', this.owner.prototype, this.name) || []
+
+        types.forEach((paramType: any, index: number) => {
+            this.parameters.push(new ParameterDescriptor(index, `arg${index}`, new TypeInfo(paramType)))
         })
     }
 
@@ -205,13 +175,9 @@ export class MethodDescriptor extends PropertyDescriptor {
             p.report(builder)
         })
 
-        // fallback to paramTypes if no ParameterDescriptors yet
-        if (this.parameters.length === 0)
-            builder.append(this.paramTypes.map(p => p?.name ?? 'any').join(', '))
-
         builder.append(")")
 
-        if (this.returnType) builder.append(": ").append(this.returnType.name)
+        if (this.returnType) builder.append(": ").append(this.returnType.type?.name ?? 'void')
 
         builder.append("\n")
     }
@@ -221,17 +187,22 @@ export class MethodDescriptor extends PropertyDescriptor {
  * FIELD DESCRIPTOR
  * ========================================================= */
 
-export class FieldDescriptor extends PropertyDescriptor {
-    public propertyType: any
-    public elementType?: any
+export interface TypeRef {
+    t: () => any
+    a?: TypeRef[]
+}
 
-    constructor(name: string) {
+export class FieldDescriptor extends PropertyDescriptor {
+    public fieldType: TypeInfo
+
+    constructor(name: string, type?: any) {
         super(name, PropertyType.FIELD)
+        this.fieldType = new TypeInfo(type)
     }
 
-    isArray(): boolean  { return this.propertyType === Array }
-    isSet():   boolean  { return this.propertyType === Set }
-    getElementType(): any | undefined { return this.elementType }
+    isArray(): boolean  { return this.fieldType?.isArray() ?? false }
+    isSet():   boolean  { return this.fieldType?.isSet() ?? false }
+    getElementType(): any | undefined { return this.fieldType?.elementType }
 
     report(builder: StringBuilder): void {
         for (const decorator of this.decorators)
@@ -239,10 +210,10 @@ export class FieldDescriptor extends PropertyDescriptor {
 
         builder.append("\t").append(this.name)
 
-        if (this.propertyType) {
-            builder.append(": ").append(this.propertyType.name)
-            if (this.elementType)
-                builder.append("<").append(this.elementType.name).append(">")
+        if (this.fieldType?.type) {
+            builder.append(": ").append(this.fieldType.type.name)
+            if (this.fieldType.elementType)
+                builder.append("<").append(this.fieldType.elementType.name).append(">")
         }
 
         builder.append("\n")
@@ -258,55 +229,7 @@ export interface Decorator<T = any> {
 }
 
 export class TypeDescriptor<T> {
-    private static reflected  = new Map<string, ReflectedClass>()
     private static instances  = new Map<string, TypeDescriptor<any>>()
-
-    static loadReflection(data: ReflectorOutput) {
-        for (const cls of data.classes)
-            TypeDescriptor.reflected.set(cls.name, cls)
-    }
-
-    // -------------------------------------------------------
-    // Merge method decorators + parameters from child class
-    // up into parent class reflected data, then patch live instance.
-    // -------------------------------------------------------
-    static mergeChildDecorators(childName: string, parentName: string): void {
-        const child = TypeDescriptor.reflected.get(childName)
-        if (!child) throw new Error(`No reflected data for '${childName}'`)
-
-        const existing = TypeDescriptor.reflected.get(parentName)
-        const parent: ReflectedClass = existing ?? { name: parentName, filePath: '', decorators: [], methods: [] }
-        if (!existing) TypeDescriptor.reflected.set(parentName, parent)
-
-        // merge class-level decorators
-        for (const dec of child.decorators)
-            if (!parent.decorators.some(d => d.name === dec.name))
-                parent.decorators.push(dec)
-
-        // merge method decorators and parameters
-        for (const childMethod of child.methods) {
-            const existingMethod = parent.methods.find(m => m.name === childMethod.name)
-            const parentMethod = existingMethod ?? { name: childMethod.name, returnType: childMethod.returnType, decorators: [], parameters: [] }
-            if (!existingMethod) parent.methods.push(parentMethod)
-
-            for (const dec of childMethod.decorators)
-                if (!parentMethod.decorators.some(d => d.name === dec.name))
-                    parentMethod.decorators.push(dec)
-
-            for (const childParam of childMethod.parameters) {
-                const existingParam = parentMethod.parameters.find(p => p.name === childParam.name)
-                const parentParam = existingParam ?? { name: childParam.name, type: childParam.type, decorators: [] }
-                if (!existingParam) parentMethod.parameters.push(parentParam)
-
-                for (const dec of childParam.decorators)
-                    if (!parentParam.decorators.some(d => d.name === dec.name))
-                        parentParam.decorators.push(dec)
-            }
-        }
-
-        // patch live descriptor if already constructed
-        TypeDescriptor.instances.get(parentName)?.patchFromReflected()
-    }
 
     static forType<T>(type: GType<T>): TypeDescriptor<T> {
         const proto = type.prototype as any
@@ -334,66 +257,36 @@ export class TypeDescriptor<T> {
             this.parent = TypeDescriptor.forType(parentProto.constructor)
 
         this.analyzeStructure(this.type)
-        this.loadReflectionFromJSON()
+        this.loadFromStaticDescriptor()
         this.inheritFromParent()
     }
 
-    // -------------------------------------------------------
-    // Load / patch from JSON reflected data.
-    // Idempotent — skips already-present entries.
-    // -------------------------------------------------------
-    patchFromReflected(): void {
-        this.loadReflectionFromJSON()
-    }
+    private loadFromStaticDescriptor(): void {
+        const desc = (this.type as any)._descriptor as {
+            fields?: Array<{ name: string; ref: TypeRef; optional?: boolean }>
+            methods?: Array<{ name: string; params: Array<{ name: string; ref: TypeRef }>; ret: TypeRef }>
+        } | undefined
+        if (!desc) return
 
-    private loadReflectionFromJSON(): void {
-        const reflected = TypeDescriptor.reflected.get(this.type.name)
-        if (!reflected) return
-
-        // ── class decorators ──────────────────────────────
-        for (const d of reflected.decorators) {
-            if (!this.decorators.some(ex => ex.decorator.name === d.name))
-                this.decorators.push({ decorator: { name: d.name } as any, arguments: d.arguments })
+        for (const f of desc.fields ?? []) {
+            let field = this.getField(f.name)
+            if (!field) {
+                field = new FieldDescriptor(f.name)
+                this.properties[f.name] = field
+            }
+            field.fieldType = new TypeInfo(f.ref.t(), f.ref.a?.map(r => r.t()))
         }
 
-        // ── methods ───────────────────────────────────────
-        for (const m of reflected.methods) {
+        for (const m of desc.methods ?? []) {
             let method = this.getMethod(m.name)
-
             if (!method) {
-                const synthetic = async function() {}
-                method = new MethodDescriptor(m.name, synthetic, PropertyType.METHOD, this.type)
+                method = new MethodDescriptor(m.name, function() {}, PropertyType.METHOD, this.type)
                 this.properties[m.name] = method
             }
-
-            // merge method-level decorators
-            for (const d of m.decorators) {
-                if (!method.decorators.some(ex => ex.decorator.name === d.name))
-                    method.addDecorator({ name: d.name } as any, d.arguments)
-            }
-
-            // ── parameters: build ParameterDescriptors from JSON ──
-            // JSON has: { name, type, decorators[] } — index = array position
-            m.parameters.forEach((p, position) => {
-                const index = (p as any).index ?? position
-
-                let param = method!.getParameter(index)
-                if (!param) {
-                    // paramType: prefer runtime type from paramTypes[], fall back to JSON type string
-                    const runtimeType = method!.paramTypes[index]
-                    param = new ParameterDescriptor(index, p.name, runtimeType ?? p.type)
-                    method!.parameters.push(param)
-                }
-
-                // merge parameter decorators
-                for (const d of p.decorators) {
-                    if (!param.decorators.some(ex => ex.decorator.name === d.name))
-                        param.addDecorator({ name: d.name } as any, d.arguments)
-                }
-            })
-
-            // ensure parameters are sorted by index
-            method.parameters.sort((a, b) => a.index - b.index)
+            method.parameters = m.params.map((p, i) =>
+                new ParameterDescriptor(i, p.name, new TypeInfo(p.ref.t(), p.ref.a?.map(r => r.t())))
+            )
+            method.returnType = new TypeInfo(m.ret.t(), m.ret.a?.map(r => r.t()))
         }
     }
 
@@ -427,20 +320,23 @@ export class TypeDescriptor<T> {
                 this.properties[property] = method
             }
         }
-        if (method) method.addDecorator(decorator, args)
+        if (method) {
+            if (!method.returnType) {
+                const rt = Reflect.getMetadata('design:returntype', target, property)
+                if (rt) method.returnType = new TypeInfo(rt)
+            }
+            method.addDecorator(decorator, args)
+        }
         return this
     }
 
     public addPropertyDecorator(target: any, property: string, decorator: Function, ...args: any[]): this {
         let descriptor = this.getField(property)
         if (!descriptor) {
-            descriptor = new FieldDescriptor(property)
+            descriptor = new FieldDescriptor(property, Reflect.getMetadata('design:type', target, property))
             this.properties[property] = descriptor
-            descriptor.propertyType = Reflect.getMetadata('design:type', target, property)
         }
         descriptor.addDecorator(decorator, args)
-        if (decorator === ElementType)
-            descriptor.elementType = args[0]
         return this
     }
 
@@ -497,18 +393,11 @@ export class TypeDescriptor<T> {
                         const method = new MethodDescriptor(
                             key, desc.value, PropertyType.METHOD, proto.constructor as GType<any>
                         )
-                        // build ParameterDescriptors from reflect-metadata right away
-                        method.buildParametersFromMetadata()
                         this.properties[key] = method
                     }
                 } else {
-                    if (!this.properties[key]) {
-                        const fieldDesc = new FieldDescriptor(key)
-                        fieldDesc.propertyType = Reflect.getMetadata('design:type', proto, key)
-                        const elementType = Reflect.getMetadata(ELEMENT_TYPE_KEY, proto, key)
-                        if (elementType) fieldDesc.elementType = elementType
-                        this.properties[key] = fieldDesc
-                    }
+                    if (!this.properties[key])
+                        this.properties[key] = new FieldDescriptor(key, Reflect.getMetadata('design:type', proto, key))
                 }
             }
 
@@ -526,7 +415,6 @@ export class TypeDescriptor<T> {
             if (childProp && parentProp) {
                 childProp.mergeDecoratorsFrom(parentProp)
 
-                // also merge parameter descriptors for methods
                 if (childProp instanceof MethodDescriptor && parentProp instanceof MethodDescriptor) {
                     for (const parentParam of parentProp.parameters) {
                         const childParam = childProp.getParameter(parentParam.index)

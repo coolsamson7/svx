@@ -1,17 +1,15 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from "typeorm";
 import { AddressEntity } from "./address.entity";
+import { Reflectable } from "@svx/common";
 
-import { ArrayOf, Field } from "@svx/common";
-
-@Entity()
+@Reflectable() @Entity()
 export class UserEntity {
-  @Field() @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn()
   id!: number;
 
-  @Field() @Column()
+  @Column()
   name!: string;
 
   @OneToMany(() => AddressEntity, a => a.user, { cascade: true })
-  @ArrayOf(AddressEntity)
-  @Field() addresses!: AddressEntity[];
+  addresses!: AddressEntity[];
 }

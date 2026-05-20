@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosInstance, isAxiosError }                from 'axios'
 import { plainToInstance, instanceToPlain, ClassConstructor } from 'class-transformer'
-import { TypeDescriptor, MethodDescriptor, Returns, ErrorManager, ErrorContext, CommunicationError, ServerError } from '@svx/common'
+import { TypeDescriptor, MethodDescriptor, ErrorManager, ErrorContext, CommunicationError, ServerError } from '@svx/common'
 import { Channel, ChannelFactory, ServiceDescriptor }        from '@svx/service-common'
 import { injectable } from '@svx/di';
 
@@ -372,10 +372,8 @@ export class AxiosRestChannel implements Channel {
   private resolveReturnType(
     method: MethodDescriptor,
   ): ClassConstructor<any> | undefined {
-    const dec = method.getDecorator(Returns);
-    if (dec) return dec.arguments[0] as ClassConstructor<any>;
-    if (!method.async && method.returnType !== Promise)
-      return method.returnType;
+    if (method.elementType) return method.elementType;
+    if (method.returnType?.type !== Promise) return method.returnType?.type;
     return undefined;
   }
 }

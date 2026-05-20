@@ -1,6 +1,7 @@
-import { Field } from '@svx/common';
+import { Reflectable } from '@svx/common';
 
+@Reflectable()
 export class AddressDto {
-  @Field() id?: number;
-  @Field() city!: string;
+  id?: number;
+  city!: string;
 }
