@@ -16,7 +16,7 @@ describe('UserInventoryController', () => {
              useFactory: () => ({
                type: "postgres",
                host: "localhost",
-               port: 5432,
+               port: 5433,
                username: "postgres",
                password: "postgres",
                database: "postgres",
@@ -25,7 +25,14 @@ describe('UserInventoryController', () => {
              }),
              dataSourceFactory: async (options) => {
                if (!options) throw new Error('Invalid options passed');
-               return addTransactionalDataSource(new DataSource(options));
+               const ds = new DataSource(options);
+               await ds.initialize();
+               try {
+                 addTransactionalDataSource(ds);
+               } catch (err: any) {
+                 if (!err?.message?.includes('has already added')) throw err;
+               }
+               return ds;
              }
            }),
 

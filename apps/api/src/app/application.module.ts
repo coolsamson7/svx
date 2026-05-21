@@ -5,9 +5,11 @@ import { DataSource } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 
 import { UserModule, UserEntity, AddressEntity } from '@svx/user-core';
+import { NestAopModule } from './aop/nest-aop.module';
 
 @Module({
   imports: [
+    NestAopModule,
     TypeOrmModule.forRootAsync({
       useFactory: () => {
         Logger.log('Initializing TypeORM...', 'TypeOrmFactory');

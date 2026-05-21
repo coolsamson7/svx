@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import ts from 'typescript';
 import type { Plugin } from 'vite';
+import { resolve } from 'path';
 
 const TRIGGERS = ['Reflectable', 'DeclareService', 'DeclareComponent'];
 const TRIGGER_PATTERN = new RegExp(TRIGGERS.join('|'));
@@ -24,29 +25,20 @@ function descriptorPlugin(): Plugin {
 }
 
 export default defineConfig({
+  root: resolve(__dirname, '.'),
+  plugins: [descriptorPlugin()],
+  oxc: {
+    decorator: {
+      legacy: true,
+      emitDecoratorMetadata: true,
+    },
+  },
   test: {
-    projects: [
-      {
-        plugins: [descriptorPlugin()],
-        oxc: {
-          decorator: {
-            legacy: true,
-            emitDecoratorMetadata: true,
-          },
-        },
-        test: {
-          name: 'libs',
-          globals: true,
-          environment: 'node',
-          include: ['libs/**/*.spec.ts', 'libs/**/*.test.ts'],
-          exclude: ['libs/service/nestjs/**', 'libs/user/interface/**', 'node_modules/**'],
-          hookTimeout: 30000,
-          testTimeout: 30000,
-        },
-      },
-      'apps/api/vitest.config.ts',
-      'libs/service/nestjs/vitest.config.ts',
-      'libs/user/interface/vitest.config.ts',
-    ],
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+    reporters: 'verbose',
+    hookTimeout: 30000,
+    testTimeout: 30000,
   },
 });
