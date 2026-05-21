@@ -81,14 +81,36 @@ export class RouterManager {
 
   buildRouter() {
     const config: Record<string, any> = {};
+    const all    = [...this.registry.features.values()];
 
-    const features = [...this.registry.features.values()].filter((f) => f.router != undefined);
+    // only features that have a loader are runtime-renderable
+    const childrenOf = new Map<string, typeof all>();
+    for (const f of all) {
+      if (f.parent && f.loader) {
+        const list = childrenOf.get(f.parent) ?? [];
+        list.push(f);
+        childrenOf.set(f.parent, list);
+      }
+    }
 
-    for (const feature of features) {
-      const path = feature.router?.path!;
-      const key  = (path.startsWith('/') ? path : `/${path}`).replace(/\/+/g, '/');
+    for (const feature of all) {
+      if (!feature.router || feature.parent || !feature.loader) continue;
 
-      if (feature.loader) config[key] = feature.loader;
+      const key      = ('/' + feature.router.path).replace(/\/+/g, '/');
+      const children = childrenOf.get(feature.id) ?? [];
+
+      if (children.length > 0) {
+        const nested: Record<string, any> = { layout: feature.loader };
+        for (const child of children) {
+          const childKey = ('/' + child.router!.path).replace(/\/+/g, '/');
+          nested[childKey] = child.loader;
+          this.#pathToFeature.set((key + '/' + child.router!.path).replace(/\/+/g, '/'), child);
+        }
+        config[key] = nested;
+      } else {
+        config[key] = feature.loader;
+      }
+
       this.#pathToFeature.set(key, feature);
     }
 
