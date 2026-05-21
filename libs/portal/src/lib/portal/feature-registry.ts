@@ -25,6 +25,7 @@ export interface ClientConstraints {
 
 export interface FeatureDescriptor {
   id: string;
+  parent?: string
   label: string;
   enabled?: boolean;
   permissions?: string[];
@@ -180,21 +181,21 @@ export class FeatureRegistry {
       feature: FeatureDescriptor,
       parent: FeatureDescriptor | null = null,
     ) => {
-      // fix qualified name
+      // qualify id and prefix router path relative to parent
 
-      if (parent) feature.id = parent.id + '.' + feature.id;
+      if (parent) {
+        feature.id = parent.id + '.' + feature.id;
+
+        if (feature.router && parent.router) {
+          const base = parent.router.path.replace(/\/$/, '');
+          const rel  = feature.router.path.replace(/^\//, '');
+          feature.router = { ...feature.router, path: rel ? `${base}/${rel}` : base };
+        }
+      }
 
       // register
 
       this.features.set(feature.id, feature);
-
-      // i18n
-
-      /*if (feature.i18n && !feature.label) {
-        feature.label = this.translator.translate(
-          'portal:' + feature.i18n + '.label',
-        );
-      }*/
 
       // recursion
 

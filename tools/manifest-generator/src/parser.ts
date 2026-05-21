@@ -98,8 +98,13 @@ export class FeatureManifestParser {
           result[name] = value
             .asKind(SyntaxKind.ArrayLiteralExpression)!
             .getElements()
-            .filter(e => e.getKind() === SyntaxKind.StringLiteral)
-            .map(e => e.asKind(SyntaxKind.StringLiteral)!.getLiteralValue());
+            .flatMap(e => {
+              if (e.getKind() === SyntaxKind.StringLiteral)
+                return [e.asKind(SyntaxKind.StringLiteral)!.getLiteralValue()];
+              if (e.getKind() === SyntaxKind.ObjectLiteralExpression)
+                return [this.parseObject(e.asKind(SyntaxKind.ObjectLiteralExpression)!)];
+              return [];
+            });
           break;
 
         case SyntaxKind.TrueKeyword:  result[name] = true;  break;
