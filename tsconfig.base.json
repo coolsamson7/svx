@@ -12,7 +12,6 @@
     "paths": {
       "@svx/common": ["libs/common/src/index.ts"],
       "@svx/di": ["libs/di/src/index.ts"],
-      "@svx/validation": ["libs/validation/src/index.ts"],
       "@svx/core": ["libs/core/src/index.ts"],
       "@svx/security": ["libs/security/src/index.ts"],
       "@svx/portal": ["libs/portal/src/index.ts"],

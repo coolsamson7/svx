@@ -41,17 +41,14 @@ export default defineConfig({
           singleton: true,
           requiredVersion: '^5.0.0',
         },
-        //'@svx/portal': {
-        // singleton: true,
-        //eager: true,
-        //  requiredVersion: false
-        //}
+        '@svx/portal': { singleton: true, requiredVersion: '*', import: '@svx/portal' },
       },
     }),
     svelte(),
     swc.vite({
       sourceMaps: true,
       jsc: {
+        target: 'es2022',
         parser: {
           syntax: 'typescript',
           decorators: true,
@@ -66,16 +63,15 @@ export default defineConfig({
   resolve: {
     //  mainFields: ['module', 'browser', 'main'],
     alias: {
-      '@svx/common': path.resolve(__dirname, '../../libs/common/src'),
-      '@svx/di': path.resolve(__dirname, '../../libs/di/src'),
-      '@svx/validation': path.resolve(__dirname, '../../libs/validation/src'),
-      '@svx/portal': path.resolve(__dirname, '../../libs/portal/src'),
-      '@svx/security': path.resolve(__dirname, '../../libs/security/src'),
-      '@svx/security-oidc': path.resolve(__dirname, '../../libs/security/oidc/src'),
-      '@svx/security-credentials': path.resolve(__dirname, '../../libs/security/credentials/src'),
-      '@svx/service-common': path.resolve(__dirname, '../../libs/service/common/src'),
-      '@svx/service-client': path.resolve(__dirname, '../../libs/service/client/src'),
-      '@svx/user-interface': path.resolve(__dirname, '../../libs/user/interface/src'),
+      '@svx/common':              path.resolve(__dirname, '../../dist/libs/common/index.mjs'),
+      '@svx/di':                  path.resolve(__dirname, '../../dist/libs/di/index.mjs'),
+      '@svx/portal':              path.resolve(__dirname, '../../dist/libs/portal/index.mjs'),
+      '@svx/security':            path.resolve(__dirname, '../../dist/libs/security/src'),
+      '@svx/security-oidc':       path.resolve(__dirname, '../../dist/libs/security/oidc/src'),
+      '@svx/security-credentials':path.resolve(__dirname, '../../dist/libs/security/credentials/src'),
+      '@svx/service-common':      path.resolve(__dirname, '../../dist/libs/service/common/src'),
+      '@svx/service-client':      path.resolve(__dirname, '../../dist/libs/service/client/src'),
+      '@svx/user-interface':      path.resolve(__dirname, '../../dist/libs/user/interface/index.mjs'),
     },
   },
 
@@ -85,9 +81,13 @@ export default defineConfig({
     target: 'esnext',
   },
 
-  //optimizeDeps: {
-  //  exclude: ['remote']
-  //},
+  optimizeDeps: {
+    exclude: [
+      '@svx/common', '@svx/di', '@svx/portal',
+      '@svx/security', '@svx/security-oidc', '@svx/security-credentials',
+      '@svx/service-common', '@svx/service-client', '@svx/user-interface',
+    ],
+  },
 
   server: {
     port: 4200,

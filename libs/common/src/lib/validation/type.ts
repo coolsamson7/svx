@@ -1,10 +1,11 @@
 
-import { get, set, StringBuilder } from "@svx/common";
 
 import { ObjectType } from "./types";
+import { get, set } from '../lang';
+import { StringBuilder } from '../util';
 
 
-export interface TypeInfo {
+export interface ConstraintInfo {
     message?: string
 }
 

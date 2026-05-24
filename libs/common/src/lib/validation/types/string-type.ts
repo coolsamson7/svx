@@ -1,4 +1,4 @@
-import { Type, TypeInfo } from "../type"
+import { Type, ConstraintInfo } from "../type"
 
 /**
  * this constraint class adds specific checks for strings.
@@ -25,7 +25,7 @@ export class StringType extends Type<StringType, string> {
 
     // fluent api
 
-    length(length: number, info?: TypeInfo): StringType {
+    length(length: number, info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "length",
@@ -39,7 +39,7 @@ export class StringType extends Type<StringType, string> {
         })
     }
 
-    min(min: number, info?: TypeInfo): StringType {
+    min(min: number, info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "min",
@@ -53,7 +53,7 @@ export class StringType extends Type<StringType, string> {
         })
     }
 
-    max(max: number, info?: TypeInfo): StringType {
+    max(max: number, info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "max",
@@ -67,7 +67,7 @@ export class StringType extends Type<StringType, string> {
         })
     }
 
-    nonEmpty(info?: TypeInfo): StringType {
+    nonEmpty(info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "nonEmpty",
@@ -79,7 +79,7 @@ export class StringType extends Type<StringType, string> {
         })
     }
 
-    email(info?: TypeInfo): StringType {
+    email(info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "email",
@@ -91,7 +91,7 @@ export class StringType extends Type<StringType, string> {
         })
     }
 
-    matches(re: RegExp, info?: TypeInfo): StringType {
+    matches(re: RegExp, info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "matches",
@@ -105,7 +105,7 @@ export class StringType extends Type<StringType, string> {
         })
     }
 
-    override format(format: string, info?: TypeInfo): StringType {
+    override format(format: string, info?: ConstraintInfo): StringType {
         return this.test({
             type: "string",
             name: "format",

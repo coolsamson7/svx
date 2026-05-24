@@ -29,7 +29,10 @@ export class ApplicationModule extends Module {
 
   @create()
   createDeploymentLoader(): DeploymentLoader {
-    return new RemoteDeploymentLoader([]);
+    return new RemoteDeploymentLoader([{
+      name: 'remote',
+      url: `http://localhost:4201`,
+    }]);
   }
 
   @create()

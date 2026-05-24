@@ -20,29 +20,59 @@
   import { getContext } from 'svelte';
   import { Environment } from '@svx/di';
   import { RouterManager } from '@svx/portal';
-  import { USERS } from './users.store';
+  import { UserInventoryService, UserSchema } from '@svx/user-interface';
+  import type { UserDto } from '@svx/user-interface';
+  import { TypeDescriptor } from '@svx/common';
 
   let { children }: { children?: Snippet } = $props();
 
   const env           = getContext<Environment>('env');
   const routerManager = env.get(RouterManager);
+  const userService   = env.get(UserInventoryService);
+
+  const td = TypeDescriptor.forType("User"); // UserSchema
+  const td1 = TypeDescriptor.forType(UserInventoryService);
+
+  console.log(td)
+
+  let users: UserDto[] = $state([]);
+  let loading = $state(true);
+  let error: string | undefined = $state(undefined);
+
+  $effect(() => {
+    loading = true;
+    error = undefined;
+    userService.findAll().then(result => {
+      users = result;
+      loading = false;
+    }).catch(e => {
+      error = String(e);
+      loading = false;
+    });
+  });
 </script>
 
 <div class="users-layout">
   <aside class="user-list">
     <h2>Users</h2>
-    <ul>
-      {#each USERS as user}
-        <li>
-          <button
-            class:active={routerManager.isActive(`/users/${user.id}`)}
-            onclick={() => routerManager.navigate(`/users/${user.id}`)}
-          >
-            {user.name}
-          </button>
-        </li>
-      {/each}
-    </ul>
+    {#if loading}
+      <p class="placeholder">Loading...</p>
+    {:else if error}
+      <p class="error">{error}</p>
+    {:else}
+      <ul>
+        {#each users as user}
+          <li>
+            <button
+              class:active={routerManager.isActive(`/users/${user.id}`)}
+              onclick={() => routerManager.navigate(`/users/${user.id}`)}
+            >
+              {user.name}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </aside>
 
   <div class="user-detail">
@@ -92,4 +122,5 @@
   .user-detail { padding: 0 1rem; }
 
   .placeholder { color: var(--md-sys-color-outline, #999); font-style: italic; }
+  .error { color: var(--md-sys-color-error, red); }
 </style>

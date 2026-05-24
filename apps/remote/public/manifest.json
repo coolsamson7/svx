@@ -1,10 +1,14 @@
 {
   "generated": "2026-05-05T19:42:56.923Z",
   "project": "remote",
+  "remote": "http://localhost:4201/",
   "features": [
     {
       "id": "bar",
       "label": "Bar",
+      "visibility": [
+        "public"
+      ],
       "router": {
         "path": "bar"
       },

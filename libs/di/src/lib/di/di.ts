@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * The Environment class is the central component of the dependency injection system.

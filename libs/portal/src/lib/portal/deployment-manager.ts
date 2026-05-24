@@ -128,7 +128,9 @@ export class DeploymentManager {
 
     // add local features
 
-    this.deployment.modules[this.localManifest.id!] = this.localManifest;
+    const localModule = this.localManifest.id ?? 'local';
+
+    this.deployment.modules[localModule] = this.localManifest;
 
     // apply manifest processor if available
 
@@ -146,9 +148,10 @@ export class DeploymentManager {
       }
     }
 
-    this.deployment.modules[this.localManifest.id!].loaded = true;
+    this.deployment.modules[localModule].loaded = true;
 
     // pre-register remote packages as not-yet-loaded; the MFE marks itself loaded via @DeclareLibrary
+    
     for (const [name, module] of Object.entries(this.deployment.modules)) {
       if (module.remote)
         PackageRegistry.preRegister({ name, version: module.version, type: 'application' })

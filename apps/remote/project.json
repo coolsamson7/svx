@@ -7,7 +7,7 @@
         "command": "cd apps/remote && npx vite dev",
         "parallel": false
       },
-      "dependsOn": ["@svx/portal:build"]
+      "dependsOn": ["^build"]
     },
     "generate-manifest": {
       "executor": "nx:run-commands",

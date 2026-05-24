@@ -5,6 +5,8 @@
 import { TraceLevel, Tracer } from "../tracer"
 import { StringBuilder } from "../util"
 import { GType } from "../lang"
+import { getImplementors, getImplementingSchema } from "./implements"
+import { Type } from "../validation/type"
 
 /* =========================================================
  * PROPERTY SYSTEM
@@ -55,13 +57,21 @@ export abstract class PropertyDescriptor {
 
 export class TypeInfo {
     constructor(
-        public readonly type: any,
-        public readonly typeArgs?: any[]
+        public readonly source: any,
+        public readonly typeArgs?: TypeInfo[]
     ) {}
 
-    get elementType(): any | undefined { return this.typeArgs?.[0] }
-    isArray(): boolean { return this.type === Array }
-    isSet():   boolean { return this.type === Set }
+    // Resolves to implementing class when source is a schema instance (plain object).
+    // Falls back to source itself for constructors and built-ins.
+    get type(): any {
+        if (this.source !== null && this.source !== undefined && typeof this.source === 'object')
+            return getImplementors(this.source)[0] ?? this.source
+        return this.source
+    }
+
+    get elementType(): any | undefined { return this.typeArgs?.[0]?.type }
+    isArray(): boolean { return this.source === Array }
+    isSet():   boolean { return this.source === Set }
 }
 
 /* =========================================================
@@ -125,7 +135,12 @@ export class MethodDescriptor extends PropertyDescriptor {
     }
 
     get elementType(): any | undefined {
-        return this.returnType?.elementType
+        if (!this.returnType) return undefined
+        let ti: TypeInfo | undefined = this.returnType
+        if (ti.type === Promise) ti = ti.typeArgs?.[0]
+        if (!ti) return undefined
+        if (ti.type === Array) return ti.typeArgs?.[0]?.type
+        return ti === this.returnType ? undefined : ti.type
     }
 
     constructor(
@@ -192,8 +207,13 @@ export interface TypeRef {
     a?: TypeRef[]
 }
 
+function typeRefToTypeInfo(ref: TypeRef): TypeInfo {
+    return new TypeInfo(ref.t(), ref.a?.map(typeRefToTypeInfo))
+}
+
 export class FieldDescriptor extends PropertyDescriptor {
     public fieldType: TypeInfo
+    public constraint?: any
 
     constructor(name: string, type?: any) {
         super(name, PropertyType.FIELD)
@@ -228,27 +248,100 @@ export interface Decorator<T = any> {
     decorate(type: TypeDescriptor<T>, instance: T): void
 }
 
+/* =========================================================
+ * Schema type → TypeInfo conversion (duck-typed)
+ * ========================================================= */
+
+function schemaTypeToTypeInfo(st: any): TypeInfo {
+    if (!st) return new TypeInfo(Object)
+    // OptionalType — has .inner
+    if (st.inner !== undefined)
+        return schemaTypeToTypeInfo(st.inner)
+    // ArrayType — has .element
+    if (st.element !== undefined)
+        return new TypeInfo(Array, [schemaTypeToTypeInfo(st.element)])
+    // Primitives / ObjectType via baseType
+    switch (st.baseType) {
+        case 'string':  return new TypeInfo(String)
+        case 'number':  return new TypeInfo(Number)
+        case 'boolean': return new TypeInfo(Boolean)
+        case 'object':  return new TypeInfo(st)   // ObjectType — resolves to class via TypeInfo.type
+        default:        return new TypeInfo(Object)
+    }
+}
+
 export class TypeDescriptor<T> {
     private static instances  = new Map<string, TypeDescriptor<any>>()
 
-    static forType<T>(type: GType<T>): TypeDescriptor<T> {
+    static fromSchema<T = any>(schema: any): TypeDescriptor<T> {
+        const name = schema?.name as string | undefined
+        if (name) {
+            const cached = TypeDescriptor.instances.get(name)
+            if (cached) return cached
+        }
+
+        const desc = new TypeDescriptor<T>(schema)   // schema acts as the identity token
+        desc._isSchema = true
+        if (name) TypeDescriptor.instances.set(name, desc)
+
+        const shape = schema?.shape as Record<string, any> | undefined
+        if (shape)
+            for (const [fieldName, fieldType] of Object.entries(shape)) {
+                const fd = new FieldDescriptor(fieldName)
+                fd.fieldType = schemaTypeToTypeInfo(fieldType)
+                fd.constraint = fieldType
+                desc.properties[fieldName] = fd
+            }
+
+        return desc
+    }
+
+    static forType<T>(type: GType<T> | any): TypeDescriptor<T> {
+        // String name — look up in Type registry directly.
+        if (typeof type === 'string') {
+            const cached = TypeDescriptor.instances.get(type)
+            if (cached) return cached
+            const schema = Type.get(type)
+            if (!schema) throw new Error(`No type registered with name: "${type}"`)
+            return TypeDescriptor.fromSchema(schema)
+        }
+
+        // Schema instance (non-function, e.g. ObjectType) — return schema descriptor.
+        if (typeof type !== 'function')
+            return TypeDescriptor.fromSchema(type)
+
         const proto = type.prototype as any
         if (!Object.prototype.hasOwnProperty.call(proto, '__descriptor')) {
             const desc = new TypeDescriptor<T>(type)
             proto.__descriptor = desc
             desc.init()
             TypeDescriptor.instances.set(type.name, desc)
+            const schema = getImplementingSchema(type)
+            if (schema) {
+                const schemaTd = TypeDescriptor.fromSchema(schema)
+                desc.implements = schemaTd
+                schemaTd.implementations.push(desc)
+                for (const sf of schemaTd.getFields()) {
+                    const cf = desc.getField(sf.name)
+                    if (cf) cf.constraint = sf.constraint
+                }
+            }
         }
         return proto.__descriptor
     }
 
-    public parent?:     TypeDescriptor<any>
-    public decorators:  DecoratorDescriptor[] = []
-    private properties: Record<string, PropertyDescriptor> = {}
+    public parent?:          TypeDescriptor<any>
+    public implements?:      TypeDescriptor<any>
+    public implementations:  TypeDescriptor<any>[] = []
+    public decorators:       DecoratorDescriptor[] = []
+    private _isSchema        = false
+    private properties:      Record<string, PropertyDescriptor> = {}
 
     private constructor(public type: GType<T>) {}
 
     public init() {
+        if (this._isSchema) return
+
         if (Tracer.ENABLED)
             Tracer.Trace("type", TraceLevel.HIGH, "create type descriptor for {0}", this.type.name)
 
@@ -274,7 +367,7 @@ export class TypeDescriptor<T> {
                 field = new FieldDescriptor(f.name)
                 this.properties[f.name] = field
             }
-            field.fieldType = new TypeInfo(f.ref.t(), f.ref.a?.map(r => r.t()))
+            field.fieldType = typeRefToTypeInfo(f.ref)
         }
 
         for (const m of desc.methods ?? []) {
@@ -284,13 +377,14 @@ export class TypeDescriptor<T> {
                 this.properties[m.name] = method
             }
             method.parameters = m.params.map((p, i) =>
-                new ParameterDescriptor(i, p.name, new TypeInfo(p.ref.t(), p.ref.a?.map(r => r.t())))
+                new ParameterDescriptor(i, p.name, typeRefToTypeInfo(p.ref))
             )
-            method.returnType = new TypeInfo(m.ret.t(), m.ret.a?.map(r => r.t()))
+            method.returnType = typeRefToTypeInfo(m.ret)
         }
     }
 
     public create(...args: any[]): T {
+        if (this._isSchema) throw new Error(`Cannot instantiate schema descriptor "${(this.type as any)?.name}"`)
         return new this.type(...args)
     }
 

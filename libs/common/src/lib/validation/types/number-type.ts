@@ -1,4 +1,4 @@
-import { Type, TypeInfo } from "../type"
+import { Type, ConstraintInfo } from "../type"
 
 
 /**
@@ -19,7 +19,7 @@ export class NumberType extends Type<NumberType, number> {
 
     // fluent api
 
-    min(min: number, info?: TypeInfo): NumberType {
+    min(min: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "min",
@@ -33,7 +33,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    max(max: number, info?: TypeInfo): NumberType {
+    max(max: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "max",
@@ -47,7 +47,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    lessThan(number: number, info?: TypeInfo): NumberType {
+    lessThan(number: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "lessThan",
@@ -61,7 +61,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    lessThanEquals(number: number, info?: TypeInfo): NumberType {
+    lessThanEquals(number: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "lessThanEquals",
@@ -75,7 +75,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    greaterThan(number: number, info?: TypeInfo): NumberType {
+    greaterThan(number: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "greaterThan",
@@ -89,7 +89,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    greaterThanEquals(number: number, info?: TypeInfo): NumberType {
+    greaterThanEquals(number: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "greaterThanEquals",
@@ -103,7 +103,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    override format(format: string, info?: TypeInfo): NumberType {
+    override format(format: string, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "format",
@@ -117,7 +117,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    precision(precision: number, info?: TypeInfo): NumberType {
+    precision(precision: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "precision",
@@ -131,7 +131,7 @@ export class NumberType extends Type<NumberType, number> {
         })
     }
 
-    scale(scale: number, info?: TypeInfo): NumberType {
+    scale(scale: number, info?: ConstraintInfo): NumberType {
         return this.test({
             type: "number",
             name: "scale",

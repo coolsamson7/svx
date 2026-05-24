@@ -22,11 +22,7 @@ export default defineConfig({
           singleton:       true,
           requiredVersion: '^5.0.0'
         },
-        '@svx/portal': {
-           singleton: true,
-           //eager: true,
-           requiredVersion: false
-        }
+        '@svx/portal': { singleton: true, requiredVersion: '*', import: '@svx/portal' },
       }
     }),
     svelte(),
@@ -44,18 +40,29 @@ export default defineConfig({
   ],
 
   resolve: {
-    mainFields: ['module', 'browser', 'main']
-    //alias: {
-    //  '@svx/portal': path.resolve(__dirname, '../../libs/portal/src'),//'shell/portal'
-    //}
+    mainFields: ['module', 'browser', 'main'],
+    alias: {
+      '@svx/common': path.resolve(__dirname, '../../dist/libs/common/index.mjs'),
+      '@svx/di':     path.resolve(__dirname, '../../dist/libs/di/index.mjs'),
+      '@svx/portal': path.resolve(__dirname, '../../dist/libs/portal/index.mjs'),
+    },
   },
 
   server: {
     port:       4201,
     strictPort: true,
     cors:       true,
-    origin:     'http://localhost:4201'
+    origin:     'http://localhost:4201',
+    fs: {
+      allow: ['../..'],
+    },
   },
+
+  optimizeDeps: {
+    exclude: ['@svx/portal'],
+  },
+
+  oxc: false,
 
   build: {
     target:       'esnext',

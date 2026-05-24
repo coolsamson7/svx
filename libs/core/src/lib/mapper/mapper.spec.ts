@@ -1,5 +1,5 @@
 import "reflect-metadata"
-import { number, object, string, InferObject, array } from "@svx/validation";
+import { number, object, string, InferObject, array } from '@svx/common';
 import { mapping, Mapper, ApplyContext } from "./mapper";
 import { RelationSynchronizer } from "./relation-synchronizer"
 import { TypeDescriptor } from "@svx/common";
@@ -239,7 +239,7 @@ describe("apply()", () => {
               // merge into existing instance
               tgt.city = src.city;
               ctx.set(tgt);
-            } 
+            }
             else {
               // create new
               ctx.set(new AddressEntity(src.city));

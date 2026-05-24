@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ArrayType, ObjectType, Type } from "@svx/validation";
+import { ArrayType, ObjectType, Type } from '@svx/common';
 import { TypeDescriptor, GType, Hashable, HashMap, HashSet, hashString} from "@svx/common";
 
 /* =========================================================

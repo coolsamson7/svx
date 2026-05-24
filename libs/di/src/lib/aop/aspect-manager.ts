@@ -64,6 +64,7 @@ export class AspectManager {
                 Tracer.Trace("aop", TraceLevel.FULL, "weave aspects in method {0}.{1}", typeDescriptor.type.name, method)
 
             const descriptor = descriptors[method]
+            if (!descriptor) continue  // abstract or inherited method with no concrete prototype slot
             const joinPoints = aspectInfo.wrappedMethods[method]
 
             if (typeDescriptor.getMethod(method)?.async)
@@ -80,10 +81,19 @@ export class AspectManager {
     private static getAspectInfo(processor: AdviceProcessor, constructorFunction: any): AspectInfo {
         if (Tracer.ENABLED) Tracer.Trace("aop", TraceLevel.HIGH, "compute aspects for {0}", constructorFunction.name)
 
+        const propertyDescriptors: { [name: string]: PropertyDescriptor } = {}
+        let proto = constructorFunction.prototype
+        while (proto && proto !== Object.prototype) {
+            for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
+                if (!(key in propertyDescriptors)) propertyDescriptors[key] = desc
+            }
+            proto = Object.getPrototypeOf(proto)
+        }
+
         return {
             typeDescriptor: TypeDescriptor.forType(constructorFunction),
             nAspects: this.aspects.length,
-            propertyDescriptors: Object.getOwnPropertyDescriptors(constructorFunction.prototype),
+            propertyDescriptors,
             wrappedMethods: this.computeMethodWrappers(processor, constructorFunction),
         }
     }

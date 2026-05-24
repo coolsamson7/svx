@@ -134,11 +134,8 @@ export class FeatureRegistry {
     let container = this.#remoteCache.get(remote);
 
     if (!container) {
-      console.log(remote);
-      container = await import(/* @vite-ignore */ remote!);
-
-      await container!.init((globalThis as any).__federation_shared__ ?? {});
-
+      container = await import(/* @vite-ignore */ remote);
+      await container!.init((globalThis as any).__mf_module_cache__?.share ?? {});
       this.#remoteCache.set(remote, container!);
     }
 
@@ -146,7 +143,9 @@ export class FeatureRegistry {
   }
 
   registerManifest(manifest: Manifest): this {
-    const remote = manifest.remote;
+    const remote = manifest.remote
+      ? manifest.remote.replace(/\/$/, '') + '/remoteEntry.js'
+      : undefined;
 
     const idToExpose = (id: string): string =>
       `./${id.charAt(0).toUpperCase()}${id.slice(1)}`;

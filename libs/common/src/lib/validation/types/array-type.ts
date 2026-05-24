@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Type, TypeInfo, ValidationContext } from "../type"
+import { Type, ConstraintInfo, ValidationContext } from "../type"
 
 /**
  * this constraint class adds specific checks for arrays.
@@ -25,7 +25,7 @@ export class ArrayType<T> extends Type<ArrayType<T>, T[]> {
 
     // fluent
 
-    min(min: number, info?: TypeInfo): ArrayType<T> {
+    min(min: number, info?: ConstraintInfo): ArrayType<T> {
         this.test({
             type: "array",
             name: "min",
@@ -41,7 +41,7 @@ export class ArrayType<T> extends Type<ArrayType<T>, T[]> {
         return this
     }
 
-    max(max: number, info?: TypeInfo): ArrayType<T> {
+    max(max: number, info?: ConstraintInfo): ArrayType<T> {
         this.test({
             type: "array",
             name: "max",

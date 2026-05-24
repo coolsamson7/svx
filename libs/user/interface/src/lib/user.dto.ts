@@ -1,9 +1,11 @@
-import { Reflectable } from '@svx/common';
+import { Implements, Reflectable } from '@svx/common';
+import { UserSchema, type User } from './user.schema';
 import { AddressDto } from './address.dto';
 
 @Reflectable()
-export class UserDto {
-  id?: number;
+@Implements(UserSchema)
+export class UserDto implements User {
+  id: number | undefined;
   name!: string;
   addresses!: AddressDto[];
 }
