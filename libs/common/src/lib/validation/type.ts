@@ -165,6 +165,7 @@ export class Type<T extends Type<T, V>, V=any>  {
     baseType = "string"
     _format = ""
     _description?: string
+    inner?: Type<any, any>
     tests: Test<V>[] = []
     message?: string
 

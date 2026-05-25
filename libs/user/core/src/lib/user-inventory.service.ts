@@ -42,6 +42,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     ).setOptions({ autoDeep: true });
   }
 
+  /** Returns all users in the inventory. */
   @Get("all")
   @Transactional()
   async findAll(): Promise<UserDto[]> {
@@ -49,6 +50,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.mapList(entities);
   }
 
+  /** Finds a single user by their numeric ID. */
   @Get('find/:id')
   @Transactional()
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
@@ -56,6 +58,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map<UserEntity, UserDto>(entity);
   }
 
+  /** Creates a new user from the supplied data. */
   @Post("create")
   @UsePipes(new SchemaValidationPipe(CreateUserSchema))
   @Transactional()
@@ -65,6 +68,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map<UserEntity, UserDto>(saved);
   }
 
+  /** Updates an existing user's data. */
   @Put("update")
   @UsePipes(new SchemaValidationPipe(UserSchema))
   @Transactional()
@@ -75,6 +79,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map(saved);
   }
 
+  /** Permanently removes a user by ID. */
   @Delete('delete/:id')
   @Transactional()
   async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {

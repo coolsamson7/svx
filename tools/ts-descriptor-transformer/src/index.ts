@@ -212,17 +212,8 @@ function buildApiPropertyDecorator(
 }
 
 function buildSchemaDescriptionExpr(schemaVar: string, fieldName: string): ts.Expression {
-  // schemaVar?.shape?.['fieldName']?._description
   return ts.factory.createPropertyAccessChain(
-    ts.factory.createElementAccessChain(
-      ts.factory.createPropertyAccessChain(
-        id(schemaVar),
-        ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
-        id('shape'),
-      ),
-      ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
-      ts.factory.createStringLiteral(fieldName),
-    ),
+    effectiveTypeExpr(schemaVar, fieldName),
     ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
     id('_description'),
   )
@@ -351,8 +342,8 @@ function schemaParams4HasExpr(schemaVar: string, fieldName: string, constraint: 
   )
 }
 
-function getJsDocDescription(member: ts.PropertyDeclaration): string | null {
-  const docs = (member as any).jsDoc as ts.JSDoc[] | undefined
+function getJsDocDescription(node: ts.Node): string | null {
+  const docs = (node as any).jsDoc as ts.JSDoc[] | undefined
   if (!docs?.length) return null
   const doc = docs[docs.length - 1]
   const comment = doc.comment
@@ -393,6 +384,15 @@ function buildSwaggerMethodDecorators(
   if (!httpVerb) return []
 
   const result: ts.Decorator[] = []
+
+  // @ApiOperation from JSDoc summary
+  const summary = getJsDocDescription(member)
+  if (summary) {
+    onSwaggerImport('ApiOperation')
+    result.push(makeDecorator('ApiOperation', [
+      ts.factory.createObjectLiteralExpression([prop('summary', ts.factory.createStringLiteral(summary))]),
+    ]))
+  }
 
   // Return-type decorator
   if (httpVerb === 'Delete') {
@@ -664,6 +664,9 @@ function buildFieldEntry(
   ]
   if (member.questionToken)
     entries.push(prop('optional', ts.factory.createTrue()))
+  const desc = getJsDocDescription(member)
+  if (desc)
+    entries.push(prop('description', ts.factory.createStringLiteral(desc)))
   return ts.factory.createObjectLiteralExpression(entries)
 }
 
@@ -681,11 +684,15 @@ function buildMethodEntry(
     ])
   )
 
-  return ts.factory.createObjectLiteralExpression([
+  const entries: ts.ObjectLiteralElementLike[] = [
     prop('name',   ts.factory.createStringLiteral(member.name.text)),
     prop('params', ts.factory.createArrayLiteralExpression(params)),
     prop('ret',    typeNodeToRef(member.type, typeOnlyNames, onSchemaRef)),
-  ])
+  ]
+  const desc = getJsDocDescription(member)
+  if (desc)
+    entries.push(prop('description', ts.factory.createStringLiteral(desc)))
+  return ts.factory.createObjectLiteralExpression(entries)
 }
 
 /* =========================================================
