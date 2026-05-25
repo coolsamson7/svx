@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import ts from 'typescript';
 import type { Plugin } from 'vite';
 
-const TRIGGERS = ['Reflectable', 'DeclareService', 'DeclareComponent'];
+const TRIGGERS = ['Reflectable', 'DeclareService', 'DeclareComponent', 'Implementation'];
 const TRIGGER_PATTERN = new RegExp(TRIGGERS.join('|'));
 
 function descriptorPlugin(): Plugin {

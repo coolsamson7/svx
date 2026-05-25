@@ -44,14 +44,14 @@ export class UserInventoryServiceController extends UserInventoryService {
 
   @Get("all")
   @Transactional()
-  async findAll(): Promise<User[]> {
+  async findAll(): Promise<UserDto[]> {
     const entities = await this.repo.find({ relations: ["addresses"] });
     return this.mapper.mapList(entities);
   }
 
   @Get('find/:id')
   @Transactional()
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({ where: { id }, relations: ["addresses"] });
     return this.mapper.map<UserEntity, UserDto>(entity);
   }
@@ -59,7 +59,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   @Post("create")
   @UsePipes(new SchemaValidationPipe(CreateUserSchema))
   @Transactional()
-  async create(@Body() dto: CreateUser): Promise<User> {
+  async create(@Body() dto: CreateUser): Promise<UserDto> {
     const entity = this.mapper.map<UserDto, UserEntity>(dto as UserDto, { direction: "reverse" });
     const saved = await this.repo.save(entity);
     return this.mapper.map<UserEntity, UserDto>(saved);
@@ -68,7 +68,7 @@ export class UserInventoryServiceController extends UserInventoryService {
   @Put("update")
   @UsePipes(new SchemaValidationPipe(UserSchema))
   @Transactional()
-  async update(@Body() dto: User): Promise<User> {
+  async update(@Body() dto: User): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({ where: { id: dto.id! }, relations: ["addresses"] });
     this.mapper.map(dto as UserDto, { target: entity, direction: "reverse" });
     const saved = await this.repo.save(entity);

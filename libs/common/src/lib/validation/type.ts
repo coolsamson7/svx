@@ -164,6 +164,7 @@ export class Type<T extends Type<T, V>, V=any>  {
 
     baseType = "string"
     _format = ""
+    _description?: string
     tests: Test<V>[] = []
     message?: string
 
@@ -198,6 +199,12 @@ export class Type<T extends Type<T, V>, V=any>  {
 
 
     // public
+
+    description(text: string): T {
+        const self = this.safe()
+        self._description = text
+        return self
+    }
 
     format(format: string): T {
         const self = this.safe()

@@ -1,7 +1,7 @@
 const ts = require('typescript');
 const { before } = require('./dist/index.js');
 
-const TRIGGERS = ['Reflectable', 'DeclareService', 'DeclareComponent'];
+const TRIGGERS = ['Reflectable', 'DeclareService', 'DeclareComponent', 'Implementation'];
 const TRIGGER_PATTERN = new RegExp(TRIGGERS.join('|'));
 
 module.exports = function (source) {
