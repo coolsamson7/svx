@@ -4,13 +4,12 @@
   "projectType": "library",
   "targets": {
     "build": {
-      "executor": "@nx/js:tsc",
+      "executor": "nx:run-commands",
       "dependsOn": ["^build"],
-      "outputs": ["{options.outputPath}"],
+      "outputs": ["{workspaceRoot}/dist/libs/common"],
       "options": {
-        "main": "libs/common/src/index.ts",
-        "tsConfig": "libs/common/tsconfig.lib.json",
-        "outputPath": "dist/libs/common"
+        "command": "npx vite build --config vite.lib.config.ts",
+        "cwd": "libs/common"
       }
     }
   }

@@ -7,21 +7,12 @@
       "inputs": ["default", "^production", {"externalDependencies": ["vitest"]}, {"env": "CI"}]
     },
     "build": {
-      "executor": "@nx/js:tsc",
+      "executor": "nx:run-commands",
       "dependsOn": ["^build", "ts-descriptor-transformer:build"],
-      "outputs": ["{options.outputPath}"],
+      "outputs": ["{workspaceRoot}/dist/libs/user/interface"],
       "options": {
-        "main": "libs/user/interface/src/index.ts",
-        "tsConfig": "libs/user/interface/tsconfig.lib.json",
-        "outputPath": "dist/libs/user/interface",
-        "transformers": [
-          {
-            "name": "ts-descriptor-transformer",
-            "options": {
-              "decorators": ["Reflectable", "DeclareService", "DeclareComponent"]
-            }
-          }
-        ]
+        "command": "npx vite build --config vite.lib.config.ts",
+        "cwd": "libs/user/interface"
       }
     }
   }

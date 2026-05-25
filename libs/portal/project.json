@@ -4,13 +4,12 @@
   "projectType": "library",
   "targets": {
     "build": {
-      "executor": "@nx/js:tsc",
+      "executor": "nx:run-commands",
       "dependsOn": ["^build"],
-      "outputs": ["{options.outputPath}"],
+      "outputs": ["{workspaceRoot}/dist/libs/portal"],
       "options": {
-        "main": "libs/portal/src/index.ts",
-        "tsConfig": "libs/portal/tsconfig.lib.json",
-        "outputPath": "dist/libs/portal"
+        "command": "npx vite build --config vite.lib.config.ts",
+        "cwd": "libs/portal"
       }
     }
   }
