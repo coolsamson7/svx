@@ -196,6 +196,8 @@ function buildApiPropertyDecorator(
       ? ts.factory.createBinaryExpression(schemaExpr, ts.SyntaxKind.QuestionQuestionToken, ts.factory.createStringLiteral(jsDocDesc))
       : schemaExpr
     props.push(prop('description', descExpr))
+
+    props.push(...buildSchemaConstraintProps(schemaVar, fieldName, member.type))
   } else if (jsDocDesc) {
     props.push(prop('description', ts.factory.createStringLiteral(jsDocDesc)))
   }
@@ -223,6 +225,129 @@ function buildSchemaDescriptionExpr(schemaVar: string, fieldName: string): ts.Ex
     ),
     ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
     id('_description'),
+  )
+}
+
+function buildSchemaConstraintProps(
+  schemaVar: string,
+  fieldName: string,
+  typeNode: ts.TypeNode | undefined,
+): ts.ObjectLiteralElementLike[] {
+  if (!typeNode) return []
+
+  // Unwrap T | undefined
+  const actualType = ts.isUnionTypeNode(typeNode)
+    ? typeNode.types.find(t =>
+        t.kind !== ts.SyntaxKind.UndefinedKeyword && t.kind !== ts.SyntaxKind.NullKeyword
+      )
+    : typeNode
+  if (!actualType) return []
+
+  const p4 = (constraint: string, key: string) =>
+    schemaParams4Expr(schemaVar, fieldName, constraint, key)
+
+  if (ts.isArrayTypeNode(actualType)) {
+    return [
+      prop('minItems', p4('min', 'min')),
+      prop('maxItems', p4('max', 'max')),
+    ]
+  }
+
+  switch (actualType.kind) {
+    case ts.SyntaxKind.StringKeyword:
+      return [
+        prop('minLength',
+          ts.factory.createBinaryExpression(p4('min', 'min'), ts.SyntaxKind.QuestionQuestionToken, p4('length', 'length'))
+        ),
+        prop('maxLength',
+          ts.factory.createBinaryExpression(p4('max', 'max'), ts.SyntaxKind.QuestionQuestionToken, p4('length', 'length'))
+        ),
+        prop('pattern',
+          ts.factory.createPropertyAccessChain(
+            p4('matches', 're'),
+            ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+            id('source'),
+          )
+        ),
+        prop('format',
+          ts.factory.createBinaryExpression(
+            p4('format', 'format'),
+            ts.SyntaxKind.BarBarToken,
+            ts.factory.createConditionalExpression(
+              schemaParams4HasExpr(schemaVar, fieldName, 'email'),
+              ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+              ts.factory.createStringLiteral('email'),
+              ts.factory.createToken(ts.SyntaxKind.ColonToken),
+              ts.factory.createIdentifier('undefined'),
+            )
+          )
+        ),
+      ]
+
+    case ts.SyntaxKind.NumberKeyword:
+      return [
+        prop('minimum',          p4('min',         'min')),
+        prop('maximum',          p4('max',         'max')),
+        prop('exclusiveMinimum', p4('greaterThan', 'number')),
+        prop('exclusiveMaximum', p4('lessThan',    'number')),
+        prop('format',           p4('format',      'format')),
+      ]
+
+    default:
+      return []
+  }
+}
+
+// (schemaVar?.shape?.["fieldName"]?.inner ?? schemaVar?.shape?.["fieldName"])
+// Unwraps OptionalType by preferring .inner if present
+function effectiveTypeExpr(schemaVar: string, fieldName: string): ts.Expression {
+  const fieldExpr = () => ts.factory.createElementAccessChain(
+    ts.factory.createPropertyAccessChain(
+      id(schemaVar),
+      ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+      id('shape'),
+    ),
+    ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+    ts.factory.createStringLiteral(fieldName),
+  )
+  return ts.factory.createBinaryExpression(
+    ts.factory.createPropertyAccessChain(
+      fieldExpr(),
+      ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+      id('inner'),
+    ),
+    ts.SyntaxKind.QuestionQuestionToken,
+    fieldExpr(),
+  )
+}
+
+// (effective type)?.params4("constraint")?.key
+function schemaParams4Expr(schemaVar: string, fieldName: string, constraint: string, key: string): ts.Expression {
+  return ts.factory.createPropertyAccessChain(
+    ts.factory.createCallExpression(
+      ts.factory.createPropertyAccessChain(
+        effectiveTypeExpr(schemaVar, fieldName),
+        ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+        id('params4'),
+      ),
+      undefined,
+      [ts.factory.createStringLiteral(constraint)],
+    ),
+    ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+    id(key),
+  )
+}
+
+// (effective type)?.params4("constraint") — truthy check
+function schemaParams4HasExpr(schemaVar: string, fieldName: string, constraint: string): ts.Expression {
+  return ts.factory.createCallExpression(
+    ts.factory.createPropertyAccessChain(
+      effectiveTypeExpr(schemaVar, fieldName),
+      ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+      id('params4'),
+    ),
+    undefined,
+    [ts.factory.createStringLiteral(constraint)],
   )
 }
 

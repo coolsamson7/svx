@@ -7,5 +7,8 @@ import { AddressDto } from './address.dto';
 export class UserDto implements User {
   id: number | undefined;
   name!: string;
+  email!: string;
+  age: number | undefined;
+  score: number | undefined;
   addresses!: AddressDto[];
 }
