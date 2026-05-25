@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { addTransactionalDataSource, initializeTransactionalContext } from 'typeorm-transactional';
 import { DataSource } from 'typeorm';
 import { UserModule, UserEntity, AddressEntity, UserInventoryServiceController } from '@svx/user-core';
+import { NestAopModule } from './aop/nest-aop.module';
 
 describe('UserInventoryController', () => {
   let app: TestingModule;
@@ -12,6 +13,7 @@ describe('UserInventoryController', () => {
 
     app = await Test.createTestingModule({
          imports: [
+           NestAopModule,
            TypeOrmModule.forRootAsync({
              useFactory: () => ({
                type: "postgres",

@@ -9,7 +9,7 @@ import { NestAopModule } from './aop/nest-aop.module';
 
 @Module({
   imports: [
-    //NestAopModule,
+    NestAopModule,
     TypeOrmModule.forRootAsync({
       useFactory: () => {
         Logger.log('Initializing TypeORM...', 'TypeOrmFactory');

@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UsePipes } from "@nestjs/common";
+import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe } from "@nestjs/common";
 import { Repository } from "typeorm";
 import { UserEntity } from "./entity/user.entity";
-import { UserDto, AddressDto, UserInventoryService, CreateUserSchema, UserSchema } from '@svx/user-interface';
+import { UserDto, AddressDto, UserInventoryService } from '@svx/user-interface';
 import type { User, CreateUser } from '@svx/user-interface';
 import { Transactional } from "typeorm-transactional";
 
@@ -9,7 +9,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Mapper, mapping, RelationSynchronizer, syncRelation, ApplyContext } from "@svx/core";
 
 import { Implementation } from "@svx/service-nestjs";
-import { SchemaValidationPipe } from "@svx/service-nestjs";
 
 import { AddressEntity } from "./entity/address.entity";
 
@@ -57,7 +56,6 @@ export class UserInventoryServiceController extends UserInventoryService {
   }
 
   @Post("create")
-  @UsePipes(new SchemaValidationPipe(CreateUserSchema))
   @Transactional()
   async create(@Body() dto: CreateUser): Promise<UserDto> {
     const entity = this.mapper.map<UserDto, UserEntity>(dto as UserDto, { direction: "reverse" });
@@ -66,7 +64,6 @@ export class UserInventoryServiceController extends UserInventoryService {
   }
 
   @Put("update")
-  @UsePipes(new SchemaValidationPipe(UserSchema))
   @Transactional()
   async update(@Body() dto: User): Promise<UserDto> {
     const entity = await this.repo.findOneOrFail({ where: { id: dto.id! }, relations: ["addresses"] });

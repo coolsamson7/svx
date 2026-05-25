@@ -40,6 +40,26 @@ export class AspectManager {
 
     // public
 
+    /** Returns all classes explicitly declared as targets via .of() across all registered aspects. */
+    static targetClasses(): Set<any> {
+        const result = new Set<any>()
+        for (const aspect of this.aspects) {
+            const cls = (aspect as any).targets?.targetClass?.()
+            if (cls) result.add(cls)
+        }
+        return result
+    }
+
+    /** Returns all class decorators used in .classDecoratedWith() across all registered aspects. */
+    static targetDecorators(): Set<any> {
+        const result = new Set<any>()
+        for (const aspect of this.aspects) {
+            const dec = (aspect as any).targets?.classDecorator
+            if (dec) result.add(dec)
+        }
+        return result
+    }
+
     static registerAspect(aspect: AdviceAspect): void {
         if (Tracer.ENABLED)
             Tracer.Trace(
@@ -64,13 +84,10 @@ export class AspectManager {
                 Tracer.Trace("aop", TraceLevel.FULL, "weave aspects in method {0}.{1}", typeDescriptor.type.name, method)
 
             const descriptor = descriptors[method]
-            if (!descriptor) continue  // abstract or inherited method with no concrete prototype slot
+            if (!descriptor) continue
             const joinPoints = aspectInfo.wrappedMethods[method]
 
-            if (typeDescriptor.getMethod(method)?.async)
-                descriptor.value = (...args: any[]) => new Invocation<any>(thisPointer, joinPoints).runAsync(...args)
-            else
-                descriptor.value = (...args: any[]) => new Invocation<any>(thisPointer, joinPoints).run(...args)
+            descriptor.value = (...args: any[]) => new Invocation<any>(thisPointer, joinPoints).runAsync(...args)
 
             Reflect.set(thisPointer, method, descriptor.value)
         }

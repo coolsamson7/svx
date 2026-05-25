@@ -74,42 +74,23 @@ export class Invocation<TARGET = any> {
     async runAsync(...args: any[]): Promise<any> {
         this.args = args
 
-        // run all before
-
         for (const joinPoint of this.joinPoints.before) (this.currentJoinPoint = joinPoint).run(this)
 
-        // run arounds with the method being the last aspect!
-
-        return (this.currentJoinPoint = this.joinPoints.around)
-            .run<Promise<any>>(this)
-            .then((result: any) => {
-                this.result = result
-
-                // run all after
-
-                for (const joinPoint of this.joinPoints.after) (this.currentJoinPoint = joinPoint).run(this)
-
-                // done
-
-                return this.result
-            })
-            .catch((error: any) => {
-                this.error = error
-
-                // call error handlers
-
-                let rethrow = undefined
-                try {
-                    for (const joinPoint of this.joinPoints.error) (this.currentJoinPoint = joinPoint).run(this)
-                } catch (error) {
-                    rethrow = error
-                }
-
-                // call after?
-
-                for (const joinPoint of this.joinPoints.after) (this.currentJoinPoint = joinPoint).run(this)
-
-                if (rethrow) throw rethrow
-            })
+        try {
+            // await handles both sync (plain value) and async (Promise) method returns
+            this.result = await (this.currentJoinPoint = this.joinPoints.around).run<any>(this)
+            for (const joinPoint of this.joinPoints.after) (this.currentJoinPoint = joinPoint).run(this)
+            return this.result
+        } catch (error: any) {
+            this.error = error
+            let rethrow: any
+            try {
+                for (const joinPoint of this.joinPoints.error) (this.currentJoinPoint = joinPoint).run(this)
+            } catch (e) {
+                rethrow = e
+            }
+            for (const joinPoint of this.joinPoints.after) (this.currentJoinPoint = joinPoint).run(this)
+            if (rethrow) throw rethrow
+        }
     }
 }

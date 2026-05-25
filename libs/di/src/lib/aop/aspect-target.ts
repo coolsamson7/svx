@@ -71,11 +71,16 @@ export class AspectTarget {
         return this
     }
 
+    /** Returns the class declared via .of(), if any — used by the weaver to pre-filter candidates. */
+    targetClass(): any {
+        return this.type
+    }
+
     // should not be public
     matchesMethod(type: TypeDescriptor<any>, method: MethodDescriptor): boolean {
-        // check class
+        // check class — instance type must be the declared type or a subclass of it
 
-        if (this.type && !subclassOf(this.type, type.type)) return false
+        if (this.type && !subclassOf(type.type, this.type)) return false
 
         // class decorator
 

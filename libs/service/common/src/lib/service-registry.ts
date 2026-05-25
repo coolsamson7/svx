@@ -109,7 +109,7 @@ export class ServiceRegistry {
 
 export function DeclareService(options: ServiceOptions = {}): ClassDecorator {
     return (target: any) => {
-      //TypeDescriptor.forType(target).addDecorator(DeclareService, options) // TODO
+      TypeDescriptor.forType(target).addDecorator(DeclareService, options)
       ServiceRegistry.declareService(target, {
         name: options.name ?? target.name,
       })
