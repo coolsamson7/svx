@@ -10,6 +10,7 @@ import {
   Get,
   Query,
 } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 
 import { AbstractType, CachingChannelFactory, Channel, ChannelAddress, ChannelFactory, Component, ComponentDescriptor, Service, ServiceDescriptor, ServiceRegistry } from '@svx/service-common';
 
@@ -346,8 +347,17 @@ export class ComponentRegistry implements OnModuleInit { // TODO rename, TODO: O
 
 export function Implementation<T extends Service>(): ClassDecorator {
   return (target) => {
-    ComponentRegistry.implementService(target as any as Type<T>  )
-  };
+    ComponentRegistry.implementService(target as any as Type<T>)
+
+    const parentDescriptor = (Object.getPrototypeOf(target) as any)?._descriptor
+    for (const method of parentDescriptor?.methods ?? []) {
+      if (!method.description) continue
+      if (Reflect.hasMetadata('swagger/apiOperation', target.prototype, method.name)) continue
+      const propDesc = Object.getOwnPropertyDescriptor(target.prototype, method.name)
+      if (propDesc)
+        ApiOperation({ summary: method.description })(target.prototype, method.name, propDesc)
+    }
+  }
 }
 
 export interface ComponentModuleOptions {
