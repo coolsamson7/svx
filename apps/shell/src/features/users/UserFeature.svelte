@@ -95,7 +95,9 @@
   }
 </script>
 
-{#if loading}
+{#if !id}
+  <p class="placeholder">Select a user</p>
+{:else if loading}
   <p>Loading...</p>
 {:else if !original}
   <p class="not-found">User not found</p>
