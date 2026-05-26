@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import './api.package'
 import { ApplicationModule } from './app/application.module';
 /**
