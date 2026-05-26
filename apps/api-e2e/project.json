@@ -1,0 +1,14 @@
+{
+  "name": "api-e2e",
+  "sourceRoot": "apps/api-e2e/src",
+  "projectType": "application",
+  "targets": {
+    "e2e": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "apps/api-e2e/vitest.config.ts",
+        "reportsDirectory": "../../coverage/api-e2e"
+      }
+    }
+  }
+}

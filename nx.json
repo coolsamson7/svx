@@ -3,7 +3,8 @@
   "analytics": true,
   "projects": [
     "apps/api",
-    "apps/remote", 
+    "apps/api-e2e",
+    "apps/remote",
     "apps/shell",
     
     "libs/common", 
