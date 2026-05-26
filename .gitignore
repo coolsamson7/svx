@@ -43,3 +43,5 @@ apps/shell/src/service.json
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+.antigravitycli/
