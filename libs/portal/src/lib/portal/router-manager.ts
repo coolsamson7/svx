@@ -128,6 +128,9 @@ export class RouterManager {
       this.#pathToFeature.set(key, feature);
     }
 
+    const notFound = all.find(f => (f.tags ?? []).includes('not-found') && f.loader);
+    if (notFound) (config as any)['*'] = notFound.loader;
+
     this.router = createRouter({
       ...config,
       hooks: {
