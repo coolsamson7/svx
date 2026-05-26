@@ -26,6 +26,10 @@
   const registry      = env.get(FeatureRegistry);
   const routerManager = env.get(RouterManager);
 
+  const authMode    = sessionStorage.getItem('svx:auth-mode') ?? 'oidc';
+  const switchUrl   = authMode === 'credentials' ? '/?auth=oidc' : '/?auth=credentials';
+  const switchLabel = authMode === 'credentials' ? 'Switch to OIDC' : 'Switch to Credentials';
+
   onMount(async () => {
     // Wait a tick so lazy features can register their routes first
     await Promise.resolve();
@@ -43,7 +47,8 @@
        <span class="logo-text">Portal</span>
      </div>
      <div class="portal-header-actions">
-       <slot name="header-actions" />
+       <span class="auth-mode-badge">{authMode}</span>
+       <button class="auth-switch-link" onclick={() => window.location.assign(switchUrl)}>{switchLabel}</button>
      </div>
    </header>
 
@@ -158,4 +163,39 @@
       opacity: 0.7;
       line-height: 1;
     }
+
+  /* ── Auth mode indicator ─────────────────────────────────── */
+  .portal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .auth-mode-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .auth-switch-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-primary);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 999px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: background 150ms, border-color 150ms;
+  }
+
+  .auth-switch-link:hover {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.9);
+  }
 </style>

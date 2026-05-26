@@ -1,29 +1,44 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import { Environment } from '@svx/di';
   import { RouterManager, FeatureRegistry } from '@svx/portal';
   import { SessionManager } from '@svx/security';
-
-  // m3-svelte components
 
   const env             = getContext<Environment>('env');
   const routerManager   = env.get(RouterManager);
   const featureRegistry = env.get(FeatureRegistry);
   const sessionManager  = env.get(SessionManager);
 
-  const session = sessionManager.hasSession() ? sessionManager.currentSession() : null;
-  const roles   = new Set<string>((session?.user.roles as string[]) ?? []);
+  let session = $state(sessionManager.hasSession() ? sessionManager.currentSession() : null);
+  let roles   = $derived(new Set<string>((session?.user.roles as string[]) ?? []));
+  let features = $derived(
+    featureRegistry.finder().withTag('navigation').matchesSession(!!session, roles).find()
+  );
 
-  const features = featureRegistry
-      .finder()
-      .withTag('navigation')
-      .matchesSession(!!session, roles)
-      .find();
+  onMount(() => {
+    const sub = sessionManager.events$.subscribe(event => {
+      if (event.type === 'opened') session = event.session;
+      else if (event.type === 'closed') session = null;
+    });
+    return () => sub.unsubscribe();
+  });
 
   // Icon map: tries to match feature.icon, falls back to a default
   const iconFallback = 'widgets';
   function icon(feature: any): string {
     return feature.icon ?? iconFallback;
+  }
+
+  function login() {
+    const authMode = sessionStorage.getItem('svx:auth-mode') ?? 'oidc';
+    if (authMode === 'credentials') {
+      const loginFeature = featureRegistry.finder().withTag('login').findOptional();
+      if (loginFeature?.router) {
+        routerManager.navigate(('/' + loginFeature.router.path) as `/${string}`);
+        return;
+      }
+    }
+    sessionManager.openSession(undefined);
   }
 </script>
 
@@ -53,14 +68,14 @@
         <span class="material-symbols-rounded nav-icon">account_circle</span>
         <span class="nav-label">{session.user.name || session.user.preferred_username}</span>
       </div>
-      <button class="nav-item" onclick={() => sessionManager.closeSession()}>
+      <button class="nav-item" onclick={async () => { await sessionManager.closeSession(); routerManager.navigate('/home'); }}>
         <span class="indicator">
           <span class="material-symbols-rounded nav-icon">logout</span>
         </span>
         <span class="nav-label">Logout</span>
       </button>
     {:else}
-      <button class="nav-item" onclick={() => sessionManager.openSession(undefined)}>
+      <button class="nav-item" onclick={login}>
         <span class="indicator">
           <span class="material-symbols-rounded nav-icon">login</span>
         </span>
