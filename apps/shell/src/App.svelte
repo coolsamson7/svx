@@ -17,18 +17,22 @@
   const sessionManager = environment.get(SessionManager)
   const featureRegistry = environment.get(FeatureRegistry)
 
-  console.log(environment)
+  let hasSession = $state(sessionManager.hasSession());
 
-  // svelte-ignore state_referenced_locally
+  onMount(() => {
+    const sub = sessionManager.events$.subscribe(event => {
+      if (event.type === 'opened') hasSession = true;
+      else if (event.type === 'closed') hasSession = false;
+    });
+    return () => sub.unsubscribe();
+  });
 
-  //const portal = environment
-  //  .get(FeatureRegistry)
-  //  .findFeatures((f) => f.tags.includes("portal")).at(0)
-
-  const portal = featureRegistry.finder()
-        .withTag('portal')
-        .withVisibility(sessionManager.hasSession() ? "private" : "public")
-        .findOne()
+  let portal = $derived(
+    featureRegistry.finder()
+      .withTag('portal')
+      .withVisibility(hasSession ? "private" : "public")
+      .findOne()
+  );
 </script>
 
 <!-- the portal -->

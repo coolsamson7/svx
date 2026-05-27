@@ -4,6 +4,9 @@ import { TypeOrmModule }       from '@nestjs/typeorm'
 import { DataSource }          from 'typeorm'
 import { addTransactionalDataSource } from 'typeorm-transactional'
 
+import { UserModule, UserEntity, AddressEntity } from '@svx/user-core';
+import { SecurityNestjsModule, discoverJwksUri } from '@svx/security-nestjs';
+import { NestAopModule } from './aop/nest-aop.module';
 import { UserModule, UserEntity, AddressEntity } from '@svx/user-core'
 import { NestAopModule }       from './aop/nest-aop.module'
 import { PackagesController }  from './packages.controller'
@@ -12,6 +15,16 @@ import { SessionInterceptor }  from './session.interceptor'
 @Module({
   imports: [
     NestAopModule,
+    SecurityNestjsModule.forRootAsync({
+      useFactory: async () => {
+        const authority = process.env['OIDC_AUTHORITY'];
+        if (!authority) throw new Error('OIDC_AUTHORITY env var is required');
+        return {
+          authority,
+          jwksUri: await discoverJwksUri(authority),
+        };
+      },
+    }),
 
     TypeOrmModule.forRootAsync({
       useFactory: () => {

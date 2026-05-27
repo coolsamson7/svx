@@ -43,6 +43,18 @@ export class RouterManager {
     this.#guard = fn;
   }
 
+  async runGuardForCurrentPath(): Promise<void> {
+    if (!this.#guard) return;
+    this.#get();
+    const feature = this.#pathToFeature.get(window.location.pathname);
+    if (!feature) return;
+    try {
+      await this.#guard(feature, { pathname: window.location.pathname } as any);
+    } catch (e) {
+      console.debug('[guard] suppressed', e);
+    }
+  }
+
   navigateAfterLogin(): void {
     const saved = sessionStorage.getItem('redirect_after_login');
     if (!saved) return;
@@ -54,14 +66,16 @@ export class RouterManager {
     }
   }
 
-  useSecurityGuard(sessionManager: SessionManager<any, any, any>): void {
+  useSecurityGuard(sessionManager: SessionManager<any, any, any>, useLoginForm = false): void {
     this.setGuard(async (feature) => {
       const isPublic = (feature.visibility ?? []).includes('public');
       if (isPublic) return;
 
       if (!sessionManager.hasSession()) {
-        sessionStorage.setItem('redirect_after_login', window.location.pathname + window.location.search);
-        const loginFeature = this.registry.finder().withTag('login').findOptional();
+        sessionStorage.setItem('redirect_after_login', window.location.pathname);
+        const loginFeature = useLoginForm
+          ? this.registry.finder().withTag('login').findOptional()
+          : undefined;
         if (loginFeature?.router) {
           this.navigate(('/' + loginFeature.router.path) as `/${string}`);
         } else {
@@ -113,6 +127,9 @@ export class RouterManager {
 
       this.#pathToFeature.set(key, feature);
     }
+
+    const notFound = all.find(f => (f.tags ?? []).includes('not-found') && f.loader);
+    if (notFound) (config as any)['*'] = notFound.loader;
 
     this.router = createRouter({
       ...config,

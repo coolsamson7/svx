@@ -113,6 +113,18 @@
       }
     },
     {
+      "id": "login",
+      "label": "Login",
+      "router": { "path": "login" },
+      "permissions": [],
+      "visibility": ["public"],
+      "tags": ["login"],
+      "_source": {
+        "file": "features/login/Login.svelte",
+        "line": 4
+      }
+    },
+    {
       "id": "home",
       "label": "Home",
       "router": {
