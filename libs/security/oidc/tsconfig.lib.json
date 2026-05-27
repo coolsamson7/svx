@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "../../../dist/libs/security/oidc",
     "declaration": true,
-    "types": [],
+    "types": ["node"],
     "rootDir": ".."
   },
   "include": [
