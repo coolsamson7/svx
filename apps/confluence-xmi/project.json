@@ -1,0 +1,35 @@
+{
+  "name": "confluence-xmi",
+  "root": "apps/confluence-xmi",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx vite build",
+        "cwd": "apps/confluence-xmi"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vite --port 5174",
+        "cwd": "apps/confluence-xmi"
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "FORGE_EMAIL=$ATLASSIAN_USER_EMAIL FORGE_API_TOKEN=$ATLASSIAN_API_TOKEN npx @forge/cli deploy --environment development --no-verify",
+        "cwd": "apps/confluence-xmi"
+      },
+      "dependsOn": ["build"]
+    },
+    "tunnel": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "FORGE_EMAIL=$ATLASSIAN_USER_EMAIL FORGE_API_TOKEN=$ATLASSIAN_API_TOKEN npx @forge/cli tunnel",
+        "cwd": "apps/confluence-xmi"
+      }
+    }
+  }
+}
