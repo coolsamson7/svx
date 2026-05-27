@@ -123,7 +123,7 @@ export class TraceFormatter {
      f: () => {
           // message
           result.push((builder: StringBuilder, model: TraceModel) =>
-            builder.append((model.f.file || "<unknown>") + ":" + model.f.lineNumber + ":" + model.f.column)
+            builder.append(model.f ? (model.f.file || "<unknown>") + ":" + model.f.lineNumber + ":" + model.f.column : "<unknown>")
           );
         },
     });
