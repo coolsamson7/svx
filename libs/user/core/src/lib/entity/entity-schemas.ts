@@ -11,6 +11,7 @@ export const AddressEntitySchema = object({
 export const UserEntitySchema = object({
   id:        optional(number()),
   name:      SmallString,
+  email:     string().email().max(200),
   addresses: array(AddressEntitySchema),
 }, 'UserEntity');
 

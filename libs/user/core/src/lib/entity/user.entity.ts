@@ -11,6 +11,9 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 100 })
   name!: string;
 
+  @Column({ type: 'varchar', length: 200, default: '' })
+  email!: string;
+
   @OneToMany(() => AddressEntity, a => a.user, { cascade: true })
   addresses!: AddressEntity[];
 }

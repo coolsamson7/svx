@@ -1151,12 +1151,12 @@ export class Mapper {
       // --------------------------------------------------
       // apply()
       // --------------------------------------------------
-      if (rule.options.apply) {
+      if (rule.options.apply?.target) {
         ops.push(
           new ApplyOp(
             getter,
             setter,
-            rule.options.apply.target!,
+            rule.options.apply.target,
             rule.from,
             rule.to
           )

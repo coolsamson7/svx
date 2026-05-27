@@ -36,7 +36,8 @@ export class UserInventoryServiceController extends UserInventoryService {
       mapping(UserEntity, UserDto, map => {
         map.from("id").to("id");
         map.from("name").to("name");
-        map.from("addresses").to("addresses").apply({ target: syncRelation(synchronizer) });
+        map.from("email").to("email");
+        map.from("addresses").to("addresses").apply({ source: syncRelation(synchronizer) });
       }),
       mapping(AddressEntity, AddressDto, map => { map.matching(); }),
     ).setOptions({ autoDeep: true });
