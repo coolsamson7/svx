@@ -6,10 +6,7 @@ export class OptionalType<T> extends Type<OptionalType<T>, T | undefined> {
     }
 
     override check(object: T | undefined, context: ValidationContext) {
-        // ✅ undefined → skip validation completely
-        //if (object === undefined) return
-
-        // delegate to inner type
+        if (object === undefined) return
         this.inner.check(object!, context)
     }
 }
