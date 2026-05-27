@@ -98,7 +98,7 @@ export class FeatureManifestParser {
           result[name] = value
             .asKind(SyntaxKind.ArrayLiteralExpression)!
             .getElements()
-            .flatMap(e => {
+            .flatMap<string | Record<string, any>>(e => {
               if (e.getKind() === SyntaxKind.StringLiteral)
                 return [e.asKind(SyntaxKind.StringLiteral)!.getLiteralValue()];
               if (e.getKind() === SyntaxKind.ObjectLiteralExpression)

@@ -1,5 +1,5 @@
 // tools/manifest-generator/src/generate.ts
-import { FeatureManifestParser } from './parser.ts';
+import { FeatureManifestParser } from './parser';
 import { writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 
@@ -9,7 +9,7 @@ const outPath     = process.argv[3] ?? path.join(projectRoot, 'public/manifest.j
 const parser  = new FeatureManifestParser(path.join(projectRoot, 'tsconfig.json'));
 const results = await parser.parseDirectory(path.join(projectRoot, 'src'));
 
-const allFeatures = results.map(r => ({
+const allFeatures: any[] = results.map(r => ({
   ...r.meta,
   _source: { file: r.file, line: r.line }
 }));
