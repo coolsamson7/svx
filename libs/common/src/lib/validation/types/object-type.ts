@@ -60,7 +60,7 @@ export class ObjectType<T = any> extends Type<ObjectType<T>, T> {
 
                 if (!hasProp) {
                      if (type instanceof OptionalType)
-                        return
+                        continue
                     
                     const test = type.tests[0]
 

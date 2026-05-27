@@ -10,7 +10,7 @@ export class ArrayType<T> extends Type<ArrayType<T>, T[]> {
     constructor(public element: Type<any, T>) {
         super()
 
-        this.literalType('array')
+        this.baseType = 'array'
         this.test({
             type: "array",
             name: "type",
