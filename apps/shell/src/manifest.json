@@ -1,7 +1,25 @@
 {
-  "generated": "2026-05-21T08:35:53.829Z",
+  "generated": "2026-05-26T19:35:29.394Z",
   "project": "shell",
   "features": [
+    {
+      "id": "xmi-editor",
+      "label": "XMI Editor",
+      "router": {
+        "path": "xmi-editor"
+      },
+      "permissions": [],
+      "tags": [
+        "navigation"
+      ],
+       "visibility": [
+        "public"
+      ],
+      "_source": {
+        "file": "features/xmi-editor/XmiEditorFeature.svelte",
+        "line": 3
+      }
+    },
     {
       "id": "users",
       "label": "Users",
@@ -61,6 +79,22 @@
       }
     },
     {
+      "id": "portal",
+      "label": "Portal",
+      "permissions": [],
+      "visibility": [
+        "public",
+        "private"
+      ],
+      "tags": [
+        "portal"
+      ],
+      "_source": {
+        "file": "features/portal/Portal.svelte",
+        "line": 4
+      }
+    },
+    {
       "id": "pageNotFound",
       "label": "Page Not Found",
       "router": {
@@ -75,22 +109,6 @@
       ],
       "_source": {
         "file": "features/page-not-found/PageNotFound.svelte",
-        "line": 4
-      }
-    },
-    {
-      "id": "portal",
-      "label": "Portal",
-      "permissions": [],
-      "visibility": [
-        "public",
-        "private"
-      ],
-      "tags": [
-        "portal"
-      ],
-      "_source": {
-        "file": "features/portal/Portal.svelte",
         "line": 4
       }
     },
