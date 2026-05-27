@@ -17,7 +17,7 @@ import { ApplicationModule } from './bootstrap/application.module';
 
 new Tracer({
   enabled: true,
-  trace: new ConsoleTrace('%d [%p]: %m\n'),
+  trace: new ConsoleTrace('%d [%p]: %m %f\n'),
   paths: {
     di: TraceLevel.FULL,
     router: TraceLevel.FULL,

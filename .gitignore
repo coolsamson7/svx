@@ -45,3 +45,6 @@ apps/shell/src/service.json
 .idea/
 
 .antigravitycli/
+.nx/polygraph
+.claude/worktrees
+.claude/settings.local.json

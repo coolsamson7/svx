@@ -2,6 +2,83 @@ import * as ts from 'typescript'
 
 const DEFAULT_DECORATORS = ['Reflectable', 'DeclareService', 'DeclareComponent']
 
+/* =========================================================
+ * extractDescriptors — source-map-friendly alternative for Vite plugins.
+ * Reads the AST without modifying it; returns what would be injected so
+ * the caller can use magic-string to make surgical insertions.
+ * ========================================================= */
+
+export interface DescriptorInjection {
+  className: string
+  /** Character position in the original source — append the code right here. */
+  pos: number
+  /** The _descriptor object literal as a string, ready to inject. */
+  text: string
+}
+
+export interface ExtractResult {
+  injections: DescriptorInjection[]
+  needsTypeImport: boolean
+}
+
+export function extractDescriptors(
+  sourceFile: ts.SourceFile,
+  triggers?: string[]
+): ExtractResult {
+  const triggerSet   = new Set(triggers ?? DEFAULT_DECORATORS)
+  const printer      = ts.createPrinter()
+  const typeOnlyNames = collectTypeOnlyNames(sourceFile)
+  const injections: DescriptorInjection[] = []
+  let needsTypeImport = false
+
+  const onSchema = () => { needsTypeImport = true }
+
+  for (const stmt of sourceFile.statements) {
+    if (!ts.isClassDeclaration(stmt) || !stmt.name) continue
+    if (!hasTriggerDecorator(stmt, triggerSet)) continue
+
+    // Skip if _descriptor already present
+    if (stmt.members.some(m =>
+      isStaticMember(m) && ts.isPropertyDeclaration(m) &&
+      ts.isIdentifier(m.name) && m.name.text === '_descriptor'
+    )) continue
+
+    const fields:  ts.ObjectLiteralExpression[] = []
+    const methods: ts.ObjectLiteralExpression[] = []
+
+    for (const member of stmt.members) {
+      if (isStaticMember(member)) continue
+      if (ts.isPropertyDeclaration(member)) {
+        const entry = buildFieldEntry(member, typeOnlyNames, onSchema)
+        if (entry) fields.push(entry)
+      }
+      if (ts.isMethodDeclaration(member) || ts.isMethodSignature(member)) {
+        const entry = buildMethodEntry(member as ts.MethodDeclaration | ts.MethodSignature, typeOnlyNames, onSchema)
+        if (entry) methods.push(entry)
+      }
+    }
+
+    const entries: ts.ObjectLiteralElementLike[] = []
+    if (fields.length > 0)
+      entries.push(prop('fields',  ts.factory.createArrayLiteralExpression(fields,  true)))
+    if (methods.length > 0)
+      entries.push(prop('methods', ts.factory.createArrayLiteralExpression(methods, true)))
+
+    if (entries.length === 0) continue
+
+    const objLiteral = ts.factory.createObjectLiteralExpression(entries, true)
+    const text = printer.printNode(ts.EmitHint.Expression, objLiteral, sourceFile)
+
+    injections.push({ className: stmt.name.text, pos: stmt.end, text })
+  }
+
+  // needsTypeImport only matters if not already imported
+  if (needsTypeImport && hasCommonImport(sourceFile, ['Type']))
+    needsTypeImport = false
+
+  return { injections, needsTypeImport }
+}
+
 export function before(
   options: { decorators?: string[] },
   _program: ts.Program

@@ -94,7 +94,7 @@ export class Tracer {
         if (Tracer.ENABLED && this.getTraceLevel(path) >= level) {
              // new
 
-            await Stacktrace.mapFrames(frame)
+            if (frame) await Stacktrace.mapFrames(frame)
 
             // format
 

@@ -399,10 +399,12 @@ export class TypeDescriptor<T> {
 
     public hasDecorator(decorator: Function): boolean {
         return this.decorators.some(d => d.decorator === decorator)
+            || (this.parent?.hasDecorator(decorator) ?? false)
     }
 
     public getDecorator(decorator: Function): DecoratorDescriptor | undefined {
         return this.decorators.find(d => d.decorator === decorator)
+            ?? this.parent?.getDecorator(decorator)
     }
 
     public addMethodDecorator(target: any, property: string, decorator: Function, ...args: any[]): this {

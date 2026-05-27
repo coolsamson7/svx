@@ -66,12 +66,16 @@ export default defineConfig({
       '@svx/common':              path.resolve(__dirname, '../../dist/libs/common/index.mjs'),
       '@svx/di':                  path.resolve(__dirname, '../../dist/libs/di/index.mjs'),
       '@svx/portal':              path.resolve(__dirname, '../../dist/libs/portal/index.mjs'),
-      '@svx/security':            path.resolve(__dirname, '../../dist/libs/security/src'),
+      '@svx/security':            path.resolve(__dirname, '../../dist/libs/security/src/lib/browser'),
       '@svx/security-oidc':       path.resolve(__dirname, '../../dist/libs/security/oidc/src'),
       '@svx/security-credentials':path.resolve(__dirname, '../../dist/libs/security/credentials/src'),
       '@svx/service-common':      path.resolve(__dirname, '../../dist/libs/service/common/src'),
       '@svx/service-client':      path.resolve(__dirname, '../../dist/libs/service/client/src'),
       '@svx/user-interface':      path.resolve(__dirname, '../../dist/libs/user/interface/index.mjs'),
+      // npm workspaces hoists these to the repo root — point Vite directly
+      'elkjs/lib/elk.bundled.js': path.resolve(__dirname, '../../node_modules/elkjs/lib/elk.bundled.js'),
+      'fast-xml-parser':          path.resolve(__dirname, '../../node_modules/fast-xml-parser/src/fxp.js'),
+      '@xyflow/svelte':           path.resolve(__dirname, '../../node_modules/@xyflow/svelte'),
     },
   },
 
@@ -87,6 +91,7 @@ export default defineConfig({
       '@svx/security', '@svx/security-oidc', '@svx/security-credentials',
       '@svx/service-common', '@svx/service-client', '@svx/user-interface',
     ],
+    include: ['elkjs > elkjs/lib/elk.bundled.js'],
   },
 
   server: {

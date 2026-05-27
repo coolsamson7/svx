@@ -129,27 +129,45 @@ export class Stacktrace {
   }
 
   static async mapFrames(...frames: StackFrame[]): Promise<StackFrame[]> {
+    const validFrames = frames.filter((f): f is StackFrame => f != null);
     const files: Record<string, boolean> = {};
-    for (const f of frames) if (f.file && f.file.includes(':')) files[f.file] = true;
+    for (const f of validFrames) if (f.file && f.file.includes(':')) files[f.file] = true;
 
     const missing = Object.keys(files).filter((f) => !this.consumer[f]);
     if (missing.length > 0) {
       await lastValueFrom(forkJoin(missing.map((uri) => this.loadSourcemap(uri))));
     }
 
-    for (const f of frames) {
+    for (const f of validFrames) {
       if (f.file && f.lineNumber && this.consumer[f.file]) {
+        const originalUrl = f.file;
         const pos = this.consumer[f.file].originalPositionFor({
           line: f.lineNumber!,
           column: f.column!,
         });
-        f.file = pos.source;
-        f.lineNumber = pos.line;
-        f.column = pos.column;
+        if (pos.source != null) {
+          f.file = this.resolveSource(pos.source, originalUrl);
+          f.lineNumber = pos.line;
+          f.column = pos.column;
+        }
       }
     }
 
-    return frames;
+    return validFrames;
+  }
+
+  // Resolve a source map source path to an absolute URL so Chrome DevTools
+  // renders it as a clickable link in the console.
+  private static resolveSource(source: string, originalUrl: string): string {
+    if (source.includes('://')) return source;
+    try {
+      const base = new URL(originalUrl);
+      base.search = '';
+      base.hash = '';
+      return new URL(source, base.href).href;
+    } catch {
+      return source;
+    }
   }
 
   // ---------------- Browser-friendly source map loader ----------------
@@ -158,15 +176,28 @@ export class Stacktrace {
     const uriQuery = new URL(uri).search;
 
     const request = fetchObs(uri).pipe(
-      switchMap((res) => (res.ok ? res.text() : of(''))),
-      switchMap((script) => {
+      switchMap((res) => {
+        if (!res.ok) return of({ script: '', mapHeader: null as string | null });
+        // Vite 8+ serves source maps via the SourceMap response header (RFC 8740)
+        const mapHeader = res.headers.get('SourceMap') ?? res.headers.get('X-SourceMap');
+        return res.text().then(script => ({ script, mapHeader }));
+      }),
+      switchMap(({ script, mapHeader }) => {
+        // header takes priority (Vite 8+)
+        if (mapHeader) {
+          const mapUri = new URL(mapHeader, uri).href;
+          return fetchObs(mapUri).pipe(
+            switchMap((res) => (res.ok ? res.json() : of({})))
+          );
+        }
+
         if (!script) return of({});
 
         // inline source map
         const inline = /\/\/# sourceMappingURL=data:application\/json;base64,(.*)/.exec(script);
         if (inline) {
           try {
-            const map = JSON.parse(decodeBase64(inline[1])); // ← was atob()
+            const map = JSON.parse(decodeBase64(inline[1]));
             return of(map);
           } catch (e) {
             console.error('Failed to parse inline source map', e);
@@ -174,9 +205,7 @@ export class Stacktrace {
           }
         }
 
-        // external source map
-        //const external = /\/\/# sourceMappingURL=(.*)/.exec(script);
-
+        // external source map comment
         const allMatches = [...script.matchAll(/\/\/# sourceMappingURL=(.*)/g)];
         const external = allMatches.length > 0 ? allMatches[allMatches.length - 1] : null;
 

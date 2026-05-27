@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import ts from 'typescript';
+import MagicString from 'magic-string';
 import type { Plugin } from 'vite';
 import { resolve } from 'path';
 
@@ -15,11 +16,23 @@ function descriptorPlugin(): Plugin {
 
       const transformerPath = [process.cwd(), 'tools', 'ts-descriptor-transformer', 'dist', 'index.js'].join('/');
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { before } = require(transformerPath);
+      const { extractDescriptors } = require(transformerPath);
+
       const sourceFile = ts.createSourceFile(id, code, ts.ScriptTarget.ES2019, true);
-      const fakeProgram = { getTypeChecker: () => ({}) } as unknown as ts.Program;
-      const result = ts.transform(sourceFile, [before({ decorators: TRIGGERS }, fakeProgram)]);
-      return ts.createPrinter().printFile(result.transformed[0]);
+      const { injections, needsTypeImport } = extractDescriptors(sourceFile, TRIGGERS);
+
+      if (injections.length === 0) return null;
+
+      // Use magic-string so original line numbers are untouched → breakpoints stay accurate.
+      const s = new MagicString(code);
+
+      for (const { className, pos, text } of injections)
+        s.appendRight(pos, `\n${className}._descriptor = ${text};`);
+
+      if (needsTypeImport)
+        s.prepend(`import { Type } from '@svx/common';\n`);
+
+      return { code: s.toString(), map: s.generateMap({ hires: true }) };
     },
   };
 }
@@ -32,6 +45,9 @@ export default defineConfig({
       legacy: true,
       emitDecoratorMetadata: true,
     },
+  },
+  build: {
+    sourcemap: 'inline',
   },
   test: {
     globals: true,

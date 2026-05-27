@@ -1,0 +1,42 @@
+modules:
+  macro:
+    - key: xmi-viewer
+      title: XMI Viewer
+      description: View and edit UML class models stored as XMI files
+      parameters:
+        - identifier: gitlabUrl
+          name: GitLab Raw URL
+          description: Direct URL to the raw .xmi file in GitLab (takes priority over attachment)
+          type: string
+          required: false
+        - identifier: attachmentName
+          name: Attachment name
+          description: Name of the .xmi file attached to this Confluence page
+          type: string
+          required: false
+        - identifier: readonly
+          name: Read-only mode
+          description: Show the diagram without edit controls
+          type: boolean
+          defaultValue: "false"
+        - identifier: height
+          name: Height (px)
+          type: number
+          defaultValue: "600"
+      resource: main
+
+resources:
+  - key: main
+    path: static
+    tunnel:
+      port: 5174
+
+permissions:
+  scopes:
+    - read:confluence-content.all
+    - write:confluence-content
+
+app:
+  id: ari:cloud:ecosystem::app/e83b4363-e8bf-43ea-a118-7d8004be642d
+  runtime:
+    name: nodejs22.x
