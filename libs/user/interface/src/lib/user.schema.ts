@@ -5,7 +5,10 @@ import { AddressSchema } from './address.schema';
 export type { Address } from './address.schema';
 
 export const UserSchema = object({
-  id:        optional(number()),
+  /**
+   * jajsjajs
+   */
+  id:        optional(number()).description("hhhh"),
   name:      string().min(1).max(100),
   email:     string().email().max(200),
   age:       optional(number().min(0).max(150)),

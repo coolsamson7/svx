@@ -4,7 +4,7 @@ import type { InferObject } from '@svx/common';
 export const AddressSchema = object({
   /** The unique identifier for the address */
   id:   optional(number()),
-  city: string().description("The city of the address").length(100),
+  city: string().description("The city of the address").max(100),
 }, "Address");
 
 export type Address = InferObject<typeof AddressSchema>;
