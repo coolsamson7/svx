@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common'
 import { AdviceAspect, Aspect, AspectInfo, AspectManager } from '@svx/di'
 import { TypeDescriptor } from '@svx/common'
-import { UserLoggingAspect } from './user-logging.aspect'
-import { SchemaValidationAspect } from './schema-validation.aspect'
+import { UserLoggingAspect }                from './user-logging.aspect'
+import { SchemaValidationAspect }           from './schema-validation.aspect'
+import { SessionContextAspect }             from './session-context.aspect'
+import { AuthorizationAspect }             from './authorization-aspect'
+import { ServerSessionContext, JwtSessionFactory, OIDCUser, AuthorizationManager, RequiresRoleFactory } from '@svx/security'
 
 // ─── instance registry ────────────────────────────────────────────────────────
 // Populated as NestJS creates every provider and controller.
@@ -119,6 +122,30 @@ const _origInstantiate: (...args: any[]) => Promise<any> = Injector.prototype.in
 
 // ─── module ───────────────────────────────────────────────────────────────────
 @Module({
-  providers: [UserLoggingAspect, SchemaValidationAspect],
+  providers: [
+    {
+      provide:    ServerSessionContext,
+      useFactory: () => new ServerSessionContext<OIDCUser>(
+        new JwtSessionFactory<OIDCUser>(
+          { jwksUri: process.env['JWKS_URI'] ?? '' },
+          claims => ({
+            sub:                String(claims['sub']                ?? ''),
+            given_name:         String(claims['given_name']         ?? ''),
+            family_name:        String(claims['family_name']        ?? ''),
+            email:              String(claims['email']              ?? ''),
+            email_verified:     String(claims['email_verified']     ?? ''),
+            name:               String(claims['name']              ?? ''),
+            preferred_username: String(claims['preferred_username'] ?? ''),
+          }),
+        ),
+      ),
+    },
+    SessionContextAspect,
+    SchemaValidationAspect,
+    UserLoggingAspect,
+    AuthorizationManager,
+    RequiresRoleFactory,
+    AuthorizationAspect,
+  ],
 })
 export class NestAopModule {}
