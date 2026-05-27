@@ -90,7 +90,8 @@ export class Invocation<TARGET = any> {
                 rethrow = e
             }
             for (const joinPoint of this.joinPoints.after) (this.currentJoinPoint = joinPoint).run(this)
-            if (rethrow) throw rethrow
+            // Re-throw if: an @error advice itself threw, or no @error advice was present to handle it.
+            if (rethrow || this.joinPoints.error.length === 0) throw rethrow ?? error
         }
     }
 }
