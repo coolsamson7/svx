@@ -1,6 +1,6 @@
+import { Injectable } from '@nestjs/common';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
-
 
 /**
  * SessionContext provides access to the session
@@ -8,24 +8,17 @@ import { Ticket } from './ticket.interface';
  *
  * It MUST NOT store session state itself.
  */
-export interface SessionContext<U = any, T extends Ticket = Ticket> {
-  /**
-   * Resolves the session from the current environment and caches it in the store.
-   * Must be called once per request (e.g. from a NestJS interceptor) before current().
-   */
-  establish(): Promise<void>;
-
-  /**
-   * Returns the cached session for the current execution context, or null.
-   * Synchronous — relies on establish() having been called first.
-   */
-  current(): Session<U, T> | null;
+@Injectable()
+export abstract class SessionContext<U = any, T extends Ticket = Ticket> {
+  abstract establish(): Promise<void>;
+  abstract current(): Session<U, T> | null;
 }
 
-export class SessionContextBuilder<U = any, T extends Ticket = Ticket, S = any> {
-  private _environment?: SessionEnvironment<S>
-  private _factory?:     SessionFactory<S, U, T>
-  private _store?:       SessionStore<U, T>
+export class SessionContextBuilder<U = any, T extends Ticket = Ticket, S = string> {
+  private _environment?:   SessionEnvironment<S>
+  private _factory?:       SessionFactory<S, U, T>
+  private _store?:         SessionStore<S, U, T>
+  private _directSession?: () => Session<U, T> | null
 
   environment(env: SessionEnvironment<S>): this {
     this._environment = env
@@ -37,36 +30,43 @@ export class SessionContextBuilder<U = any, T extends Ticket = Ticket, S = any> 
     return this
   }
 
-  store(store: SessionStore<U, T>): this {
+  store(store: SessionStore<S, U, T>): this {
     this._store = store
     return this
   }
 
+  directSession(resolver: () => Session<U, T> | null): this {
+    this._directSession = resolver
+    return this
+  }
+
   build(): SessionContext<U, T> {
-    const env     = this._environment
-    const factory = this._factory
-    const store   = this._store
+    const env           = this._environment
+    const factory       = this._factory
+    const store         = this._store
+    const directSession = this._directSession
 
     if (!env)     throw new Error('SessionContextBuilder: environment is required')
     if (!factory) throw new Error('SessionContextBuilder: factory is required')
 
-    return {
+    return new class extends SessionContext<U, T> {
       async establish(): Promise<void> {
+        if (directSession?.()) return
+
         const source = env.get()
         if (source == null) return
-
-        const key = String(source)
-        if (store?.get(key)) return
+        if (store?.get(source)) return
 
         const session = await factory.create(source)
-        if (session && store) store.put(key, session)
-      },
+        if (session && store) store.put(source, session)
+      }
 
       current(): Session<U, T> | null {
-        const source = env.get()
-        if (source == null) return null
-
-        return store?.get(String(source)) ?? null
+        return directSession?.() ?? (() => {
+          const source = env.get()
+          if (source == null) return null
+          return store?.get(source) ?? null
+        })()
       }
     }
   }
@@ -76,8 +76,6 @@ export class SessionContextBuilder<U = any, T extends Ticket = Ticket, S = any> 
  * SessionEnvironment extracts authentication input
  * (credentials, tokens, cookies, OIDC state, etc.)
  * from the current environment.
- *
- * It is environment-specific (browser, server, CLI, etc.).
  */
 export interface SessionEnvironment<S = any> {
   get(): S | null
@@ -93,9 +91,6 @@ export interface SessionEnvironment<S = any> {
  * - claim normalization
  */
 export interface SessionFactory<S = any, U = any, T extends Ticket = Ticket> {
-  /**
-   * Creates a session from a resolved authentication source.
-   */
   create(source: S): Session<U, T> | Promise<Session<U, T>>;
 }
 
@@ -105,8 +100,8 @@ export interface SessionFactory<S = any, U = any, T extends Ticket = Ticket> {
  * It is independent from transport or execution context.
  * Typically backed by memory, Redis, or database.
  */
-export interface SessionStore<U = any, T extends Ticket = Ticket> {
-  get(key: string): Session<U, T> | null;
-  put(key: string, session: Session<U, T>): void;
-  remove(key: string): void;
+export interface SessionStore<K = string, U = any, T extends Ticket = Ticket> {
+  get(key: K): Session<U, T> | null;
+  put(key: K, session: Session<U, T>): void;
+  remove(key: K): void;
 }

@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, OnModuleInit } from '@nestjs/common'
 import { Invocation } from '@svx/di'
 import { TypeDescriptor, MethodDescriptor } from '@svx/common'
 import { Authorization, AuthorizationFactory, AuthorizationManager } from './authorization-manager'
-import { ServerSessionContext } from '../server-session-context'
+import { SessionContext } from '../session.context'
 
 // ─── decorator ────────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ export function RequiresRole(...roles: string[]): MethodDecorator {
 class RoleAuthorization extends Authorization {
   constructor(
     private readonly required: string[],
-    private readonly sessionContext: ServerSessionContext,
+    private readonly sessionContext: SessionContext,
   ) {
     super()
   }
@@ -55,7 +55,7 @@ export class RequiresRoleFactory extends AuthorizationFactory implements OnModul
 
   constructor(
     private readonly authManager: AuthorizationManager,
-    private readonly sessionContext: ServerSessionContext,
+    private readonly sessionContext: SessionContext,
   ) {
     super()
   }

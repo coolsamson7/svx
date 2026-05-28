@@ -1,13 +1,19 @@
 import { AsyncLocalStorage }                         from 'async_hooks'
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose'
-import { SessionContextBuilder, SessionFactory }     from './session.context'
-import { CachingSessionStore }                       from './caching-session-store'
-import { Session }                                   from './session.interface'
+import { SessionFactory }  from './session.context'
+import { Session }         from './session.interface'
 import { Ticket }                                    from './ticket.interface'
 
 // Holds the raw JWT for the duration of the current request.
 // Populated by SessionInterceptor (HTTP) before the handler runs.
 export const tokenStorage = new AsyncLocalStorage<string>()
+
+// Holds a pre-built Session for non-HTTP entry points (e.g. message subscribers).
+export const sessionStorage = new AsyncLocalStorage<Session>()
+
+export function runWithSession<R>(session: Session, fn: () => R): R {
+  return sessionStorage.run(session, fn) as R
+}
 
 export interface JwtSessionConfig {
   jwksUri: string
@@ -17,8 +23,8 @@ export interface JwtSessionConfig {
  * SessionFactory implementation that validates a raw JWT string via JWKS
  * and maps the resulting claims to a typed domain user.
  *
- * Stateless and reusable: construct once, pass to ServerSessionContext or
- * SessionContextBuilder. The JWKS client caches signing keys internally.
+ * Stateless and reusable: construct once, pass to SessionContextBuilder.
+ * The JWKS client caches signing keys internally.
  */
 export class JwtSessionFactory<U = JWTPayload, T extends Ticket & { token: string } = { token: string } & Ticket>
   implements SessionFactory<string, U, T>
@@ -40,20 +46,4 @@ export class JwtSessionFactory<U = JWTPayload, T extends Ticket & { token: strin
       expiry: payload.exp ? payload.exp * 1000 : undefined,
     }
   }
-}
-
-/**
- * Convenience builder: wires JwtSessionFactory + tokenStorage + CachingSessionStore
- * into a ready-to-use SessionContext. Use ServerSessionContext when you need a
- * NestJS-injectable class token or the direct-session (messaging) path.
- */
-export function createJwtSessionContext<U = JWTPayload, T extends Ticket & { token: string } = { token: string } & Ticket>(
-  config:     JwtSessionConfig,
-  mapClaims?: (payload: JWTPayload) => U,
-): ReturnType<SessionContextBuilder<U, T, string>['build']> {
-  return new SessionContextBuilder<U, T, string>()
-    .environment({ get: () => tokenStorage.getStore() ?? null })
-    .factory(new JwtSessionFactory<U, T>(config, mapClaims))
-    .store(new CachingSessionStore())
-    .build()
 }

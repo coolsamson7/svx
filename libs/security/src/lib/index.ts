@@ -3,7 +3,6 @@ export * from './session.interface';
 export * from './session.context';
 export * from './caching-session-store';
 //export * from './browser-session-context';
-export * from './server-session-context';
 export * from './public.decorator';
 export * from './jwt-session-context';
 export * from './ticket.interface';
