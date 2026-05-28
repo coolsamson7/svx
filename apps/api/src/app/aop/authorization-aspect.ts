@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { around, Invocation, methods } from '@svx/di'
-import { AuthorizationManager, Public } from '@svx/security'
+import { AuthorizationManager } from '@svx/security-nestjs'
+import { Public } from '@svx/security'
 import { DeclareService } from '@svx/service-common'
 
 @Injectable()

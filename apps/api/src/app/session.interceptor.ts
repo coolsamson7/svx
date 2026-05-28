@@ -1,6 +1,6 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common'
 import { Observable }   from 'rxjs'
-import { tokenStorage } from '@svx/security'
+import { tokenStorage } from '@svx/security-nestjs'
 
 /**
  * Extracts the Bearer token from every HTTP request and places it into

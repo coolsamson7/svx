@@ -4,8 +4,8 @@ import { TypeOrmModule }       from '@nestjs/typeorm'
 import { DataSource }          from 'typeorm'
 import { addTransactionalDataSource } from 'typeorm-transactional'
 
-import { NestAopModule } from '@svx/security-nestjs'
-import { SessionContext, SessionContextBuilder, CachingSessionStore, sessionStorage, tokenStorage, JwtSessionFactory, OIDCUser, AuthorizationManager, RequiresRoleFactory } from '@svx/security'
+import { NestAopModule, tokenStorage, sessionStorage, JwtSessionFactory, AuthorizationManager, RequiresRoleFactory } from '@svx/security-nestjs'
+import { SessionContext, SessionContextBuilder, CachingSessionStore, OIDCUser } from '@svx/security'
 import { UserModule, UserEntity, AddressEntity } from '@svx/user-core'
 
 import { SessionContextAspect }  from './aop/session-context.aspect'
