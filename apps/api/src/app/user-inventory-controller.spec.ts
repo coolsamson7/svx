@@ -4,8 +4,12 @@ import { addTransactionalDataSource, initializeTransactionalContext } from 'type
 import { DataSource }              from 'typeorm'
 import { UserModule, UserEntity, AddressEntity, UserInventoryServiceController } from '@svx/user-core'
 import { UserDto, AddressDto }     from '@svx/user-interface'
-import { NestAopModule }                              from './aop/nest-aop.module'
-import { tokenStorage, ServerSessionContext, OIDCUser } from '@svx/security'
+import { NestAopModule }                                                                                    from '@svx/security-nestjs'
+import { SessionContext, SessionContextBuilder, CachingSessionStore, sessionStorage, tokenStorage, runWithSession, JwtSessionFactory, OIDCUser, AuthorizationManager, RequiresRoleFactory } from '@svx/security'
+import { SessionContextAspect }  from './aop/session-context.aspect'
+import { SchemaValidationAspect } from './aop/schema-validation.aspect'
+import { UserLoggingAspect }     from './aop/user-logging.aspect'
+import { AuthorizationAspect }   from './aop/authorization-aspect'
 
 // ─── Keycloak config (local dev instance) ────────────────────────────────────
 const KEYCLOAK_TOKEN_URL = 'http://localhost:8080/realms/service/protocol/openid-connect/token'
@@ -32,20 +36,19 @@ async function fetchToken(): Promise<string> {
 
 // ─── Test suite ───────────────────────────────────────────────────────────────
 describe('UserInventoryController', () => {
-  let app:            TestingModule
-  let controller:     UserInventoryServiceController
-  let sessionContext: ServerSessionContext<OIDCUser>
-  let token:          string
+  let app:        TestingModule
+  let controller: UserInventoryServiceController
+  let token:      string
 
   beforeAll(async () => {
     initializeTransactionalContext()
 
-    // Point ServerSessionContext at our local Keycloak — must be set before module compiles.
+    // Point SessionContext at our local Keycloak — must be set before module compiles.
     process.env['JWKS_URI'] = KEYCLOAK_JWKS_URI
 
     app = await Test.createTestingModule({
       imports: [
-        NestAopModule,
+        NestAopModule.forRoot(),
         TypeOrmModule.forRootAsync({
           useFactory: () => ({
             type:        'postgres',
@@ -68,10 +71,37 @@ describe('UserInventoryController', () => {
         }),
         UserModule,
       ],
+      providers: [
+        {
+          provide:    SessionContext,
+          useFactory: () => new SessionContextBuilder<OIDCUser>()
+            .environment({ get: () => tokenStorage.getStore() ?? null })
+            .factory(new JwtSessionFactory<OIDCUser>(
+              { jwksUri: process.env['JWKS_URI'] ?? '' },
+              claims => ({
+                sub:                String(claims['sub']                ?? ''),
+                given_name:         String(claims['given_name']         ?? ''),
+                family_name:        String(claims['family_name']        ?? ''),
+                email:              String(claims['email']              ?? ''),
+                email_verified:     String(claims['email_verified']     ?? ''),
+                name:               String(claims['name']              ?? ''),
+                preferred_username: String(claims['preferred_username'] ?? ''),
+              }),
+            ))
+            .store(new CachingSessionStore())
+            .directSession(() => sessionStorage.getStore() ?? null)
+            .build(),
+        },
+        SessionContextAspect,
+        SchemaValidationAspect,
+        UserLoggingAspect,
+        AuthorizationAspect,
+        AuthorizationManager,
+        RequiresRoleFactory,
+      ],
     }).compile()
 
-    controller     = app.get(UserInventoryServiceController)
-    sessionContext = app.get(ServerSessionContext)
+    controller = app.get(UserInventoryServiceController)
 
     // Get a real token from Keycloak — SessionContextAspect will validate it on
     // first controller call via establish() (JWKS fetch + RSA verify + cache).
@@ -101,7 +131,7 @@ describe('UserInventoryController', () => {
       } satisfies OIDCUser,
       ticket: { token: '' },
     }
-    return sessionContext.run(session, fn)
+    return runWithSession(session, fn)
   }
 
   // ─── Tests ────────────────────────────────────────────────────────────────

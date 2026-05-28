@@ -1,13 +1,12 @@
 import { Injectable, UnauthorizedException }  from '@nestjs/common'
 import { around, Invocation, methods }         from '@svx/di'
-import { DeclareService }                      from '@svx/service-common'
-import { ServerSessionContext, Public }        from '@svx/security'
+import { SessionContext, Public }              from '@svx/security'
 import { TypeDescriptor }                      from '@svx/common'
 import { UserInventoryServiceController } from '@svx/user-core'
 
 @Injectable()
 export class SessionContextAspect {
-  constructor(private readonly sessionContext: ServerSessionContext) {}
+  constructor(private readonly sessionContext: SessionContext) {}
 
   @around(methods().of(UserInventoryServiceController))//TODO .classDecoratedWith(DeclareService as any))
   async withSession(invocation: Invocation): Promise<any> {
