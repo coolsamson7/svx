@@ -2,7 +2,8 @@ import { ForbiddenException, Injectable, OnModuleInit } from '@nestjs/common'
 import { Invocation } from '@svx/di'
 import { TypeDescriptor, MethodDescriptor } from '@svx/common'
 import { Authorization, AuthorizationFactory, AuthorizationManager } from './authorization-manager'
-import { SessionContext } from '../session-context'
+import { SessionContext } from '@svx/security';
+
 
 // ─── decorator ────────────────────────────────────────────────────────────────
 

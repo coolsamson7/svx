@@ -1,9 +1,7 @@
 import { AsyncLocalStorage }                         from 'async_hooks'
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose'
 
-import { Session }         from './session.interface'
-import { Ticket }                                    from './ticket.interface'
-import { SessionFactory } from './session-factory';
+import { Session, Ticket, SessionFactory }         from '@svx/security'
 
 // Holds the raw JWT for the duration of the current request.
 // Populated by SessionInterceptor (HTTP) before the handler runs.
@@ -30,16 +28,15 @@ export interface JwtSessionConfig {
 export class JwtSessionFactory<U = JWTPayload, T extends Ticket & { token: string } = { token: string } & Ticket>
   implements SessionFactory<string, U, T>
 {
-  private readonly JWKS: ReturnType<typeof createRemoteJWKSet>
+  private JWKS: ReturnType<typeof createRemoteJWKSet> | undefined
 
   constructor(
-    config:   JwtSessionConfig,
+    private readonly config: JwtSessionConfig,
     private readonly mapClaims: (payload: JWTPayload) => U = p => p as unknown as U,
-  ) {
-    this.JWKS = createRemoteJWKSet(new URL(config.jwksUri))
-  }
+  ) {}
 
   async create(token: string): Promise<Session<U, T>> {
+    if (!this.JWKS) this.JWKS = createRemoteJWKSet(new URL(this.config.jwksUri))
     const { payload } = await jwtVerify(token, this.JWKS)
     return {
       user:   this.mapClaims(payload),

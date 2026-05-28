@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
 import { SessionSource } from './session-source';
@@ -11,7 +10,6 @@ import { SessionStore } from './session-store';
  *
  * It MUST NOT store session state itself.
  */
-@Injectable()
 export abstract class SessionContext<U = any, T extends Ticket = Ticket> {
   abstract establish(): Promise<void>;
   abstract current(): Session<U, T> | null;

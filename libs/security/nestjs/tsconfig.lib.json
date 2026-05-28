@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "../../../dist/libs/security/nestjs",
     "declaration": true,
-    "types": []
+    "types": ["node"],
+    "rootDir": "../.."
   },
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.spec.ts", "**/*.test.ts"]
