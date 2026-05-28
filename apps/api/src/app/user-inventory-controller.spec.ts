@@ -75,7 +75,7 @@ describe('UserInventoryController', () => {
         {
           provide:    SessionContext,
           useFactory: () => new SessionContextBuilder<OIDCUser>()
-            .environment({ get: () => tokenStorage.getStore() ?? null })
+            .source({ get: () => tokenStorage.getStore() ?? null })
             .factory(new JwtSessionFactory<OIDCUser>(
               { jwksUri: process.env['JWKS_URI'] ?? '' },
               claims => ({

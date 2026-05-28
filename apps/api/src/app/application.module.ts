@@ -67,7 +67,7 @@ import { SessionInterceptor }    from './session.interceptor'
     {
       provide:    SessionContext,
       useFactory: () => new SessionContextBuilder<OIDCUser>()
-        .environment({ get: () => tokenStorage.getStore() ?? null })
+        .source({ get: () => tokenStorage.getStore() ?? null })
         .factory(new JwtSessionFactory<OIDCUser>(
           { jwksUri: process.env['JWKS_URI'] ?? '' },
           claims => ({
@@ -84,10 +84,16 @@ import { SessionInterceptor }    from './session.interceptor'
         .directSession(() => sessionStorage.getStore() ?? null)
         .build(),
     },
+
+    // aspects
+
     SessionContextAspect,
     SchemaValidationAspect,
     UserLoggingAspect,
     AuthorizationAspect,
+
+    // some more
+    
     AuthorizationManager,
     RequiresRoleFactory,
     { provide: APP_INTERCEPTOR, useClass: SessionInterceptor },

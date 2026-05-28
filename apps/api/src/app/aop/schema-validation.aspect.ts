@@ -11,7 +11,7 @@ export class SchemaValidationAspect {
     Map<string, Array<((v: any) => void) | null>>
   >();
 
-  @before(methods().classDecoratedWith(DeclareService as any))
+  @before(methods().classDecoratedWith(DeclareService))
   validateArgs(invocation: Invocation): void {
     const ctor = (invocation.target as any).constructor as Function;
     const name = invocation.method().name;
