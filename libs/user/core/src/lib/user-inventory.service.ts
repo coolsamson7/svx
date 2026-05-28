@@ -9,7 +9,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Mapper, mapping, RelationSynchronizer, syncRelation, ApplyContext } from "@svx/core";
 
 import { Implementation } from "@svx/service-nestjs";
-import { RequiresRole } from "@svx/security";
+import { RequiresRole } from "@svx/security-nestjs";
 
 import { AddressEntity } from "./entity/address.entity";
 
@@ -43,7 +43,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     ).setOptions({ autoDeep: true });
   }
 
-  @RequiresRole('user', 'admin')
+  //@RequiresRole('user', 'admin')
   @Get("all")
   @Transactional()
   async findAll(): Promise<UserDto[]> {
@@ -51,7 +51,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.mapList(entities);
   }
 
-  @RequiresRole('user', 'admin')
+  //@RequiresRole('user', 'admin')
   @Get('find/:id')
   @Transactional()
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
@@ -59,7 +59,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map<UserEntity, UserDto>(entity);
   }
 
-  @RequiresRole('admin')
+  //@RequiresRole('admin')
   @Post("create")
   @Transactional()
   async create(@Body() dto: CreateUser): Promise<UserDto> {
@@ -68,7 +68,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map<UserEntity, UserDto>(saved);
   }
 
-  @RequiresRole('admin')
+  //@RequiresRole('admin')
   @Put("update")
   @Transactional()
   async update(@Body() dto: User): Promise<UserDto> {
@@ -78,7 +78,7 @@ export class UserInventoryServiceController extends UserInventoryService {
     return this.mapper.map(saved);
   }
 
-  @RequiresRole('admin')
+  //@RequiresRole('admin')
   @Delete('delete/:id')
   @Transactional()
   async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
