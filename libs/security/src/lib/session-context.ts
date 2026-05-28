@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
-import { SessionEnvironment } from './session-source';
+import { SessionSource } from './session-source';
 import { SessionFactory } from './session-factory';
 import { SessionStore } from './session-store';
 
@@ -18,12 +18,12 @@ export abstract class SessionContext<U = any, T extends Ticket = Ticket> {
 }
 
 export class SessionContextBuilder<U = any, T extends Ticket = Ticket, S = string> {
-  private _environment?:   SessionEnvironment<S>
+  private _environment?:   SessionSource<S>
   private _factory?:       SessionFactory<S, U, T>
   private _store?:         SessionStore<S, U, T>
   private _directSession?: () => Session<U, T> | null
 
-  environment(env: SessionEnvironment<S>): this {
+  source(env: SessionSource<S>): this {
     this._environment = env
     return this
   }

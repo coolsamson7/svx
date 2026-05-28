@@ -94,6 +94,7 @@ export function around(config: AspectTarget | AspectConfig): any {
                 new AroundAspect(target.constructor, descriptor.value, {
                     type: AspectType.AROUND,
                     target: config,
+                    order: config.getOrder(),
                 })
             )
         } else {
@@ -122,12 +123,11 @@ export class BeforeAfterAspect extends AdviceAspect {
 export function before(config: AspectTarget | AspectConfig): any {
     return (target: any, property: string, descriptor: PropertyDescriptor) => {
         if (config instanceof AspectTarget) {
-            const aspectTarget = config as AspectTarget
-
             AspectManager.registerAspect(
                 new BeforeAfterAspect(target.constructor, descriptor.value, {
                     type: AspectType.BEFORE,
-                    target: aspectTarget,
+                    target: config,
+                    order: config.getOrder(),
                 })
             )
         } else {
@@ -143,6 +143,7 @@ export function after(config: AspectTarget | AspectConfig): any {
                 new BeforeAfterAspect(target.constructor, descriptor.value, {
                     type: AspectType.AFTER,
                     target: config,
+                    order: config.getOrder(),
                 })
             )
         } else {
@@ -167,6 +168,7 @@ export function error(config: AspectTarget | AspectConfig): any {
                 new ErrorAspect(target.constructor, descriptor.value, {
                     type: AspectType.ERROR,
                     target: config,
+                    order: config.getOrder(),
                 })
             )
         } else {

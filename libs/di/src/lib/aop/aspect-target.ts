@@ -17,11 +17,12 @@ export class AspectTarget {
 
     private type: any
 
-    private classDecorator: ClassDecorator | undefined
-    private methodDecorator: MethodDecorator | undefined
+    private classDecorator: Function | undefined
+    private methodDecorator: Function | undefined
     private names: string[] = []
     private expressions: RegExp[] = []
     private async: boolean | undefined
+    private _order: number = 0
 
     // fluent interface
 
@@ -53,13 +54,13 @@ export class AspectTarget {
         return this
     }
 
-    classDecoratedWith(decorator: ClassDecorator): AspectTarget {
+    classDecoratedWith(decorator: Function): AspectTarget {
         this.classDecorator = decorator
 
         return this
     }
 
-    decoratedWith(decorator: MethodDecorator): AspectTarget {
+    decoratedWith(decorator: Function): AspectTarget {
         this.methodDecorator = decorator
 
         return this
@@ -69,6 +70,16 @@ export class AspectTarget {
         this.type = type
 
         return this
+    }
+
+    order(n: number): AspectTarget {
+        this._order = n
+
+        return this
+    }
+
+    getOrder(): number {
+        return this._order
     }
 
     /** Returns the class declared via .of(), if any — used by the weaver to pre-filter candidates. */
