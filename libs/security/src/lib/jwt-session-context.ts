@@ -1,8 +1,9 @@
 import { AsyncLocalStorage }                         from 'async_hooks'
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose'
-import { SessionFactory }  from './session.context'
+
 import { Session }         from './session.interface'
 import { Ticket }                                    from './ticket.interface'
+import { SessionFactory } from './session-factory';
 
 // Holds the raw JWT for the duration of the current request.
 // Populated by SessionInterceptor (HTTP) before the handler runs.

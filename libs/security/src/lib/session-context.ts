@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
+import { SessionEnvironment } from './session-source';
+import { SessionFactory } from './session-factory';
+import { SessionStore } from './session-store';
 
 /**
  * SessionContext provides access to the session
@@ -70,38 +73,4 @@ export class SessionContextBuilder<U = any, T extends Ticket = Ticket, S = strin
       }
     }
   }
-}
-
-/**
- * SessionEnvironment extracts authentication input
- * (credentials, tokens, cookies, OIDC state, etc.)
- * from the current environment.
- */
-export interface SessionEnvironment<S = any> {
-  get(): S | null
-}
-
-/**
- * SessionFactory creates a Session from authentication input.
- *
- * It contains domain logic such as:
- * - JWT parsing
- * - OIDC mapping
- * - role extraction
- * - claim normalization
- */
-export interface SessionFactory<S = any, U = any, T extends Ticket = Ticket> {
-  create(source: S): Session<U, T> | Promise<Session<U, T>>;
-}
-
-/**
- * SessionStore provides optional caching/persistence for sessions.
- *
- * It is independent from transport or execution context.
- * Typically backed by memory, Redis, or database.
- */
-export interface SessionStore<K = string, U = any, T extends Ticket = Ticket> {
-  get(key: K): Session<U, T> | null;
-  put(key: K, session: Session<U, T>): void;
-  remove(key: K): void;
 }

@@ -1,6 +1,6 @@
 import { Session }        from './session.interface'
 import { Ticket }         from './ticket.interface'
-import { SessionContext } from './session.context'
+import { SessionContext } from './session-context'
 import { SessionManager } from './session-manager'
 
 export class BrowserSessionContext<U = any, T extends Ticket = Ticket>

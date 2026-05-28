@@ -1,6 +1,6 @@
 import {Subject } from 'rxjs';
 
-import { Authentication, AuthenticationRequest } from './authentication';
+import { Authentication } from './authentication';
 import { Session } from './session.interface';
 import { Ticket } from './ticket.interface';
 

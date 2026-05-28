@@ -1,6 +1,6 @@
 import { Session } from './session.interface'
 import { Ticket } from './ticket.interface'
-import { SessionStore } from './session.context'
+import { SessionStore } from './session-store';
 
 interface Entry<U, T extends Ticket> {
   session: Session<U, T>

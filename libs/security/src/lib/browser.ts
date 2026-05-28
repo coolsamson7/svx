@@ -1,7 +1,7 @@
 // Browser-safe re-exports — no async_hooks, no NestJS
 export * from './session-manager'
 export * from './session.interface'
-export * from './session.context'
+export * from './session-context'
 export * from './caching-session-store'
 export * from './browser-session-context'
 export * from './public.decorator'
