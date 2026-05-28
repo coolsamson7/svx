@@ -7,7 +7,9 @@ export class UserLoggingAspect {
   @around(methods().classDecoratedWith(DeclareService))
   async logExecution(invocation: Invocation): Promise<any> {
     const methodName = invocation.method().name
+    
     console.log(`[AOP] → ${methodName}`, invocation.args)
+
     const start = Date.now()
     try {
       const result = await invocation.proceed()
