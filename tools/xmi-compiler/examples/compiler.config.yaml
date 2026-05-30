@@ -1,0 +1,24 @@
+xmiPath: examples/model.xmi
+outputDir: examples/output
+dialect: postgres
+generators:
+  - yaml
+  - json
+  - sql
+  - typeorm
+  - schema
+naming:
+  tables:
+    removeSuffixes:
+      - Entity
+      - VO
+    case: upper_snake
+    pluralize: false
+  columns:
+    case: upper_snake
+  foreignKeys:
+    prefix: FK_
+    maxLength: 63
+  joinTables:
+    prefix: ""
+    separator: "_"

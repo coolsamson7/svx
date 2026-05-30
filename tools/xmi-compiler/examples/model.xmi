@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmlns:xmi="http://www.omg.org/spec/XMI/20131001"
+         xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML"
+         xmi:version="20131001">
+
+  <uml:Model xmi:type="uml:Model" xmi:id="model_001" name="OrderManagement">
+
+    <!-- Enumeration: OrderStatus -->
+    <packagedElement xmi:type="uml:Enumeration" xmi:id="enum_order_status" name="OrderStatus">
+      <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="lit_pending"    name="PENDING"/>
+      <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="lit_confirmed"  name="CONFIRMED"/>
+      <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="lit_shipped"    name="SHIPPED"/>
+      <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="lit_delivered"  name="DELIVERED"/>
+      <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="lit_cancelled"  name="CANCELLED"/>
+    </packagedElement>
+
+    <!-- Class: Customer -->
+    <packagedElement xmi:type="uml:Class" xmi:id="class_customer" name="Customer">
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_cust_id" name="id">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#UUID" name="uuid"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_cust_id" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_cust_id" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_cust_firstname" name="firstName">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_cust_fn" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_cust_fn" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_cust_lastname" name="lastName">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_cust_ln" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_cust_ln" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_cust_email" name="email">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_cust_em" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_cust_em" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: Customer 1 → * Order -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_cust_orders"
+                      name="orders" association="assoc_customer_order">
+        <type xmi:type="uml:Class" xmi:idref="class_order"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_cust_ord" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_cust_ord" value="*"/>
+      </ownedAttribute>
+
+      <!-- Association end: Customer 1 → * Address -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_cust_addresses"
+                      name="addresses" association="assoc_customer_address">
+        <type xmi:type="uml:Class" xmi:idref="class_address"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_cust_addr" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_cust_addr" value="*"/>
+      </ownedAttribute>
+
+    </packagedElement>
+
+    <!-- Class: Order -->
+    <packagedElement xmi:type="uml:Class" xmi:id="class_order" name="Order">
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ord_id" name="id">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#UUID" name="uuid"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ord_id" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ord_id" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ord_date" name="orderDate">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#DateTime" name="datetime"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ord_date" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ord_date" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ord_total" name="total">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#Decimal" name="decimal"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ord_total" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ord_total" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ord_status" name="status">
+        <type xmi:type="uml:Enumeration" xmi:idref="enum_order_status"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ord_status" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ord_status" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: Order → Customer (back reference) -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ord_customer"
+                      name="customer" association="assoc_customer_order">
+        <type xmi:type="uml:Class" xmi:idref="class_customer"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ord_cust" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ord_cust" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: Order 1 → * OrderLine -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ord_lines"
+                      name="orderLines" association="assoc_order_orderline">
+        <type xmi:type="uml:Class" xmi:idref="class_orderline"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ord_lines" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ord_lines" value="*"/>
+      </ownedAttribute>
+
+    </packagedElement>
+
+    <!-- Class: OrderLine -->
+    <packagedElement xmi:type="uml:Class" xmi:id="class_orderline" name="OrderLine">
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ol_id" name="id">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#UUID" name="uuid"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ol_id" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ol_id" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ol_qty" name="quantity">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#Integer" name="integer"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ol_qty" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ol_qty" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ol_price" name="unitPrice">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#Decimal" name="decimal"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ol_price" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ol_price" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: OrderLine → Order (back reference) -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ol_order"
+                      name="order" association="assoc_order_orderline">
+        <type xmi:type="uml:Class" xmi:idref="class_order"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ol_ord" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ol_ord" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: OrderLine * → 1 Product -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ol_product"
+                      name="product" association="assoc_orderline_product">
+        <type xmi:type="uml:Class" xmi:idref="class_product"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_ol_prod" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_ol_prod" value="1"/>
+      </ownedAttribute>
+
+    </packagedElement>
+
+    <!-- Class: Product -->
+    <packagedElement xmi:type="uml:Class" xmi:id="class_product" name="Product">
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_prod_id" name="id">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#UUID" name="uuid"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_prod_id" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_prod_id" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_prod_name" name="name">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_prod_name" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_prod_name" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_prod_price" name="price">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#Decimal" name="decimal"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_prod_price" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_prod_price" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_prod_category" name="category">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_prod_cat" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_prod_cat" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: Product 1 → * OrderLine (inverse) -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_prod_lines"
+                      name="orderLines" association="assoc_orderline_product">
+        <type xmi:type="uml:Class" xmi:idref="class_orderline"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_prod_lines" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_prod_lines" value="*"/>
+      </ownedAttribute>
+
+    </packagedElement>
+
+    <!-- Class: Address -->
+    <packagedElement xmi:type="uml:Class" xmi:id="class_address" name="Address">
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_addr_id" name="id">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#UUID" name="uuid"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_addr_id" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_addr_id" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_addr_street" name="street">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_addr_st" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_addr_st" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_addr_city" name="city">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_addr_city" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_addr_city" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_addr_country" name="country">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_addr_country" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_addr_country" value="1"/>
+      </ownedAttribute>
+
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_addr_zip" name="zipCode">
+        <type xmi:type="uml:PrimitiveType" href="UMLPrimitives.xmi#String" name="string"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_addr_zip" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_addr_zip" value="1"/>
+      </ownedAttribute>
+
+      <!-- Association end: Address → Customer (back reference) -->
+      <ownedAttribute xmi:type="uml:Property" xmi:id="attr_addr_customer"
+                      name="customer" association="assoc_customer_address">
+        <type xmi:type="uml:Class" xmi:idref="class_customer"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_addr_cust" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_addr_cust" value="1"/>
+      </ownedAttribute>
+
+    </packagedElement>
+
+    <!-- Associations (for reference / metadata) -->
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_customer_order"
+                     name="CustomerOrder">
+      <memberEnd xmi:idref="attr_cust_orders"/>
+      <memberEnd xmi:idref="attr_ord_customer"/>
+    </packagedElement>
+
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_customer_address"
+                     name="CustomerAddress">
+      <memberEnd xmi:idref="attr_cust_addresses"/>
+      <memberEnd xmi:idref="attr_addr_customer"/>
+    </packagedElement>
+
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_order_orderline"
+                     name="OrderOrderLine">
+      <memberEnd xmi:idref="attr_ord_lines"/>
+      <memberEnd xmi:idref="attr_ol_order"/>
+    </packagedElement>
+
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_orderline_product"
+                     name="OrderLineProduct">
+      <memberEnd xmi:idref="attr_ol_product"/>
+      <memberEnd xmi:idref="attr_prod_lines"/>
+    </packagedElement>
+
+  </uml:Model>
+
+</xmi:XMI>
