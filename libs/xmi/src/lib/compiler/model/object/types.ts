@@ -65,6 +65,10 @@ export interface Relation {
   mappedBy?: string
   /** True if this side holds the foreign key or join table */
   isOwning: boolean
+  /** ORM-level cascade: true (all) or specific operations e.g. ['insert','update','remove'] */
+  cascade?: true | string[]
+  /** DB-level FK ON DELETE action: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION' */
+  onDelete?: string
 }
 
 /** A UML class mapped to an in-memory object type */

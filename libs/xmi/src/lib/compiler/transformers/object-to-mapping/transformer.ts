@@ -273,14 +273,15 @@ export class ObjectToMappingTransformer {
       relationType: rel.type,
       target: rel.target,
       mappedBy: rel.mappedBy,
-      cascade: rel.isOwning ? ['PERSIST', 'MERGE'] : undefined,
+      cascade: rel.cascade,
+      onDelete: rel.onDelete,
     }
 
     switch (rel.type) {
       case 'many_to_one':
       case 'one_to_one': {
         if (rel.isOwning) {
-          const fkCol = this.naming.fkColumnName(rel.name)
+          const fkCol = this.naming.fkColumnName(rel.name, rel.target)
           void this.naming.foreignKeyName(ownerTable, targetTable, fkCol)
           mapping.joinColumn = fkCol
           mapping.isOwning = true
@@ -290,8 +291,8 @@ export class ObjectToMappingTransformer {
       case 'many_to_many': {
         if (rel.isOwning) {
           const joinTableName = this.naming.joinTableName(ownerTable, targetTable)
-          const joinCol = this.naming.fkColumnName(rel.name)
-          const inverseJoinCol = this.naming.fkColumnName(rel.target.toLowerCase())
+          const joinCol = this.naming.fkColumnName(rel.name, rel.target)
+          const inverseJoinCol = this.naming.fkColumnName(rel.target.toLowerCase(), rel.target)
           const jt: JoinTableMapping = { name: joinTableName, joinColumn: joinCol, inverseJoinColumn: inverseJoinCol }
           mapping.joinTable = jt
         }

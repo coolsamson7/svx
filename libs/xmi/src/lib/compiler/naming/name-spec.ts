@@ -17,7 +17,9 @@
  *   =title         Title Case
  *   =plural        English pluralisation
  *   any{name}any   template — {name} is replaced by the current running value.
- *                  e.g. "=SNAKE OR_{name}_ID" → contactInfo → "OR_CONTACT_INFO_ID"
+ *                  {target} is replaced by the optional target name (e.g. relation target type).
+ *                  e.g. "=SNAKE OR_{name}_ID"   → contactInfo → "OR_CONTACT_INFO_ID"
+ *                       "=SNAKE {target}_ID"     → (target=User) → "USER_ID"
  */
 
 import {
@@ -62,14 +64,14 @@ export function parseNameSpec(spec: string): SpecOp[] {
       ops.push({ op: 'plural' })
     } else if (token.startsWith('=')) {
       ops.push({ op: 'case', style: token.slice(1) })
-    } else if (token.includes('{name}')) {
+    } else if (token.includes('{name}') || token.includes('{target}')) {
       ops.push({ op: 'template', template: token })
     }
   }
   return ops
 }
 
-function applyOps(name: string, ops: SpecOp[]): string {
+function applyOps(name: string, ops: SpecOp[], ctx?: { target?: string }): string {
   let s = name
   for (const op of ops) {
     switch (op.op) {
@@ -105,19 +107,20 @@ function applyOps(name: string, ops: SpecOp[]): string {
         break
       case 'template':
         s = op.template.replace(/\{name\}/g, s)
+        if (ctx?.target !== undefined) s = s.replace(/\{target\}/g, ctx.target)
         break
     }
   }
   return s
 }
 
-/** Apply a spec string to a name. */
-export function applyNameSpec(name: string, spec: string): string {
-  return applyOps(name, parseNameSpec(spec))
+/** Apply a spec string to a name, with optional context variables ({target}). */
+export function applyNameSpec(name: string, spec: string, ctx?: { target?: string }): string {
+  return applyOps(name, parseNameSpec(spec), ctx)
 }
 
 /** Wrap a spec string as a NamingTransform. */
 export function specToTransform(spec: string): NamingTransform {
   const ops = parseNameSpec(spec)
-  return { apply: (name: string) => applyOps(name, ops) }
+  return { apply: (name: string, ctx?: { target?: string }) => applyOps(name, ops, ctx) }
 }

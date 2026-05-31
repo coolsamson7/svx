@@ -115,8 +115,8 @@ export class DefaultNamingStrategy implements NamingStrategy {
     return this.entityTransform.apply(typeName)
   }
 
-  fkColumnName(relName: string): string {
-    return this.fkColumnTransform.apply(relName)
+  fkColumnName(relName: string, targetName?: string): string {
+    return this.fkColumnTransform.apply(relName, targetName !== undefined ? { target: targetName } : undefined)
   }
 
   foreignKeyName(table: string, referencedTable: string, column: string): string {

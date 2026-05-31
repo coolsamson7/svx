@@ -68,8 +68,10 @@ export interface RelationMapping {
   joinTable?: JoinTableMapping
   /** Whether this is the owning side of the relation */
   isOwning?: boolean
-  /** Cascade operations */
-  cascade?: string[]
+  /** ORM-level cascade operations */
+  cascade?: true | string[]
+  /** DB-level FK ON DELETE action */
+  onDelete?: string
 }
 
 /**

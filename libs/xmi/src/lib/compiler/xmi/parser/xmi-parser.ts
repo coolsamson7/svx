@@ -50,6 +50,7 @@ export interface ParsedAssociation {
   id: string
   name: string
   ends: ParsedAssociationEnd[]
+  tags: Record<string, string>
 }
 
 /** One end of a parsed association */
@@ -338,7 +339,13 @@ export class XmiParser {
       })
     }
 
-    return { id, name, ends }
+    const tags: Record<string, string> = {}
+    for (const tv of toArray(el.taggedValue as any)) {
+      const tag = tv['@_tag'], value = tv['@_value']
+      if (tag && value !== undefined) tags[normTagKey(String(tag))] = String(value)
+    }
+
+    return { id, name, ends, tags }
   }
 
   private parseEnum(el: XmiPackagedElement): ParsedEnum {

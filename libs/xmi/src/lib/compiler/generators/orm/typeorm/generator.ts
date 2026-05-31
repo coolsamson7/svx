@@ -226,15 +226,15 @@ export class TypeOrmGenerator {
     if (field.primaryKey) {
       if (field.generated === 'uuid') {
         usedDecorators.push('PrimaryGeneratedColumn')
-        lines.push(`@PrimaryGeneratedColumn("uuid")`)
+        lines.push(`@PrimaryGeneratedColumn("uuid", { name: "${field.column}" })`)
         lines.push(`${field.property}!: string;`)
       } else if (field.generated === 'increment') {
         usedDecorators.push('PrimaryGeneratedColumn')
-        lines.push(`@PrimaryGeneratedColumn()`)
+        lines.push(`@PrimaryGeneratedColumn({ name: "${field.column}" })`)
         lines.push(`${field.property}!: number;`)
       } else {
         usedDecorators.push('PrimaryColumn')
-        lines.push(`@PrimaryColumn()`)
+        lines.push(`@PrimaryColumn({ name: "${field.column}" })`)
         lines.push(`${field.property}!: string;`)
       }
       lines.push('')
@@ -288,11 +288,17 @@ export class TypeOrmGenerator {
     const targetClass = naming.entityName(rel.target)
     const targetVar = rel.target.toLowerCase()
 
+    const cascadeStr = rel.cascade === true ? 'true'
+      : Array.isArray(rel.cascade) ? `[${rel.cascade.map(c => `'${c}'`).join(', ')}]`
+      : undefined
+    const onDeleteStr = rel.onDelete ? `, { onDelete: '${rel.onDelete}' }` : ''
+
     switch (rel.relationType) {
       case 'one_to_many': {
         usedDecorators.push('OneToMany')
         const inverseProp = rel.mappedBy ?? targetVar
-        lines.push(`@OneToMany(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp})`)
+        const opts = cascadeStr ? `, { cascade: ${cascadeStr} }` : ''
+        lines.push(`@OneToMany(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp}${opts})`)
         lines.push(`${rel.property}!: ${targetClass}[];`)
         lines.push('')
         break
@@ -302,9 +308,11 @@ export class TypeOrmGenerator {
         const inverseProp = rel.mappedBy
           ?? this.findInverseRelationName(objectModel, rel.target, _ownerTypeName)
           ?? _ownerTypeName.toLowerCase()
-        lines.push(`@ManyToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp})`)
+        const mtoOpts = cascadeStr ? `, { cascade: ${cascadeStr} }` : ''
+        lines.push(`@ManyToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp}${mtoOpts})`)
         if (rel.joinColumn) {
-          lines.push(`@JoinColumn({ name: "${rel.joinColumn}" })`)
+          const jcOpts = rel.onDelete ? `, onDelete: '${rel.onDelete}'` : ''
+          lines.push(`@JoinColumn({ name: "${rel.joinColumn}"${jcOpts} })`)
         }
         lines.push(`${rel.property}!: ${targetClass};`)
         lines.push('')
@@ -313,11 +321,11 @@ export class TypeOrmGenerator {
       case 'one_to_one': {
         if (rel.mappedBy) {
           usedDecorators.push('OneToOne')
-          lines.push(`@OneToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${rel.mappedBy})`)
+          lines.push(`@OneToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${rel.mappedBy}${onDeleteStr})`)
           lines.push(`${rel.property}!: ${targetClass};`)
         } else {
           usedDecorators.push('OneToOne', 'JoinColumn')
-          lines.push(`@OneToOne(() => ${targetClass})`)
+          lines.push(`@OneToOne(() => ${targetClass}${onDeleteStr})`)
           if (rel.joinColumn) {
             lines.push(`@JoinColumn({ name: "${rel.joinColumn}" })`)
           } else {

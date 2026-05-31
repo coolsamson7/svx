@@ -7,7 +7,7 @@
  */
 export interface NamingTransform {
   /** Apply the transform and return the result */
-  apply(name: string): string
+  apply(name: string, ctx?: { target?: string }): string
 }
 
 /**
@@ -26,7 +26,7 @@ export interface NamingStrategy {
    * Derive a FK column name from a relation property name (e.g. 'contactInfo' → 'CONTACT_INFO_ID').
    * Separate from columnName() so regular and FK columns can be styled independently.
    */
-  fkColumnName(relName: string): string
+  fkColumnName(relName: string, targetName?: string): string
   /**
    * Derive a foreign key constraint name.
    * @param table - owning table name
@@ -59,7 +59,7 @@ export class TransformPipeline implements NamingTransform {
     this.transforms = transforms
   }
 
-  apply(name: string): string {
-    return this.transforms.reduce((n, t) => t.apply(n), name)
+  apply(name: string, ctx?: { target?: string }): string {
+    return this.transforms.reduce((n, t) => t.apply(n, ctx), name)
   }
 }

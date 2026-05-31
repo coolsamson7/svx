@@ -30,6 +30,13 @@ function multiplicityIsMany(upper: string): boolean {
   return upper === '*' || upper === '-1' || (Number(upper) > 1)
 }
 
+function parseCascadeTag(value: string | undefined): true | string[] | undefined {
+  if (!value) return undefined
+  if (value === 'true' || value === 'all') return true
+  const parts = value.split(/[,\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean)
+  return parts.length > 0 ? parts : undefined
+}
+
 /**
  * Transforms a ParsedXmi into a clean ObjectModel.
  */
@@ -63,6 +70,15 @@ export class XmiToObjectTransformer {
     for (const cls of parsed.classes) {
       for (const id of cls.associationEndIds) {
         assocEndAttrIds.add(id)
+      }
+    }
+
+    // Build lookup: attribute id → association tags (for cascade/onDelete)
+    const assocTagsByAttrId = new Map<string, Record<string, string>>()
+    for (const assoc of parsed.associations) {
+      if (Object.keys(assoc.tags).length === 0) continue
+      for (const end of assoc.ends) {
+        assocTagsByAttrId.set(end.id, assoc.tags)
       }
     }
 
@@ -112,13 +128,16 @@ export class XmiToObjectTransformer {
         if (!targetName) continue
 
         const isMany = multiplicityIsMany(attr.upperBound)
-        // We'll determine the full relation type when we cross-reference
-        // For now record as provisional — the full type will be assigned in a second pass
+        // Attribute-level tags take priority; fall back to association-level tags
+        const assocTags = assocTagsByAttrId.get(attr.id) ?? {}
+        const effectiveTags = Object.keys(attr.tags).length > 0 ? attr.tags : assocTags
         relations.push({
           name: attr.name,
           type: isMany ? 'one_to_many' : 'many_to_one', // provisional
           target: targetName,
           isOwning: true, // provisional
+          cascade: parseCascadeTag(effectiveTags['cascade']),
+          onDelete: effectiveTags['onDelete'],
         })
       }
 
