@@ -107,8 +107,8 @@ Example: OR_{table}_{target} → OR_USER_CONTACT_INFO`
   <section>
     <h4>Generators</h4>
     <div class="checkgroup">
-      {#each ['yaml', 'json', 'sql', 'schema', 'typeorm'] as g}
-        <label><input type="checkbox" checked={generators.includes(g as never)} onchange={() => toggleGen(g)} /> {g}</label>
+      {#each [{ id: 'typeorm', label: 'TypeORM' }, { id: 'schema', label: 'Schema' }, { id: 'sql', label: 'SQL' }] as g}
+        <label><input type="checkbox" checked={generators.includes(g.id as never)} onchange={() => toggleGen(g.id)} /> {g.label}</label>
       {/each}
     </div>
   </section>

@@ -12,7 +12,7 @@
 
   let options = $state<CompileOptions>({
     dialect: 'postgres',
-    generators: ['yaml', 'json', 'sql', 'schema', 'typeorm'],
+    generators: ['typeorm', 'schema', 'sql'],
     inheritanceStrategy: 'table_per_class',
     emitForeignKeys: true,
     naming: {
@@ -27,8 +27,14 @@
     outputDirs: { schemas: 'schemas', entities: 'entities' },
   })
 
-  type Tab = 'sql' | 'yaml' | 'ts'
-  let activeTab = $state<Tab>('ts')
+  type Tab = 'typeorm' | 'schema' | 'sql'
+  const ALL_TABS: { id: Tab; label: string; gen: string }[] = [
+    { id: 'typeorm', label: 'TypeORM', gen: 'typeorm' },
+    { id: 'schema',  label: 'Schema',  gen: 'schema'  },
+    { id: 'sql',     label: 'SQL',     gen: 'sql'     },
+  ]
+
+  let activeTab = $state<Tab>('typeorm')
   let result = $state<CompileResult | null>(null)
   let error = $state<string | null>(null)
   let compiling = $state(false)
@@ -38,6 +44,18 @@
   let yamlDraft = $state<string | null>(null)
 
   const configYamlLive = $derived(toYaml($state.snapshot(options), { indent: 2 }))
+
+  const visibleTabs = $derived(
+    ALL_TABS.filter(t => options.generators?.includes(t.gen as never) ?? true)
+  )
+
+  // If the active tab's generator gets unchecked, switch to the first visible tab
+  $effect(() => {
+    const tabs = visibleTabs
+    if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+      activeTab = tabs[0].id
+    }
+  })
 
   function onYamlInput(text: string) {
     yamlDraft = text
@@ -75,17 +93,15 @@
   }
 
   const hasResult = $derived(result !== null)
-  const compileTabs: { id: Tab; label: string }[] = [
-    { id: 'ts',   label: 'TypeScript' },
-    { id: 'sql',  label: 'SQL' },
-    { id: 'yaml', label: 'YAML' },
-  ]
 </script>
 
 <div class="panel">
   <div class="panel-header">
     <span class="title">Compile</span>
     <div class="header-actions">
+      <button class="compile-btn-sm" onclick={compile} disabled={compiling}>
+        {compiling ? '…' : '▶ Run'}
+      </button>
       <button class="icon-btn" onclick={() => showConfig = !showConfig} title="Toggle config">⚙</button>
       <button class="icon-btn" onclick={onClose} title="Close">✕</button>
     </div>
@@ -113,28 +129,18 @@
             ></textarea>
           </div>
         {/if}
-        <div class="compile-action">
-          <button class="compile-btn" onclick={compile} disabled={compiling}>
-            {compiling ? 'Compiling…' : '▶ Compile'}
-          </button>
-        </div>
       </div>
     {/if}
 
     <div class="results-pane">
       <div class="result-tabs">
-        {#each compileTabs as tab}
+        {#each visibleTabs as tab}
           <button
             class:active={activeTab === tab.id}
             onclick={() => activeTab = tab.id}
           >{tab.label}</button>
         {/each}
         <div class="tab-spacer"></div>
-        {#if !showConfig}
-          <button class="compile-btn-sm" onclick={compile} disabled={compiling}>
-            {compiling ? '…' : '▶ Compile'}
-          </button>
-        {/if}
       </div>
 
       <div class="result-content">
@@ -146,21 +152,14 @@
         {:else if !hasResult}
           <div class="empty-state">
             <div class="empty-icon">⚡</div>
-            <div class="empty-msg">Configure options and click Compile</div>
-            {#if !showConfig}
-              <button class="compile-btn" onclick={compile} disabled={compiling}>
-                {compiling ? 'Compiling…' : '▶ Compile'}
-              </button>
-            {/if}
+            <div class="empty-msg">Click ▶ Run to compile</div>
           </div>
-        {:else if activeTab === 'ts'}
-          <TsOutput schemas={result!.schemas} entities={result!.entities} />
-        {:else if activeTab === 'sql' && result?.sql}
-          <CodeViewer code={result.sql} language="sql" />
-        {:else if activeTab === 'yaml' && result?.yaml}
-          <CodeViewer code={result.yaml} language="yaml" />
-        {:else}
-          <div class="empty">Generator not enabled or produced no output</div>
+        {:else if activeTab === 'typeorm'}
+          <TsOutput schemas={undefined} entities={result!.entities} />
+        {:else if activeTab === 'schema'}
+          <TsOutput schemas={result!.schemas} entities={undefined} />
+        {:else if activeTab === 'sql'}
+          <CodeViewer code={result!.sql ?? ''} language="sql" />
         {/if}
       </div>
     </div>
