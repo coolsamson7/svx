@@ -17,6 +17,15 @@ function isPrimitive(type: string): type is PrimitiveType {
   return PRIMITIVE_TYPES.has(type)
 }
 
+const PRIMITIVE_NAME_MAP: Record<string, string> = {
+  String: 'string', Integer: 'integer', Int: 'integer',
+  Long: 'long', Double: 'decimal', Float: 'decimal', BigDecimal: 'decimal',
+  Boolean: 'boolean', bool: 'boolean', UUID: 'uuid', Uuid: 'uuid',
+  Date: 'date', DateTime: 'datetime', Timestamp: 'datetime',
+  Time: 'time', Blob: 'binary', Binary: 'binary', Bytes: 'binary',
+  Json: 'json', JSON: 'json',
+}
+
 function multiplicityIsMany(upper: string): boolean {
   return upper === '*' || upper === '-1' || (Number(upper) > 1)
 }
@@ -82,8 +91,9 @@ export class XmiToObjectTransformer {
           type: typeName as PrimitiveType,
           isEnum: isEnum || undefined,
           isCollection: isCollection || undefined,
-          isNullable: attr.isNullable || undefined,
+          isNullable: attr.isNullable,
           defaultValue: attr.defaultValue,
+          tags: Object.keys(attr.tags).length > 0 ? attr.tags : undefined,
         }
         properties.push(property)
       }
@@ -164,7 +174,7 @@ export class XmiToObjectTransformer {
       const fromDataType = dataTypeById.get(attr.typeId)
       if (fromDataType) return fromDataType
       const fromId = idToName[attr.typeId]
-      if (fromId) return fromId
+      if (fromId) return PRIMITIVE_NAME_MAP[fromId] ?? fromId
     }
     if (attr.typeName) return attr.typeName
     return 'string'

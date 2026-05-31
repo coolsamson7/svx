@@ -13,9 +13,9 @@
  * Package path from uml:Package nesting becomes the sub-directory prefix.
  */
 
-function posixDirname(p: string) { const i = p.lastIndexOf('/'); return i < 0 ? '.' : p.slice(0, i) || '.' }
+function posixDirname(p: string) { const i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i) }
 function posixRelative(from: string, to: string) {
-  const a = from.split('/'), b = to.split('/')
+  const a = from ? from.split('/') : [], b = to ? to.split('/') : []
   let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++
   return [...Array(a.length - i).fill('..'), ...b.slice(i)].join('/') || '.'
 }
@@ -36,10 +36,15 @@ export class SchemaMapperGenerator {
     cfg: SchemaGeneratorConfig,
   ): Map<string, string> {
     const { naming, tsFiles } = cfg
-    const dtGrouping  = tsFiles.dataTypeGrouping  ?? 'one'
-    const dtFileName  = tsFiles.dataTypeFileName  ?? 'data-types'
-    const schGrouping = tsFiles.schemaGrouping    ?? 'per-type'
-    const schFileName = tsFiles.schemaFileName    ?? 'entity-schemas'
+    const dtGrouping       = tsFiles.dataTypeGrouping  ?? 'one'
+    const dtFileName       = tsFiles.dataTypeFileName  ?? 'data-types'
+    const schGrouping      = tsFiles.schemaGrouping    ?? 'per-type'
+    const schFileName      = tsFiles.schemaFileName    ?? 'entity-schemas'
+    const schemaFileSuffix = tsFiles.schemaFileSuffix  ?? 'schema'
+    const schemaSubDir     = tsFiles.schemaSubDir      ?? ''
+
+    const schSuffix   = schemaFileSuffix ? `.${schemaFileSuffix}` : ''
+    const schSubParts = schemaSubDir ? [schemaSubDir] : []
 
     const result = new Map<string, string>()
     const dataTypeNames = new Set(objectModel.dataTypes.map(d => d.name))
@@ -96,7 +101,7 @@ export class SchemaMapperGenerator {
             const dtImportPath = dtGrouping === 'one'
               ? dtFileName
               : [...dt.packagePath, naming.tsFileStem(dt.name)].join('/')
-            const schemaFilePath = [...objType.packagePath, naming.tsFileStem(typeName)].join('/')
+            const schemaFilePath = [...schSubParts, ...objType.packagePath, naming.tsFileStem(typeName)].join('/')
             const relPath = relativeImport(schemaFilePath, dtImportPath)
             const existing = dtImportMap.get(relPath) ?? []
             if (!existing.includes(field.dataTypeName)) existing.push(field.dataTypeName)
@@ -111,9 +116,9 @@ export class SchemaMapperGenerator {
           if (rel.relationType !== 'one_to_many' && rel.relationType !== 'many_to_many') continue
           const targetType = typeByName.get(rel.target)
           if (!targetType) continue
-          const targetImportPath = [...targetType.packagePath, naming.tsFileStem(rel.target)].join('/')
-          const schemaFilePath = [...objType.packagePath, naming.tsFileStem(typeName)].join('/')
-          const relPath = relativeImport(schemaFilePath, `${targetImportPath}.schema`)
+          const targetImportPath = [...schSubParts, ...targetType.packagePath, naming.tsFileStem(rel.target)].join('/')
+          const schemaFilePath = [...schSubParts, ...objType.packagePath, naming.tsFileStem(typeName)].join('/')
+          const relPath = relativeImport(schemaFilePath, `${targetImportPath}${schSuffix}`)
           const constName = `${rel.target}Schema`
           const existing = relImportMap.get(relPath) ?? []
           if (!existing.includes(constName)) existing.push(constName)
@@ -151,7 +156,7 @@ export class SchemaMapperGenerator {
         fileLines.push(`export type ${typeName}Type = InferObject<typeof ${typeName}Schema>`)
 
         const stem = naming.tsFileStem(typeName)
-        const filePath = [...objType.packagePath, `${stem}.schema.ts`].join('/')
+        const filePath = [...schSubParts, ...objType.packagePath, `${stem}${schSuffix}.ts`].join('/')
         result.set(filePath, fileLines.join('\n'))
       }
     } else {
@@ -160,9 +165,23 @@ export class SchemaMapperGenerator {
       const lines: string[] = []
       const typeLines: string[] = []
 
-      // DataType imports when per-type (they're in separate files)
-      const allDtImports = new Map<string, Set<string>>()
-      const allRelImports = new Map<string, Set<string>>()
+      // When dtFileName === schFileName, DataType constants belong inline in this file
+      const dtInline = dtGrouping === 'one' && dtFileName === schFileName
+
+      // Track DataType names used (to build cross-file import when dtFileName ≠ schFileName)
+      const usedDataTypes = new Set<string>()
+
+      // Inline DataType declarations (when same file)
+      if (dtInline) {
+        result.delete(`${dtFileName}.ts`)
+        for (const dt of objectModel.dataTypes) {
+          const { expr, imps } = this.dataTypeExpr(dt)
+          imps.forEach(i => needed.add(i))
+          if (dt.description) lines.push(`/** ${dt.description} */`)
+          lines.push(`export const ${dt.name} = ${expr};`)
+        }
+        if (objectModel.dataTypes.length > 0) lines.push('')
+      }
 
       for (const typeName of sorted) {
         const mapping = persistenceModel.mappings[typeName]
@@ -172,6 +191,9 @@ export class SchemaMapperGenerator {
         for (const field of mapping.fields) {
           const { expr, imps } = this.fieldExpr(field, dataTypeNames)
           imps.forEach(i => needed.add(i))
+          if (!dtInline && field.dataTypeName && dataTypeNames.has(field.dataTypeName)) {
+            usedDataTypes.add(field.dataTypeName)
+          }
           props.push(`  ${field.property}: ${expr},`)
         }
         for (const rel of mapping.relations) {
@@ -190,13 +212,15 @@ export class SchemaMapperGenerator {
         typeLines.push(`export type ${typeName}Type = InferObject<typeof ${typeName}Schema>`)
       }
 
-      // DataType imports (when per-type, need to import from separate files)
-      if (dtGrouping === 'per-type') {
-        for (const [path, names] of allDtImports)
-          lines.unshift(`import { ${[...names].join(', ')} } from '${path}';`)
+      const extraImports: string[] = []
+
+      if (!dtInline && dtGrouping === 'one' && usedDataTypes.size > 0) {
+        const schemaFilePath = [...schSubParts, schFileName].filter(Boolean).join('/')
+        const relPath = relativeImport(`${schemaFilePath}.ts`, dtFileName)
+        extraImports.push(`import { ${[...usedDataTypes].sort().join(', ')} } from '${relPath}';`)
       }
 
-      const content = this.withImports(needed, [...lines, ...typeLines])
+      const content = this.withImports(needed, [...extraImports, ...(extraImports.length ? [''] : []), ...lines, ...typeLines])
       result.set(`${schFileName}.ts`, content)
     }
 

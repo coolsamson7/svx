@@ -232,8 +232,17 @@ export class ObjectToMappingTransformer {
       : isDataType && dt ? primitiveToLogical(dt.baseType)
       : primitiveToLogical(prop.type as string)
 
-    const isPrimaryKey = prop.name === 'id'
+    const tags = prop.tags ?? {}
+    const isPrimaryKey = tags['primaryKey'] === 'true' || prop.name === 'id'
+    const generatedTag = tags['generated']
+    const generated = isPrimaryKey
+      ? (generatedTag === 'increment' || logicalType === 'integer' || logicalType === 'long'
+          ? 'increment'
+          : generatedTag === 'uuid' || !generatedTag ? 'uuid' : 'uuid')
+      : undefined
+
     const dtMaxLength = dt?.tags['maxLength'] ?? dt?.tags['max']
+    const attrMaxLength = tags['maxLength'] ?? tags['max']
     const dtPrecision = dt?.tags['precision']
     const dtScale = dt?.tags['scale']
 
@@ -242,13 +251,13 @@ export class ObjectToMappingTransformer {
       column: this.naming.columnName(prop.name),
       logicalType,
       dataTypeName: isDataType ? (prop.type as string) : undefined,
-      length: prop.length ?? (dtMaxLength ? Number(dtMaxLength) : logicalType === 'string' ? 255 : undefined),
+      length: prop.length ?? (attrMaxLength ? Number(attrMaxLength) : dtMaxLength ? Number(dtMaxLength) : logicalType === 'string' ? 255 : undefined),
       precision: prop.precision ?? (dtPrecision ? Number(dtPrecision) : undefined),
       scale: prop.scale ?? (dtScale ? Number(dtScale) : undefined),
-      nullable: prop.isNullable ?? !isPrimaryKey,
+      nullable: isPrimaryKey ? false : (prop.isNullable ?? true),
       unique: isPrimaryKey,
       primaryKey: isPrimaryKey,
-      generated: isPrimaryKey ? 'uuid' : undefined,
+      generated,
       defaultValue: prop.defaultValue,
     }
   }

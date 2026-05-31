@@ -94,6 +94,14 @@ export interface TsFileNamingConfig {
   schemaGrouping?: 'one' | 'per-type'
   /** File name stem when schemaGrouping is 'one'. Default: 'entity-schemas' */
   schemaFileName?: string
+  /** Stem suffix for entity TypeScript files. Default: 'entity' → user.entity.ts. '' → user.ts */
+  entityFileSuffix?: string
+  /** Subdirectory within the entities output dir. Default: '' */
+  entitySubDir?: string
+  /** Stem suffix for schema TypeScript files. Default: 'schema' → user.schema.ts. '' → user.ts */
+  schemaFileSuffix?: string
+  /** Subdirectory within the schemas output dir. Default: '' */
+  schemaSubDir?: string
 }
 
 /**

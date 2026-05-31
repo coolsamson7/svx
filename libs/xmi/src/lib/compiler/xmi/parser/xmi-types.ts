@@ -75,6 +75,8 @@ export interface XmiOwnedAttribute {
   defaultValue?: XmiDefaultValue
   /** Tagged values (Enterprise Architect extensions) */
   'xmi:Extension'?: any
+  /** Tagged values on the attribute itself */
+  taggedValue?: XmiTaggedValue | XmiTaggedValue[]
 }
 
 /** Type element inside an attribute */

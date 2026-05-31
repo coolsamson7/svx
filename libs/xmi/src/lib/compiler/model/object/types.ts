@@ -49,6 +49,8 @@ export interface Property {
   defaultValue?: unknown
   /** Human-readable description from ownedComment */
   description?: string
+  /** Raw tagged values from the XMI attribute (e.g. primary-key, generated, max-length) */
+  tags?: Record<string, string>
 }
 
 /** A UML association end as seen from one ObjectType */

@@ -42,6 +42,7 @@ export interface ParsedAttribute {
   isNullable: boolean
   defaultValue?: string
   description?: string
+  tags: Record<string, string>
 }
 
 /** A normalised association extracted from XMI */
@@ -281,7 +282,15 @@ export class XmiParser {
       defaultValue = String(dv['@_value'])
     }
 
-    return { id, name, typeId, typeName, isAssociationEnd, lowerBound, upperBound, isNullable, defaultValue }
+    const tags: Record<string, string> = {}
+    const tvs = toArray(attr.taggedValue as any)
+    for (const tv of tvs) {
+      const tag = tv['@_tag']
+      const value = tv['@_value']
+      if (tag && value !== undefined) tags[normTagKey(String(tag))] = String(value)
+    }
+
+    return { id, name, typeId, typeName, isAssociationEnd, lowerBound, upperBound, isNullable, defaultValue, tags }
   }
 
   private parseAssociation(el: XmiPackagedElement): ParsedAssociation {
@@ -353,10 +362,15 @@ export class XmiParser {
     for (const tv of tvs) {
       const tag = tv['@_tag']
       const value = tv['@_value']
-      if (tag && value !== undefined) tags[String(tag)] = String(value)
+      if (tag && value !== undefined) tags[normTagKey(String(tag))] = String(value)
     }
 
     const description = extractDescription(el)
     return { id, name, baseTypeId, tags, packagePath, description }
   }
+}
+
+/** Normalise tag keys: kebab-case → camelCase so "max-length" === "maxLength" */
+function normTagKey(key: string): string {
+  return key.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
 }

@@ -3,9 +3,9 @@
  * Produces TypeScript source files with TypeORM decorators.
  */
 
-function posixDirname(p: string) { const i = p.lastIndexOf('/'); return i < 0 ? '.' : p.slice(0, i) || '.' }
+function posixDirname(p: string) { const i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i) }
 function posixRelative(from: string, to: string) {
-  const a = from.split('/'), b = to.split('/')
+  const a = from ? from.split('/') : [], b = to ? to.split('/') : []
   let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++
   return [...Array(a.length - i).fill('..'), ...b.slice(i)].join('/') || '.'
 }
@@ -37,8 +37,18 @@ export class TypeOrmGenerator {
     const result = new Map<string, string>()
     const { naming, tsFiles, entitiesDir, schemasDir } = cfg
 
-    const schGrouping  = tsFiles.schemaGrouping ?? 'per-type'
-    const schFileName  = tsFiles.schemaFileName ?? 'entity-schemas'
+    const schGrouping      = tsFiles.schemaGrouping   ?? 'per-type'
+    const schFileName      = tsFiles.schemaFileName   ?? 'entity-schemas'
+    const entityFileSuffix = tsFiles.entityFileSuffix ?? 'entity'
+    const entitySubDir     = tsFiles.entitySubDir     ?? ''
+    const schemaFileSuffix = tsFiles.schemaFileSuffix ?? 'schema'
+    const schemaSubDir     = tsFiles.schemaSubDir     ?? ''
+
+    const entSuffix = entityFileSuffix ? `.${entityFileSuffix}` : ''
+    const schSuffix = schemaFileSuffix ? `.${schemaFileSuffix}` : ''
+
+    const entSubParts  = entitySubDir ? [entitySubDir] : []
+    const schSubParts  = schemaSubDir ? [schemaSubDir] : []
 
     const enumNames = new Set(objectModel.enums.map(e => e.name))
     const enumValues = new Map(objectModel.enums.map(e => [e.name, e.values]))
@@ -48,7 +58,7 @@ export class TypeOrmGenerator {
     for (const type of objectModel.types) {
       if (!type.isAbstract) continue
       const stem = naming.tsFileStem(type.name)
-      const entityRelPath = [...type.packagePath, `${stem}.entity.ts`].join('/')
+      const entityRelPath = [...entSubParts, ...type.packagePath, `${stem}${entSuffix}.ts`].join('/')
       const source = this.generateAbstractEntity(type, enumNames, naming)
       result.set(entityRelPath, source)
     }
@@ -61,17 +71,17 @@ export class TypeOrmGenerator {
       if (!mapping) continue
 
       const stem = naming.tsFileStem(type.name)
-      const entityRelPath = [...type.packagePath, `${stem}.entity.ts`].join('/')
-      const entityFileFromOutput = `${entitiesDir}/${entityRelPath}`
+      const entityRelPath = [...entSubParts, ...type.packagePath, `${stem}${entSuffix}.ts`].join('/')
+      const entityFileFromOutput = [entitiesDir, entityRelPath].filter(Boolean).join('/')
 
       // Compute relative import path from this entity file to its schema constant
       let schemaImportPath: string
       if (schGrouping === 'per-type') {
         const schemaStem = naming.tsFileStem(type.name)
-        const schemaFileFromOutput = `${schemasDir}/${[...type.packagePath, `${schemaStem}.schema`].join('/')}`
+        const schemaFileFromOutput = [schemasDir, ...schSubParts, ...type.packagePath, `${schemaStem}${schSuffix}`].filter(Boolean).join('/')
         schemaImportPath = relativeImport(entityFileFromOutput, schemaFileFromOutput)
       } else {
-        const schemaFileFromOutput = `${schemasDir}/${schFileName}`
+        const schemaFileFromOutput = [schemasDir, ...schSubParts, schFileName].filter(Boolean).join('/')
         schemaImportPath = relativeImport(entityFileFromOutput, schemaFileFromOutput)
       }
 
@@ -80,11 +90,23 @@ export class TypeOrmGenerator {
       const parentType = type.superType ? typeByName.get(type.superType) : undefined
       if (parentType?.isAbstract) {
         const parentStem = naming.tsFileStem(parentType.name)
-        const parentFileFromOutput = `${entitiesDir}/${[...parentType.packagePath, `${parentStem}.entity`].join('/')}`
+        const parentFileFromOutput = [entitiesDir, ...entSubParts, ...parentType.packagePath, `${parentStem}${entSuffix}`].filter(Boolean).join('/')
         parentImportPath = relativeImport(entityFileFromOutput, parentFileFromOutput)
       }
 
-      const source = this.generateEntity(type, mapping, objectModel, enumNames, enumValues, schemaImportPath, naming, parentImportPath)
+      // Compute import paths for related entity classes
+      const siblingImportPaths = new Map<string, string>()
+      for (const rel of mapping.relations) {
+        if (siblingImportPaths.has(rel.target) || rel.target === type.name) continue
+        const targetType = typeByName.get(rel.target)
+        if (!targetType) continue
+        const targetStem = naming.tsFileStem(targetType.name)
+        const targetRelPath = [...entSubParts, ...targetType.packagePath, `${targetStem}${entSuffix}`].filter(Boolean).join('/')
+        const targetFileFromOutput = [entitiesDir, targetRelPath].filter(Boolean).join('/')
+        siblingImportPaths.set(rel.target, relativeImport(entityFileFromOutput, targetFileFromOutput))
+      }
+
+      const source = this.generateEntity(type, mapping, objectModel, enumNames, enumValues, schemaImportPath, naming, parentImportPath, siblingImportPaths)
       result.set(entityRelPath, source)
     }
 
@@ -120,6 +142,7 @@ export class TypeOrmGenerator {
     schemaImportPath: string,
     naming: NamingStrategy,
     parentImportPath?: string,
+    siblingImportPaths?: Map<string, string>,
   ): string {
     const className = naming.entityName(type.name)
     const parentClass = type.superType ? naming.entityName(type.superType) : undefined
@@ -156,6 +179,11 @@ export class TypeOrmGenerator {
     lines.push(`import { ${type.name}Schema } from '${schemaImportPath}';`)
     if (parentImportPath && parentClass) {
       lines.push(`import { ${parentClass} } from '${parentImportPath}';`)
+    }
+    if (siblingImportPaths) {
+      for (const [targetName, importPath] of siblingImportPaths) {
+        lines.push(`import { ${naming.entityName(targetName)} } from '${importPath}';`)
+      }
     }
     lines.push('')
     if (type.description) {
@@ -199,14 +227,16 @@ export class TypeOrmGenerator {
       if (field.generated === 'uuid') {
         usedDecorators.push('PrimaryGeneratedColumn')
         lines.push(`@PrimaryGeneratedColumn("uuid")`)
+        lines.push(`${field.property}!: string;`)
       } else if (field.generated === 'increment') {
         usedDecorators.push('PrimaryGeneratedColumn')
-        lines.push(`@PrimaryGeneratedColumn("increment")`)
+        lines.push(`@PrimaryGeneratedColumn()`)
+        lines.push(`${field.property}!: number;`)
       } else {
         usedDecorators.push('PrimaryColumn')
         lines.push(`@PrimaryColumn()`)
+        lines.push(`${field.property}!: string;`)
       }
-      lines.push(`${field.property}!: string;`)
       lines.push('')
       return { line: lines, usedDecorators }
     }
