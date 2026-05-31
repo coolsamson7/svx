@@ -22,6 +22,12 @@ export default defineConfig({
     outDir: 'static',
     emptyOutDir: true,
     target: 'esnext',
+    rollupOptions: {
+      input: {
+        main:   path.resolve(__dirname, 'index.html'),
+        config: path.resolve(__dirname, 'config-page/index.html'),
+      },
+    },
   },
   server: {
     port: 5174,
