@@ -1,0 +1,6 @@
+{
+  "name": "@svx/xmi",
+  "sourceRoot": "libs/xmi/src",
+  "projectType": "library",
+  "targets": {}
+}
