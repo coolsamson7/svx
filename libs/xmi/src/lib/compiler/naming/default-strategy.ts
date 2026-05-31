@@ -34,10 +34,12 @@ function buildCaseTransform(
  * configured from a NamingConfig.
  */
 export class DefaultNamingStrategy implements NamingStrategy {
-  private readonly tableTransform: TransformPipeline
-  private readonly columnTransform: TransformPipeline
-  private readonly tsFileTransform: TransformPipeline
-  private readonly fkPrefix: string
+  private readonly tableTransform: NamingTransform
+  private readonly columnTransform: NamingTransform
+  private readonly tsFileTransform: NamingTransform
+  private readonly entityTransform: NamingTransform
+  private readonly fkColumnTransform: NamingTransform
+  private readonly fkPattern: string
   private readonly fkMaxLength: number
   private readonly jtPrefix: string
   private readonly jtSeparator: string
@@ -82,8 +84,16 @@ export class DefaultNamingStrategy implements NamingStrategy {
     }
     this.tsFileTransform = tsFileTransform
 
-    this.fkPrefix = config.foreignKeys.prefix ?? 'FK_'
-    this.fkMaxLength = config.foreignKeys.maxLength ?? 63
+    const ec = config.entities ?? {}
+    this.entityTransform = ec.spec ? specToTransform(ec.spec) : { apply: (n: string) => n }
+
+    const fkc = config.foreignKeyColumns ?? {}
+    this.fkColumnTransform = specToTransform(fkc.spec ?? '=SNAKE +_ID')
+
+    const fk = config.foreignKeys
+    // pattern wins; fall back to building one from the legacy prefix field
+    this.fkPattern = fk.pattern ?? `${fk.prefix ?? 'OR_'}{table}_{target}`
+    this.fkMaxLength = fk.maxLength ?? 63
     this.jtPrefix = config.joinTables.prefix ?? ''
     this.jtSeparator = config.joinTables.separator ?? '_'
     this.shortener = new IdentifierShortener(this.fkMaxLength)
@@ -101,8 +111,19 @@ export class DefaultNamingStrategy implements NamingStrategy {
     return this.tsFileTransform.apply(name)
   }
 
-  foreignKeyName(table: string, referencedTable: string, _column: string): string {
-    const raw = `${this.fkPrefix}${table}_${referencedTable}`
+  entityName(typeName: string): string {
+    return this.entityTransform.apply(typeName)
+  }
+
+  fkColumnName(relName: string): string {
+    return this.fkColumnTransform.apply(relName)
+  }
+
+  foreignKeyName(table: string, referencedTable: string, column: string): string {
+    const raw = this.fkPattern
+      .replace('{table}', table)
+      .replace('{target}', referencedTable)
+      .replace('{column}', column)
     return this.shortener.shorten(raw)
   }
 

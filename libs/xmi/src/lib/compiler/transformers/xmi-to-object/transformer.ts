@@ -123,7 +123,10 @@ export class XmiToObjectTransformer {
       })
     }
 
-    // Second pass: resolve proper relation types using association metadata
+    // Second pass: add relations from ownedEnd-style associations (re-emitted XMI)
+    this.addOwnedEndRelations(types, parsed.associations, parsed.idToName, assocEndAttrIds)
+
+    // Third pass: resolve proper relation types using association metadata
     this.resolveRelationTypes(types, parsed.associations, parsed.idToName, parsed.classes)
 
     // Build enums
@@ -165,6 +168,64 @@ export class XmiToObjectTransformer {
     }
     if (attr.typeName) return attr.typeName
     return 'string'
+  }
+
+  /**
+   * Creates relations from ownedEnd-style associations (produced by the editor emitter).
+   * EA-style XMI uses memberEnd/@_association refs; the editor emitter uses ownedEnd elements.
+   * This pass handles the latter case so round-tripped models compile correctly.
+   */
+  private addOwnedEndRelations(
+    types: ObjectType[],
+    associations: ParsedAssociation[],
+    idToName: Record<string, string>,
+    processedEndIds: Set<string>,
+  ): void {
+    const typeByName = new Map<string, ObjectType>()
+    for (const t of types) typeByName.set(t.name, t)
+
+    for (const assoc of associations) {
+      if (assoc.ends.length < 2) continue
+      const [end0, end1] = assoc.ends
+
+      // Skip memberEnd-style associations (already captured from @_association ownedAttributes)
+      if (processedEndIds.has(end0.id) || processedEndIds.has(end1.id)) continue
+      if (!end0.typeId || !end1.typeId) continue
+
+      const nameA = idToName[end0.typeId]
+      const nameB = idToName[end1.typeId]
+      if (!nameA || !nameB) continue
+
+      const typeA = typeByName.get(nameA)
+      const typeB = typeByName.get(nameB)
+      if (!typeA || !typeB) continue
+
+      // ownedEnd semantics: end[i].role is the navigation property name on the OTHER class.
+      // end[0] with type=A, role=R, upper=U → property R on class B, pointing to A with multiplicity U
+      // end[1] with type=B, role=R, upper=U → property R on class A, pointing to B with multiplicity U
+      if (end0.name) {
+        const exists = typeB.relations.find(r => r.name === end0.name && r.target === nameA)
+        if (!exists) {
+          typeB.relations.push({
+            name: end0.name,
+            type: multiplicityIsMany(end0.upperBound) ? 'one_to_many' : 'many_to_one',
+            target: nameA,
+            isOwning: true,
+          })
+        }
+      }
+      if (end1.name) {
+        const exists = typeA.relations.find(r => r.name === end1.name && r.target === nameB)
+        if (!exists) {
+          typeA.relations.push({
+            name: end1.name,
+            type: multiplicityIsMany(end1.upperBound) ? 'one_to_many' : 'many_to_one',
+            target: nameB,
+            isOwning: true,
+          })
+        }
+      }
+    }
   }
 
   /**

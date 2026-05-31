@@ -34,7 +34,15 @@ export interface ColumnNamingConfig {
 
 /** Configuration for foreign key constraint names */
 export interface ForeignKeyNamingConfig {
+  /**
+   * Template for the constraint name. Placeholders: {table}, {target}, {column}.
+   * Example: 'OR_{table}_{target}' → OR_USER_CONTACT_INFO
+   * Takes precedence over prefix if both are set.
+   */
+  pattern?: string
+  /** Legacy: plain prefix prepended before {table}_{target}. Ignored when pattern is set. */
   prefix?: string
+  /** @internal set by pipeline from dialect — do not configure manually */
   maxLength?: number
 }
 
@@ -42,6 +50,22 @@ export interface ForeignKeyNamingConfig {
 export interface JoinTableNamingConfig {
   prefix?: string
   separator?: string
+}
+
+/** Configuration for TypeScript entity class names */
+export interface EntityNamingConfig {
+  /** Compact spec string, e.g. "+Entity" or "-VO +Entity =pascal". Default: identity (name unchanged). */
+  spec?: string
+}
+
+/** Configuration for FK column names (the column that holds the foreign key value) */
+export interface ForeignKeyColumnNamingConfig {
+  /**
+   * Compact spec applied to the relation property name (e.g. "contactInfo").
+   * Example: "=SNAKE +_ID" → CONTACT_INFO_ID, "^OR_ =SNAKE +_ID" → OR_CONTACT_INFO_ID.
+   * Default: "=SNAKE +_ID"
+   */
+  spec?: string
 }
 
 /**
@@ -89,7 +113,11 @@ export interface NamingConfig {
   tables: TableNamingConfig
   columns: ColumnNamingConfig
   foreignKeys: ForeignKeyNamingConfig
+  /** FK column naming (the value column, e.g. CONTACT_INFO_ID). Default spec: "=SNAKE +_ID" */
+  foreignKeyColumns?: ForeignKeyColumnNamingConfig
   joinTables: JoinTableNamingConfig
+  /** TypeScript entity class naming. Default: identity (name unchanged). */
+  entities?: EntityNamingConfig
   /** TypeScript file naming. Default: kebab-case, one DataType file, per-type schemas */
   tsFiles?: TsFileNamingConfig
 }

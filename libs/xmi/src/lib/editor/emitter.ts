@@ -146,6 +146,7 @@ function emitTreeNode(node: TreeNode, indent: string, lines: string[]) {
       lines.push(`${indent}  <taggedValue${attr('tag', tag)}${attr('value', value)}/>`)
     }
     for (const a of el.attrs ?? []) {
+      if (a.isAssociationEnd) continue
       lines.push(`${indent}  <ownedAttribute xmi:type="uml:Property"${attr('xmi:id', a.id)}${attr('name', a.name)}>`)
       if (a.description) {
         lines.push(`${indent}    <ownedComment xmi:type="uml:Comment"><body>${xmlEscape(a.description)}</body></ownedComment>`)

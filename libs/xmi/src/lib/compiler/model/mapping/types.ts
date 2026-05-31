@@ -5,8 +5,8 @@
 
 import type { RelationType } from '../object/types.js'
 
-/** Inheritance mapping strategies (JPA-style) */
-export type InheritanceStrategy = 'SINGLE_TABLE' | 'JOINED' | 'TABLE_PER_CLASS'
+/** Internal mapping-level inheritance strategy (JPA-style, uppercase). Used in TypeMapping records. */
+export type MappingInheritanceStrategy = 'SINGLE_TABLE' | 'JOINED' | 'TABLE_PER_CLASS'
 
 /**
  * Maps a single property to a database column.
@@ -85,7 +85,7 @@ export interface TypeMapping {
   /** Relation mappings */
   relations: RelationMapping[]
   /** Inheritance strategy (if this is part of an inheritance hierarchy) */
-  inheritanceStrategy?: InheritanceStrategy
+  inheritanceStrategy?: MappingInheritanceStrategy
   /** Discriminator column name (SINGLE_TABLE) */
   discriminatorColumn?: string
   /** Discriminator value for this specific type */

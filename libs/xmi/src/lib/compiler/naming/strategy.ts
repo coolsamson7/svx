@@ -20,6 +20,13 @@ export interface NamingStrategy {
   columnName(propertyName: string): string
   /** Derive a TypeScript file name stem from a type/class name (no extension) */
   tsFileStem(name: string): string
+  /** Derive a TypeScript entity class name from a type/class name */
+  entityName(typeName: string): string
+  /**
+   * Derive a FK column name from a relation property name (e.g. 'contactInfo' → 'CONTACT_INFO_ID').
+   * Separate from columnName() so regular and FK columns can be styled independently.
+   */
+  fkColumnName(relName: string): string
   /**
    * Derive a foreign key constraint name.
    * @param table - owning table name

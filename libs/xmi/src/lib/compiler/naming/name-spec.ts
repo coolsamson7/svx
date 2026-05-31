@@ -2,20 +2,22 @@
  * Compact name-transformation DSL.
  *
  * Space-separated ops applied left-to-right:
- *   -suffix      strip trailing suffix (if present)
- *   +suffix      append suffix
- *   ^prefix      prepend prefix
- *   ^-prefix     strip leading prefix (if present)
- *   ~foo->bar    replace first occurrence of "foo" with "bar"
- *   =snake       lower_snake_case
- *   =SNAKE       UPPER_SNAKE_CASE
- *   =kebab       kebab-case
- *   =camel       camelCase
- *   =pascal      PascalCase
- *   =upper       UPPERCASE
- *   =lower       lowercase
- *   =title       Title Case
- *   =plural      English pluralisation
+ *   -suffix        strip trailing suffix (if present)
+ *   +suffix        append suffix
+ *   ^prefix        prepend prefix
+ *   ^-prefix       strip leading prefix (if present)
+ *   ~foo->bar      replace first occurrence of "foo" with "bar"
+ *   =snake         lower_snake_case
+ *   =SNAKE         UPPER_SNAKE_CASE
+ *   =kebab         kebab-case
+ *   =camel         camelCase
+ *   =pascal        PascalCase
+ *   =upper         UPPERCASE
+ *   =lower         lowercase
+ *   =title         Title Case
+ *   =plural        English pluralisation
+ *   any{name}any   template — {name} is replaced by the current running value.
+ *                  e.g. "=SNAKE OR_{name}_ID" → contactInfo → "OR_CONTACT_INFO_ID"
  */
 
 import {
@@ -32,6 +34,7 @@ type SpecOp =
   | { op: 'replace';       from: string; to: string }
   | { op: 'case';          style: string }
   | { op: 'plural' }
+  | { op: 'template';      template: string }
 
 export function parseNameSpec(spec: string): SpecOp[] {
   const tokens = spec.trim().split(/\s+/).filter(Boolean)
@@ -59,6 +62,8 @@ export function parseNameSpec(spec: string): SpecOp[] {
       ops.push({ op: 'plural' })
     } else if (token.startsWith('=')) {
       ops.push({ op: 'case', style: token.slice(1) })
+    } else if (token.includes('{name}')) {
+      ops.push({ op: 'template', template: token })
     }
   }
   return ops
@@ -97,6 +102,9 @@ function applyOps(name: string, ops: SpecOp[]): string {
         break
       case 'plural':
         s = pluralize(s)
+        break
+      case 'template':
+        s = op.template.replace(/\{name\}/g, s)
         break
     }
   }

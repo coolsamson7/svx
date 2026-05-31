@@ -271,7 +271,7 @@ export class ObjectToMappingTransformer {
       case 'many_to_one':
       case 'one_to_one': {
         if (rel.isOwning) {
-          const fkCol = this.naming.columnName(`${rel.name}Id`)
+          const fkCol = this.naming.fkColumnName(rel.name)
           void this.naming.foreignKeyName(ownerTable, targetTable, fkCol)
           mapping.joinColumn = fkCol
           mapping.isOwning = true
@@ -281,8 +281,8 @@ export class ObjectToMappingTransformer {
       case 'many_to_many': {
         if (rel.isOwning) {
           const joinTableName = this.naming.joinTableName(ownerTable, targetTable)
-          const joinCol = this.naming.columnName(`${rel.name}Id`)
-          const inverseJoinCol = this.naming.columnName(`${rel.target.toLowerCase()}Id`)
+          const joinCol = this.naming.fkColumnName(rel.name)
+          const inverseJoinCol = this.naming.fkColumnName(rel.target.toLowerCase())
           const jt: JoinTableMapping = { name: joinTableName, joinColumn: joinCol, inverseJoinColumn: inverseJoinCol }
           mapping.joinTable = jt
         }

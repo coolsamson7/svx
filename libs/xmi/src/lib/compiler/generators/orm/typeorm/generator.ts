@@ -42,7 +42,18 @@ export class TypeOrmGenerator {
 
     const enumNames = new Set(objectModel.enums.map(e => e.name))
     const enumValues = new Map(objectModel.enums.map(e => [e.name, e.values]))
+    const typeByName = new Map(objectModel.types.map(t => [t.name, t]))
 
+    // Abstract types: generate plain TypeScript abstract classes (no TypeORM decorators)
+    for (const type of objectModel.types) {
+      if (!type.isAbstract) continue
+      const stem = naming.tsFileStem(type.name)
+      const entityRelPath = [...type.packagePath, `${stem}.entity.ts`].join('/')
+      const source = this.generateAbstractEntity(type, enumNames, naming)
+      result.set(entityRelPath, source)
+    }
+
+    // Concrete types: full TypeORM entity classes
     for (const type of objectModel.types) {
       if (type.isAbstract) continue
 
@@ -64,11 +75,40 @@ export class TypeOrmGenerator {
         schemaImportPath = relativeImport(entityFileFromOutput, schemaFileFromOutput)
       }
 
-        const source = this.generateEntity(type, mapping, objectModel, enumNames, enumValues, schemaImportPath)
+      // Compute relative import path to abstract parent, if any
+      let parentImportPath: string | undefined
+      const parentType = type.superType ? typeByName.get(type.superType) : undefined
+      if (parentType?.isAbstract) {
+        const parentStem = naming.tsFileStem(parentType.name)
+        const parentFileFromOutput = `${entitiesDir}/${[...parentType.packagePath, `${parentStem}.entity`].join('/')}`
+        parentImportPath = relativeImport(entityFileFromOutput, parentFileFromOutput)
+      }
+
+      const source = this.generateEntity(type, mapping, objectModel, enumNames, enumValues, schemaImportPath, naming, parentImportPath)
       result.set(entityRelPath, source)
     }
 
     return result
+  }
+
+  private generateAbstractEntity(
+    type: ObjectType,
+    enumNames: Set<string>,
+    naming: NamingStrategy,
+  ): string {
+    const className = naming.entityName(type.name)
+    const lines: string[] = []
+    if (type.description) lines.push(`/** ${type.description} */`)
+    lines.push(`export abstract class ${className} {`)
+    for (const prop of type.properties) {
+      if (prop.description) lines.push(`  /** ${prop.description} */`)
+      const tsType = enumNames.has(prop.type as string) ? 'string' : primitiveToTs(prop.type as string)
+      const nullable = prop.isNullable ? ' | null' : ''
+      lines.push(`  ${prop.name}!: ${tsType}${nullable};`)
+      lines.push('')
+    }
+    lines.push('}')
+    return lines.join('\n')
   }
 
   private generateEntity(
@@ -78,7 +118,11 @@ export class TypeOrmGenerator {
     enumNames: Set<string>,
     enumValues: Map<string, string[]>,
     schemaImportPath: string,
+    naming: NamingStrategy,
+    parentImportPath?: string,
   ): string {
+    const className = naming.entityName(type.name)
+    const parentClass = type.superType ? naming.entityName(type.superType) : undefined
     const decorators = new Set<string>(['Entity'])
     const lines: string[] = []
 
@@ -87,7 +131,9 @@ export class TypeOrmGenerator {
 
     // Properties
     for (const field of mapping.fields) {
+      // Find prop on own type first, then search ancestors
       const prop = type.properties.find(p => p.name === field.property)
+        ?? this.findInheritedProp(objectModel, type, field.property)
         ?? { name: field.property, type: 'uuid', isNullable: false, description: undefined }
 
       const { line, usedDecorators } = this.generateProperty(field, prop.type as string, enumNames, enumValues, prop.description)
@@ -97,7 +143,7 @@ export class TypeOrmGenerator {
 
     // Relations
     for (const rel of mapping.relations) {
-      const { line, usedDecorators } = this.generateRelation(rel, type.name, objectModel)
+      const { line, usedDecorators } = this.generateRelation(rel, type.name, objectModel, naming)
       line.forEach(l => bodyLines.push(l))
       usedDecorators.forEach(d => decorators.add(d))
     }
@@ -108,16 +154,31 @@ export class TypeOrmGenerator {
     lines.push(importLine)
     lines.push(`import { Reflectable, Implements } from '@svx/common';`)
     lines.push(`import { ${type.name}Schema } from '${schemaImportPath}';`)
+    if (parentImportPath && parentClass) {
+      lines.push(`import { ${parentClass} } from '${parentImportPath}';`)
+    }
     lines.push('')
     if (type.description) {
       lines.push(`/** ${type.description} */`)
     }
+    const extendsClause = parentClass ? ` extends ${parentClass}` : ''
     lines.push(`@Reflectable() @Implements(${type.name}Schema) @Entity("${mapping.table}")`)
-    lines.push(`export class ${type.name} {`)
+    lines.push(`export class ${className}${extendsClause} {`)
     bodyLines.forEach(l => lines.push(`  ${l}`))
     lines.push('}')
 
     return lines.join('\n')
+  }
+
+  private findInheritedProp(objectModel: ObjectModel, type: ObjectType, propName: string) {
+    const byName = new Map(objectModel.types.map(t => [t.name, t]))
+    let cur = type.superType ? byName.get(type.superType) : undefined
+    while (cur) {
+      const prop = cur.properties.find(p => p.name === propName)
+      if (prop) return prop
+      cur = cur.superType ? byName.get(cur.superType) : undefined
+    }
+    return undefined
   }
 
   private generateProperty(
@@ -189,18 +250,19 @@ export class TypeOrmGenerator {
     rel: RelationMapping,
     _ownerTypeName: string,
     objectModel: ObjectModel,
+    naming: NamingStrategy,
   ): { line: string[]; usedDecorators: string[] } {
     const lines: string[] = []
     const usedDecorators: string[] = []
 
-    const targetType = objectModel.types.find(t => t.name === rel.target)
-    const targetClass = rel.target
+    const targetClass = naming.entityName(rel.target)
+    const targetVar = rel.target.toLowerCase()
 
     switch (rel.relationType) {
       case 'one_to_many': {
         usedDecorators.push('OneToMany')
-        const inverseProp = rel.mappedBy ?? targetClass.toLowerCase()
-        lines.push(`@OneToMany(() => ${targetClass}, (${targetClass.toLowerCase()}: ${targetClass}) => ${targetClass.toLowerCase()}.${inverseProp})`)
+        const inverseProp = rel.mappedBy ?? targetVar
+        lines.push(`@OneToMany(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp})`)
         lines.push(`${rel.property}!: ${targetClass}[];`)
         lines.push('')
         break
@@ -210,7 +272,7 @@ export class TypeOrmGenerator {
         const inverseProp = rel.mappedBy
           ?? this.findInverseRelationName(objectModel, rel.target, _ownerTypeName)
           ?? _ownerTypeName.toLowerCase()
-        lines.push(`@ManyToOne(() => ${targetClass}, (${targetClass.toLowerCase()}: ${targetClass}) => ${targetClass.toLowerCase()}.${inverseProp})`)
+        lines.push(`@ManyToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp})`)
         if (rel.joinColumn) {
           lines.push(`@JoinColumn({ name: "${rel.joinColumn}" })`)
         }
@@ -221,7 +283,7 @@ export class TypeOrmGenerator {
       case 'one_to_one': {
         if (rel.mappedBy) {
           usedDecorators.push('OneToOne')
-          lines.push(`@OneToOne(() => ${targetClass}, (${targetClass.toLowerCase()}: ${targetClass}) => ${targetClass.toLowerCase()}.${rel.mappedBy})`)
+          lines.push(`@OneToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${rel.mappedBy})`)
           lines.push(`${rel.property}!: ${targetClass};`)
         } else {
           usedDecorators.push('OneToOne', 'JoinColumn')
@@ -247,8 +309,8 @@ export class TypeOrmGenerator {
           lines.push(`})`)
         } else {
           usedDecorators.push('ManyToMany')
-          const inverseProp = rel.mappedBy ?? targetClass.toLowerCase()
-          lines.push(`@ManyToMany(() => ${targetClass}, (${targetClass.toLowerCase()}: ${targetClass}) => ${targetClass.toLowerCase()}.${inverseProp})`)
+          const inverseProp = rel.mappedBy ?? targetVar
+          lines.push(`@ManyToMany(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp})`)
         }
         lines.push(`${rel.property}!: ${targetClass}[];`)
         lines.push('')

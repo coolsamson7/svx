@@ -14,12 +14,17 @@ export const DEFAULT_NAMING_CONFIG: NamingConfig = {
     case: 'upper_snake',
   },
   foreignKeys: {
-    prefix: 'FK_',
-    maxLength: 63,
+    pattern: 'OR_{table}_{target}',
+  },
+  foreignKeyColumns: {
+    spec: '=SNAKE OR_{name}_ID',
   },
   joinTables: {
     prefix: '',
     separator: '_',
+  },
+  entities: {
+    spec: '',
   },
   tsFiles: {
     case: 'kebab',

@@ -60,7 +60,13 @@ export function compileXmi(xmiString: string, options: CompileOptions = {}): Com
     dataTypeOverrides,
   } = options
 
-  const namingStrategy = new DefaultNamingStrategy(naming)
+  // Dialect determines the max identifier length — not user-configurable
+  const dialectMapper = createDialectMapper(dialect)
+  const resolvedNaming: NamingConfig = {
+    ...naming,
+    foreignKeys: { ...naming.foreignKeys, maxLength: dialectMapper.config.maxIdentifierLength },
+  }
+  const namingStrategy = new DefaultNamingStrategy(resolvedNaming)
 
   const parser = new XmiParser()
   const parsed = parser.parseString(xmiString)
@@ -68,7 +74,6 @@ export function compileXmi(xmiString: string, options: CompileOptions = {}): Com
   const objectModel = new XmiToObjectTransformer().transform(parsed)
   const persistenceModel = new ObjectToMappingTransformer(namingStrategy, { inheritanceStrategy, dataTypeOverrides }).transform(objectModel)
   const abstractSchema = new MappingToSchemaTransformer(namingStrategy).transform(persistenceModel)
-  const dialectMapper = createDialectMapper(dialect)
   const dialectSchema = new SchemaToDialectTransformer().transform(abstractSchema, dialectMapper)
 
   const result: CompileResult = {}
