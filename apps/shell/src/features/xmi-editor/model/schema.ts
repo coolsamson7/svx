@@ -39,6 +39,12 @@ export const schema: Record<UmlKind, ElementSchema> = {
       { key: 'name', label: 'Name', type: 'text', required: true },
     ]
   },
+  'uml:Package': {
+    allowExtraTaggedValues: false,
+    fields: [
+      { key: 'name', label: 'Package name', type: 'text', required: true },
+    ]
+  },
   'uml:Association': {
     allowExtraTaggedValues: true,
     fields: [

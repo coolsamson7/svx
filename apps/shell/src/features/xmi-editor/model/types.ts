@@ -1,4 +1,4 @@
-export type UmlKind = 'uml:Class' | 'uml:DataType' | 'uml:PrimitiveType' | 'uml:Association'
+export type UmlKind = 'uml:Class' | 'uml:DataType' | 'uml:PrimitiveType' | 'uml:Association' | 'uml:Package'
 
 export interface TaggedValues { [tag: string]: string }
 
@@ -7,6 +7,7 @@ export interface UmlAttribute {
   name: string
   typeId: string
   tags: TaggedValues
+  description?: string
 }
 
 export interface UmlElement {
@@ -15,7 +16,9 @@ export interface UmlElement {
   kind: UmlKind
   tags: TaggedValues
   attrs: UmlAttribute[]
-  baseType?: string   // for DataType generalization
+  baseType?: string
+  parentId?: string  // ID of containing uml:Package element
+  description?: string
 }
 
 export interface AssocEnd {

@@ -1,8 +1,11 @@
 <script lang="ts">
   import { store } from '../../model/store.svelte'
   import { parseXmi } from '../../parser/xmi-parser'
-  import { emitXmi } from '../../parser/xmi-emitter'
+  import { emitXmi } from '@svx/xmi'
   import { layoutModel } from '../../layout/elk-layout'
+
+  interface Props { selectedPackageId: string | null }
+  let { selectedPackageId }: Props = $props()
 
   let algorithm = $state('layered')
   let fileInput: HTMLInputElement
@@ -18,14 +21,13 @@
     try {
       const text = await file.text()
       const model = parseXmi(text)
-      const positions = await layoutModel(model, algorithm)
-      store.load(model, positions)
+      const { positions, sizes } = await layoutModel(model, algorithm)
+      store.load(model, positions, sizes)
     } catch (err) {
       console.error('XMI import failed', err)
       alert('Failed to parse XMI file. See console for details.')
     } finally {
       importing = false
-      // reset input so the same file can be re-imported
       ;(e.target as HTMLInputElement).value = ''
     }
   }
@@ -43,8 +45,9 @@
   async function relayout() {
     layouting = true
     try {
-      const positions = await layoutModel(store.model, algorithm)
+      const { positions, sizes } = await layoutModel(store.model, algorithm)
       store.positions = { ...store.positions, ...positions }
+      store.sizes = { ...store.sizes, ...sizes }
     } catch (err) {
       console.error('Layout failed', err)
     } finally {
@@ -61,12 +64,16 @@
   onchange={importFile}
 />
 
-<button class="tb-btn accent" onclick={() => store.addElement('uml:Class')}>
+<button class="tb-btn accent" onclick={() => store.addElement('uml:Class', undefined, selectedPackageId ?? undefined)}>
   <span class="material-symbols-rounded">add</span> Class
 </button>
 
-<button class="tb-btn accent-green" onclick={() => store.addElement('uml:DataType')}>
+<button class="tb-btn accent-green" onclick={() => store.addElement('uml:DataType', undefined, selectedPackageId ?? undefined)}>
   <span class="material-symbols-rounded">add</span> DataType
+</button>
+
+<button class="tb-btn accent-pkg" onclick={() => store.addElement('uml:Package')}>
+  <span class="material-symbols-rounded">folder</span> Package
 </button>
 
 <div class="tb-sep"></div>
@@ -139,6 +146,14 @@
   }
   .tb-btn.accent-green:hover:not(:disabled) {
     background: #E1F5EE;
+  }
+  .tb-btn.accent-pkg {
+    border-color: #7B74D0;
+    color: #7B74D0;
+    font-weight: 600;
+  }
+  .tb-btn.accent-pkg:hover:not(:disabled) {
+    background: #EEEDFE;
   }
   .tb-sep {
     width: 1px;

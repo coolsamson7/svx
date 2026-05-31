@@ -12,7 +12,7 @@
 </script>
 
 <Handle type="target" position={Position.Top} />
-<div class="node datatype-node" class:selected>
+<div class="node datatype-node" class:selected title={el.description ?? ''}>
   <div class="stereotype">«datatype»</div>
   <div class="type-name">{el.name}</div>
   {#if baseTypeName || maxLength || minLength}

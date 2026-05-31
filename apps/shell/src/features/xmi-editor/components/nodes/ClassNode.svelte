@@ -10,7 +10,7 @@
 </script>
 
 <Handle type="target" position={Position.Top} />
-<div class="node class-node" class:selected>
+<div class="node class-node" class:selected title={el.description ?? ''}>
   {#if tableName}
     <div class="stereotype">«table: {tableName}»</div>
   {/if}

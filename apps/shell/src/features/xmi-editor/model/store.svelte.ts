@@ -1,9 +1,10 @@
-import type { UmlModel, UmlElement, UmlAttribute, UmlAssociation } from './types'
+import type { UmlModel, UmlElement, UmlKind, UmlAttribute, UmlAssociation } from './types'
 
 class XmiStore {
   past = $state<UmlModel[]>([{ elements: {}, order: [] }])
   future = $state<UmlModel[]>([])
   positions = $state<Record<string, { x: number; y: number }>>({})
+  sizes = $state<Record<string, { width: number; height: number }>>({})
   selectedId = $state<string | null>(null)
 
   get model(): UmlModel { return this.past[this.past.length - 1] }
@@ -15,10 +16,15 @@ class XmiStore {
     this.future = []
   }
 
-  load(model: UmlModel, positions: Record<string, { x: number; y: number }>) {
+  load(
+    model: UmlModel,
+    positions: Record<string, { x: number; y: number }>,
+    sizes: Record<string, { width: number; height: number }> = {},
+  ) {
     this.past = [model]
     this.future = []
     this.positions = positions
+    this.sizes = sizes
     this.selectedId = null
   }
 
@@ -71,23 +77,45 @@ class XmiStore {
 
   deleteElement(id: string) {
     const m = this.model
-    const { [id]: _removed, ...rest } = m.elements
-    this.push({ elements: rest, order: m.order.filter(o => o !== id) })
-    if (this.selectedId === id) this.selectedId = null
+    // Cascade: also delete all descendants of a package
+    const toDelete = new Set<string>([id])
+    const cascade = (pid: string) => {
+      for (const [eid, el] of Object.entries(m.elements)) {
+        if (el.parentId === pid && !toDelete.has(eid)) {
+          toDelete.add(eid)
+          cascade(eid)
+        }
+      }
+    }
+    if (m.elements[id]?.kind === 'uml:Package') cascade(id)
+
+    const elements = Object.fromEntries(Object.entries(m.elements).filter(([k]) => !toDelete.has(k)))
+    this.push({ elements, order: m.order.filter(o => !toDelete.has(o)) })
+    if (toDelete.has(this.selectedId ?? '')) this.selectedId = null
   }
 
   moveNode(id: string, x: number, y: number) {
     this.positions = { ...this.positions, [id]: { x, y } }
   }
 
-  addElement(kind: 'uml:Class' | 'uml:DataType' | 'uml:PrimitiveType', name?: string): string {
+  setSize(id: string, width: number, height: number) {
+    this.sizes = { ...this.sizes, [id]: { width, height } }
+  }
+
+  addElement(kind: UmlKind, name?: string, parentId?: string): string {
+    if (kind === 'uml:Association') throw new Error('Use addAssociation')
     const id = crypto.randomUUID()
     const m = this.model
     const label = name ?? this.#defaultName(kind, m)
-    const el: UmlElement = { id, name: label, kind, tags: {}, attrs: [] }
+    const el: UmlElement = { id, name: label, kind, tags: {}, attrs: [], parentId }
     const count = m.order.length
     this.push({ ...m, elements: { ...m.elements, [id]: el }, order: [...m.order, id] })
-    this.positions = { ...this.positions, [id]: { x: 80 + (count % 5) * 220, y: 80 + Math.floor(count / 5) * 180 } }
+    if (parentId) {
+      // Position relative to parent, inside the package
+      this.positions = { ...this.positions, [id]: { x: 20, y: 50 } }
+    } else {
+      this.positions = { ...this.positions, [id]: { x: 80 + (count % 5) * 240, y: 80 + Math.floor(count / 5) * 200 } }
+    }
     this.selectedId = id
     return id
   }
@@ -108,7 +136,7 @@ class XmiStore {
   }
 
   #defaultName(kind: string, m: UmlModel): string {
-    const prefix = kind === 'uml:Class' ? 'Class' : kind === 'uml:DataType' ? 'DataType' : 'Primitive'
+    const prefix = kind === 'uml:Class' ? 'Class' : kind === 'uml:DataType' ? 'DataType' : kind === 'uml:Package' ? 'Package' : 'Primitive'
     const existing = new Set(Object.values(m.elements).map(e => e.name))
     let i = 1
     while (existing.has(`${prefix}${i}`)) i++

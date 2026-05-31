@@ -1,14 +1,8 @@
 <script lang="ts">
   import type { FieldDef } from '../../model/schema'
-  import { store } from '../../model/store.svelte'
+  import TypeTreePicker from './TypeTreePicker.svelte'
 
   let { field, value, onchange }: { field: FieldDef; value: any; onchange: (v: any) => void } = $props()
-
-  const refOptions = $derived(
-    field.type === 'ref' && field.targets
-      ? Object.values(store.model.elements).filter(e => field.targets!.includes(e.kind))
-      : []
-  )
 </script>
 
 {#if field.type === 'boolean'}
@@ -31,12 +25,7 @@
     {/each}
   </select>
 {:else if field.type === 'ref'}
-  <select value={value} onchange={e => onchange((e.target as HTMLSelectElement).value)}>
-    <option value="">—</option>
-    {#each refOptions as el}
-      <option value={el.id}>{el.name}</option>
-    {/each}
-  </select>
+  <TypeTreePicker value={value} targets={field.targets ?? []} onchange={onchange} />
 {:else}
   <input
     type="text"
