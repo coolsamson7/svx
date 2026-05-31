@@ -5,16 +5,18 @@
   import sql from 'highlight.js/lib/languages/sql'
   import yaml from 'highlight.js/lib/languages/yaml'
   import json from 'highlight.js/lib/languages/json'
+  import xml from 'highlight.js/lib/languages/xml'
   import 'highlight.js/styles/github.css'
 
   hljs.registerLanguage('typescript', ts)
   hljs.registerLanguage('sql', sql)
   hljs.registerLanguage('yaml', yaml)
   hljs.registerLanguage('json', json)
+  hljs.registerLanguage('xml', xml)
 
   interface Props {
     code: string
-    language?: 'typescript' | 'sql' | 'yaml' | 'json'
+    language?: 'typescript' | 'sql' | 'yaml' | 'json' | 'xml'
   }
 
   let { code, language = 'typescript' }: Props = $props()

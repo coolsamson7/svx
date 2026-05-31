@@ -14,7 +14,7 @@
 
     for (const id of model.order) {
       const el = model.elements[id]
-      if (!el || el.kind === 'uml:Association') continue
+      if (!el || el.kind === 'uml:Association' || el.kind === 'uml:PrimitiveType') continue
       nodeMap.set(id, { el, children: [] })
     }
 
@@ -56,9 +56,11 @@
       <div
         class="tree-node"
         class:selected={isSelected}
+        class:has-desc={!!el.description}
         style="padding-left: {8 + depth * 16}px"
         role="button"
         tabindex="0"
+        title={el.description || undefined}
         onclick={() => store.selectedId = el.id}
         onkeydown={e => e.key === 'Enter' && (store.selectedId = el.id)}
       >
@@ -75,6 +77,9 @@
         {/if}
         <span class="node-icon material-symbols-rounded">{kindIcon[el.kind] ?? 'radio_button_unchecked'}</span>
         <span class="node-label">{el.name || '(unnamed)'}</span>
+        {#if el.description}
+          <span class="desc-dot" title={el.description}>●</span>
+        {/if}
       </div>
       {#if isPkg && !isCollapsed}
         {#each node.children as child}
@@ -168,6 +173,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .desc-dot {
+    font-size: 6px;
+    color: #534AB7;
+    opacity: 0.5;
+    flex-shrink: 0;
+    cursor: help;
+  }
+  .tree-node.has-desc:hover .desc-dot {
+    opacity: 1;
   }
   .empty {
     padding: 16px;

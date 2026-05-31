@@ -9,7 +9,7 @@
   let { value, onChange }: Props = $props()
 
   function set<K extends keyof CompileOptions>(key: K, v: CompileOptions[K]) {
-    onChange({ ...value, [key]: v })
+    onChange({ ...$state.snapshot(value), [key]: v })
   }
 
   const INHERITANCE_STRATEGIES = [
@@ -19,23 +19,25 @@
   ]
 
   function setNaming(path: string[], v: unknown) {
-    const naming = structuredClone(value.naming ?? defaultNaming())
+    const naming = $state.snapshot(value.naming) ?? defaultNaming()
     let cur: Record<string, unknown> = naming as unknown as Record<string, unknown>
     for (let i = 0; i < path.length - 1; i++) {
       if (!cur[path[i]]) cur[path[i]] = {}
       cur = cur[path[i]] as Record<string, unknown>
     }
     cur[path[path.length - 1]] = v
-    onChange({ ...value, naming })
+    onChange({ ...$state.snapshot(value), naming })
   }
 
   function defaultNaming() {
     return {
-      tables:      { spec: '=plural =SNAKE' },
-      columns:     { spec: '=SNAKE' },
-      foreignKeys: { prefix: 'FK_', maxLength: 63 },
-      joinTables:  { prefix: '', separator: '_' },
-      tsFiles:     { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas' },
+      tables:            { spec: '=plural =SNAKE' },
+      columns:           { spec: '=SNAKE' },
+      foreignKeys:       { pattern: 'OR_{table}_{target}' },
+      foreignKeyColumns: { spec: '=SNAKE OR_{name}_ID' },
+      joinTables:        { prefix: '', separator: '_' },
+      entities:          { spec: '' },
+      tsFiles:           { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas' },
     }
   }
 
@@ -44,12 +46,35 @@
   const generators = $derived(value.generators ?? ['yaml', 'json', 'sql', 'schema', 'typeorm'])
 
   function toggleGen(name: string) {
-    const cur = value.generators ?? ['yaml', 'json', 'sql', 'schema', 'typeorm']
+    const cur = $state.snapshot(value.generators) ?? ['yaml', 'json', 'sql', 'schema', 'typeorm']
     const next = cur.includes(name as never) ? cur.filter(g => g !== name) : [...cur, name as never]
     set('generators', next as CompileOptions['generators'])
   }
 
-  const SPEC_HINT = '-Suffix +Suffix ^Prefix ^-Prefix ~from->to =snake =SNAKE =kebab =camel =pascal =upper =lower =plural'
+  const SPEC_HINT = `Name transformation DSL (space-separated, left-to-right):
+  -Suffix     strip trailing suffix
+  +Suffix     append suffix
+  ^Prefix     prepend prefix
+  ^-Prefix    strip leading prefix
+  ~foo->bar   replace first occurrence
+  =snake      lower_snake_case
+  =SNAKE      UPPER_SNAKE_CASE
+  =kebab      kebab-case
+  =camel      camelCase
+  =pascal     PascalCase
+  =plural     pluralize
+
+  {name}      template: replaced by current running value
+              e.g. =SNAKE OR_{name}_ID
+                   contactInfo → OR_CONTACT_INFO_ID`
+
+  const FK_CONSTRAINT_HINT = `Constraint name pattern. Placeholders:
+  {table}   owning table name (after table transform)
+  {target}  referenced table name
+  {column}  FK column name
+
+Max length: from dialect (Postgres=63, MySQL=64, Oracle=128)
+Example: OR_{table}_{target} → OR_USER_CONTACT_INFO`
 </script>
 
 <div class="config">
@@ -89,6 +114,18 @@
   </section>
 
   <section>
+    <h4>SQL Options</h4>
+    <div class="checkgroup">
+      <label>
+        <input type="checkbox"
+          checked={value.emitForeignKeys !== false}
+          onchange={e => set('emitForeignKeys', (e.target as HTMLInputElement).checked)}
+        /> Emit foreign keys
+      </label>
+    </div>
+  </section>
+
+  <section>
     <h4>Tables <span class="hint" title={SPEC_HINT}>?</span></h4>
     <label>Name spec
       <input type="text"
@@ -111,15 +148,25 @@
   </section>
 
   <section>
-    <h4>Foreign Keys</h4>
-    <div class="row">
-      <label>Prefix
-        <input type="text" value={n.foreignKeys?.prefix ?? 'FK_'} oninput={e => setNaming(['foreignKeys', 'prefix'], (e.target as HTMLInputElement).value)} />
-      </label>
-      <label>Max length
-        <input type="number" min="20" max="128" value={n.foreignKeys?.maxLength ?? 63} oninput={e => setNaming(['foreignKeys', 'maxLength'], Number((e.target as HTMLInputElement).value))} />
-      </label>
-    </div>
+    <h4>FK Constraints <span class="hint" title={FK_CONSTRAINT_HINT}>?</span></h4>
+    <label>Constraint pattern
+      <input type="text"
+        value={(n.foreignKeys as any)?.pattern ?? 'OR_{table}_{target}'}
+        oninput={e => setNaming(['foreignKeys', 'pattern'], (e.target as HTMLInputElement).value)}
+        placeholder={'OR_{table}_{target}'}
+      />
+    </label>
+  </section>
+
+  <section>
+    <h4>FK Columns <span class="hint" title={SPEC_HINT}>?</span></h4>
+    <label>Name spec
+      <input type="text"
+        value={(n.foreignKeyColumns as any)?.spec ?? '=SNAKE +_ID'}
+        oninput={e => setNaming(['foreignKeyColumns', 'spec'], (e.target as HTMLInputElement).value)}
+        placeholder="=SNAKE +_ID"
+      />
+    </label>
   </section>
 
   <section>
@@ -132,6 +179,17 @@
         <input type="text" value={n.joinTables?.separator ?? '_'} oninput={e => setNaming(['joinTables', 'separator'], (e.target as HTMLInputElement).value)} />
       </label>
     </div>
+  </section>
+
+  <section>
+    <h4>Entity Class Names <span class="hint" title={SPEC_HINT}>?</span></h4>
+    <label>Name spec
+      <input type="text"
+        value={(n.entities as any)?.spec ?? ''}
+        oninput={e => setNaming(['entities', 'spec'], (e.target as HTMLInputElement).value)}
+        placeholder="e.g. +Entity"
+      />
+    </label>
   </section>
 
   <section>

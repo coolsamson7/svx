@@ -22,7 +22,8 @@ export function parseXmi(xml: string): UmlModel {
 
   const elements: Record<string, UmlElement> = {}
   const order: string[] = []
-  const attrToOwner: Record<string, string> = {}  // attrId → owning classId
+  const attrToOwner: Record<string, string> = {}    // attrId → owning classId
+  const rawAttrById:  Record<string, any> = {}      // attrId → raw ownedAttribute element
   const rawAssocs: Array<{ id: string; name: string; tags: Record<string, string>; rawEl: any }> = []
 
   const KNOWN_NON_PKG_KINDS: ReadonlySet<string> = new Set(['uml:Class', 'uml:DataType', 'uml:PrimitiveType', 'uml:Enumeration'])
@@ -65,7 +66,10 @@ export function parseXmi(xml: string): UmlModel {
         }
         const attrDescription = extractDescription(oa)
         attrs.push({ id: attrId, name: attrName, typeId, tags: attrTags, description: attrDescription })
-        if (attrId && id) attrToOwner[attrId] = id
+        if (attrId && id) {
+          attrToOwner[attrId] = id
+          rawAttrById[attrId] = oa
+        }
       }
 
       const baseType: string | undefined = el.generalization?.[0]?.['@_general']
@@ -79,11 +83,15 @@ export function parseXmi(xml: string): UmlModel {
 
   collectElements(topLevel)
 
+  // Track which attr IDs are association ends (so we can mark them on the owning class)
+  const assocEndAttrIds = new Set<string>()
+
   for (const { id, name, tags, rawEl } of rawAssocs) {
     const ownedEnds: any[] = rawEl.ownedEnd ?? []
     let ends: [AssocEnd, AssocEnd]
 
     if (ownedEnds.length >= 2) {
+      // ownedEnd style: each end has @_type pointing to the participant class
       const mapped = ownedEnds.slice(0, 2).map((e: any): AssocEnd => ({
         id: e['@_xmi:id'] ?? '',
         role: e['@_name'] ?? '',
@@ -93,20 +101,39 @@ export function parseXmi(xml: string): UmlModel {
       }))
       ends = [mapped[0], mapped[1]]
     } else {
-      // memberEnd style: refs are ownedAttribute IDs; resolve to owning class
+      // memberEnd style: refs are ownedAttribute IDs.
+      // The ownedAttribute's TYPE is the participant at that end.
+      // The ownedAttribute's MULTIPLICITY is how many of that type per the OTHER class.
       const refs: string[] = (rawEl.memberEnd ?? [])
         .map((m: any) => m['@_xmi:idref'] ?? '')
         .filter(Boolean)
       while (refs.length < 2) refs.push('')
-      ends = [
-        { id: refs[0], role: '', typeId: attrToOwner[refs[0]] ?? '', lower: '0', upper: '*' },
-        { id: refs[1], role: '', typeId: attrToOwner[refs[1]] ?? '', lower: '0', upper: '*' },
-      ]
+      refs.slice(0, 2).forEach(r => r && assocEndAttrIds.add(r))
+
+      ends = refs.slice(0, 2).map((ref): AssocEnd => {
+        const raw = rawAttrById[ref]
+        const targetTypeId: string = raw?.type?.['@_xmi:idref'] ?? ''
+        const role: string = raw?.['@_name'] ?? ''
+        const lower: string = raw?.lowerValue?.['@_value'] ?? '0'
+        const upper: string = raw?.upperValue?.['@_value'] ?? '*'
+        return { id: ref, role, typeId: targetTypeId, lower, upper }
+      }) as [AssocEnd, AssocEnd]
     }
 
     const assoc: UmlAssociation = { id, name, kind: 'uml:Association', tags, attrs: [], ends }
     elements[id] = assoc
     order.push(id)
+  }
+
+  // Mark navigation (association-end) attributes on their owning class elements
+  for (const attrId of assocEndAttrIds) {
+    const ownerId = attrToOwner[attrId]
+    if (!ownerId || !elements[ownerId]) continue
+    const el = elements[ownerId]
+    elements[ownerId] = {
+      ...el,
+      attrs: el.attrs.map(a => a.id === attrId ? { ...a, isAssociationEnd: true } : a),
+    }
   }
 
   return { elements, order }

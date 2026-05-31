@@ -21,6 +21,8 @@ export const schema: Record<UmlKind, ElementSchema> = {
     allowExtraTaggedValues: true,
     fields: [
       { key: 'name', label: 'Class name', type: 'text', required: true },
+      { key: 'baseType', label: 'Superclass', type: 'ref', targets: ['uml:Class'] },
+      { key: 'description', label: 'Description', type: 'text' },
       { key: 'tags.table-name', label: 'Table name', type: 'text' },
       { key: 'tags.schema', label: 'DB schema', type: 'text' },
     ]
@@ -29,6 +31,8 @@ export const schema: Record<UmlKind, ElementSchema> = {
     allowExtraTaggedValues: true,
     fields: [
       { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'baseType', label: 'Base primitive', type: 'ref', targets: ['uml:PrimitiveType'] },
+      { key: 'description', label: 'Description', type: 'text' },
       { key: 'tags.max-length', label: 'Max length', type: 'number' },
       { key: 'tags.min-length', label: 'Min length', type: 'number' },
     ]
@@ -43,6 +47,7 @@ export const schema: Record<UmlKind, ElementSchema> = {
     allowExtraTaggedValues: false,
     fields: [
       { key: 'name', label: 'Package name', type: 'text', required: true },
+      { key: 'description', label: 'Description', type: 'text' },
     ]
   },
   'uml:Association': {
@@ -61,6 +66,7 @@ export const schema: Record<UmlKind, ElementSchema> = {
 
 export const attributeSchema: FieldDef[] = [
   { key: 'name', label: 'Attribute name', type: 'text', required: true },
+  { key: 'description', label: 'Description', type: 'text' },
   { key: 'typeId', label: 'Type', type: 'ref', targets: ['uml:PrimitiveType', 'uml:DataType'] },
   { key: 'tags.column-name', label: 'Column name', type: 'text' },
   { key: 'tags.column-type', label: 'Column type', type: 'select', options: ['varchar','int','bigint','boolean','timestamp','timestamptz','text','uuid','jsonb','decimal'] },

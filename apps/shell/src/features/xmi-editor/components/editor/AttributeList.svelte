@@ -35,6 +35,7 @@
 
   function getAttrFieldValue(attr: UmlAttribute, key: string): any {
     if (key === 'name') return attr.name
+    if (key === 'description') return attr.description ?? ''
     if (key === 'typeId') return attr.typeId
     if (key.startsWith('tags.')) return attr.tags[key.slice(5)] ?? ''
     return ''
@@ -43,6 +44,10 @@
   function setAttrFieldValue(attrId: string, key: string, value: any) {
     if (key === 'name') {
       store.updateAttribute(elementId, attrId, { name: String(value) })
+      return
+    }
+    if (key === 'description') {
+      store.updateAttribute(elementId, attrId, { description: String(value) || undefined })
       return
     }
     if (key === 'typeId') {

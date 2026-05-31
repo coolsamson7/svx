@@ -8,6 +8,7 @@ export interface UmlAttribute {
   typeId: string
   tags: TaggedValues
   description?: string
+  isAssociationEnd?: boolean
 }
 
 export interface UmlElement {

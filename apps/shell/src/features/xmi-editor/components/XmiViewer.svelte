@@ -16,14 +16,23 @@
   import PrimitiveNode from './nodes/PrimitiveNode.svelte'
   import PackageNode from './nodes/PackageNode.svelte'
   import AssocEdge from './edges/AssocEdge.svelte'
+  import GenEdge from './edges/GenEdge.svelte'
   import EditorPanel from './editor/EditorPanel.svelte'
   import Toolbar from './toolbar/Toolbar.svelte'
   import UndoBar from './toolbar/UndoBar.svelte'
   import DropZone from './DropZone.svelte'
   import CompilePanel from './compile/CompilePanel.svelte'
   import PackageTree from './PackageTree.svelte'
+  import XmiView from './XmiView.svelte'
+  import FlowFocusOnSelect from './FlowFocusOnSelect.svelte'
+  import ConfirmDialog from './ConfirmDialog.svelte'
+  import { emitXmi } from '@svx/xmi'
 
   let showCompile = $state(false)
+  let viewMode = $state<'viewer' | 'xmi'>('viewer')
+  let pendingDeleteId = $state<string | null>(null)
+
+  const xmiSource = $derived(emitXmi(store.model))
 
   const nodeTypes = {
     'uml:Class': ClassNode,
@@ -34,11 +43,18 @@
 
   const edgeTypes = {
     'uml:Association': AssocEdge,
+    'uml:Generalization': GenEdge,
   }
 
-  const nodes = $derived(
-    store.model.order
-      .filter(id => store.model.elements[id]?.kind !== 'uml:Association')
+  let nodes: Node[] = $state.raw([])
+  let edges: Edge[] = $state.raw([])
+
+  $effect(() => {
+    nodes = store.model.order
+      .filter(id => {
+        const k = store.model.elements[id]?.kind
+        return k !== 'uml:Association' && k !== 'uml:PrimitiveType'
+      })
       .map(id => {
         const el = store.model.elements[id]
         const pos = store.positions[id] ?? { x: 0, y: 0 }
@@ -60,10 +76,10 @@
         }
         return node
       })
-  )
+  })
 
-  const edges = $derived(
-    store.model.order
+  $effect(() => {
+    const assocEdges = store.model.order
       .filter(id => store.model.elements[id]?.kind === 'uml:Association')
       .map(id => {
         const el = store.model.elements[id] as UmlAssociation
@@ -79,7 +95,22 @@
       .filter(e => e.source && e.target
         && store.model.elements[e.source]
         && store.model.elements[e.target])
-  )
+
+    const genEdges: Edge[] = store.model.order
+      .filter(id => {
+        const el = store.model.elements[id]
+        return el?.baseType && store.model.elements[el.baseType]
+      })
+      .map(id => ({
+        id: `gen_${id}`,
+        type: 'uml:Generalization',
+        source: id,
+        target: store.model.elements[id]!.baseType!,
+        selected: false,
+      } satisfies Edge))
+
+    edges = [...assocEdges, ...genEdges]
+  })
 
   function onNodeClick({ node }: { node: Node }) {
     store.selectedId = node.id
@@ -124,10 +155,7 @@
       const active = document.activeElement
       if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return
       const el = store.model.elements[store.selectedId]
-      const label = el?.kind === 'uml:Package' ? `package "${el.name}" and all its contents` : (el?.name || store.selectedId)
-      if (el && confirm(`Delete ${label}?`)) {
-        store.deleteElement(store.selectedId)
-      }
+      if (el) pendingDeleteId = store.selectedId
     }
   }
 
@@ -144,6 +172,15 @@
 </script>
 
 <svelte:window onkeydown={onKeydown} />
+
+{#if pendingDeleteId}
+  {@const el = store.model.elements[pendingDeleteId]}
+  <ConfirmDialog
+    message={`Delete ${el?.kind === 'uml:Package' ? `package "${el.name}" and all its contents` : (el?.name || pendingDeleteId)}?`}
+    onConfirm={() => { store.deleteElement(pendingDeleteId!); pendingDeleteId = null }}
+    onCancel={() => pendingDeleteId = null}
+  />
+{/if}
 
 <div class="viewer">
   <div class="toolbar-row">
@@ -162,34 +199,57 @@
     {#if isEmpty}
       <DropZone />
     {:else}
+      <div class="mode-bar">
+        <button
+          class="mode-btn"
+          class:active={viewMode === 'viewer'}
+          onclick={() => viewMode = 'viewer'}
+          title="Diagram Viewer"
+        >
+          <span class="material-symbols-rounded">hub</span>
+        </button>
+        <button
+          class="mode-btn"
+          class:active={viewMode === 'xmi'}
+          onclick={() => viewMode = 'xmi'}
+          title="XMI Source"
+        >
+          <span class="material-symbols-rounded">code</span>
+        </button>
+      </div>
       <div class="tree-sidebar">
         <PackageTree />
       </div>
       <div class="flow-area">
-      <SvelteFlow
-        {nodes}
-        {edges}
-        {nodeTypes}
-        {edgeTypes}
-        onnodeclick={onNodeClick}
-        onpaneclick={onPaneClick}
-        onnodedragstop={onNodeDragStop}
-        onedgeclick={onEdgeClick}
-        onconnect={onConnect}
-        fitView
-      >
-        <Controls />
-        <Background />
-        <MiniMap />
-      </SvelteFlow>
-      {#if store.selectedId}
-        <EditorPanel />
-      {/if}
-      {#if showCompile}
-        <div class="compile-panel">
-          <CompilePanel onClose={() => showCompile = false} />
-        </div>
-      {/if}
+        {#if viewMode === 'xmi'}
+          <XmiView xmi={xmiSource} />
+        {:else}
+          <SvelteFlow
+            {nodes}
+            {edges}
+            {nodeTypes}
+            {edgeTypes}
+            onnodeclick={onNodeClick}
+            onpaneclick={onPaneClick}
+            onnodedragstop={onNodeDragStop}
+            onedgeclick={onEdgeClick}
+            onconnect={onConnect}
+            fitView
+          >
+            <Controls />
+            <Background />
+            <MiniMap />
+            <FlowFocusOnSelect />
+          </SvelteFlow>
+          {#if store.selectedId}
+            <EditorPanel />
+          {/if}
+        {/if}
+        {#if showCompile}
+          <div class="compile-panel">
+            <CompilePanel onClose={() => showCompile = false} />
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
@@ -214,6 +274,35 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+  }
+  .mode-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-right: 1px solid #e0e0e0;
+    background: #f6f8fa;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    color: #57606a;
+  }
+  .mode-btn .material-symbols-rounded { font-size: 18px; }
+  .mode-btn:hover { background: #e8ecf0; color: #24292f; }
+  .mode-btn.active {
+    background: #EEEDFE;
+    border-color: #534AB7;
+    color: #534AB7;
   }
   .tree-sidebar {
     width: 200px;

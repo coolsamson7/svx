@@ -1,5 +1,7 @@
 <script lang="ts">
   import { emitXmi, compileXmi, type CompileOptions, type CompileResult } from '@svx/xmi'
+  import { stringify as toYaml, parse as parseYaml } from 'yaml'
+  import { untrack } from 'svelte'
   import { store } from '../../model/store.svelte'
   import CompileConfig from './CompileConfig.svelte'
   import CodeViewer from './CodeViewer.svelte'
@@ -12,22 +14,51 @@
     dialect: 'postgres',
     generators: ['yaml', 'json', 'sql', 'schema', 'typeorm'],
     inheritanceStrategy: 'table_per_class',
+    emitForeignKeys: true,
     naming: {
-      tables:      { spec: '=plural =SNAKE' },
-      columns:     { spec: '=SNAKE' },
-      foreignKeys: { prefix: 'FK_', maxLength: 63 },
-      joinTables:  { prefix: '', separator: '_' },
-      tsFiles:     { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas' },
+      tables:           { spec: '=plural =SNAKE' },
+      columns:          { spec: '=SNAKE' },
+      foreignKeys:      { pattern: 'OR_{table}_{target}' },
+      foreignKeyColumns:{ spec: '=SNAKE OR_{name}_ID' },
+      joinTables:       { prefix: '', separator: '_' },
+      entities:         { spec: '' },
+      tsFiles:          { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas' },
     },
     outputDirs: { schemas: 'schemas', entities: 'entities' },
   })
 
-  type Tab = 'sql' | 'yaml' | 'json' | 'ts'
+  type Tab = 'sql' | 'yaml' | 'ts'
   let activeTab = $state<Tab>('ts')
   let result = $state<CompileResult | null>(null)
   let error = $state<string | null>(null)
   let compiling = $state(false)
   let showConfig = $state(true)
+  let configTab = $state<'form' | 'yaml'>('form')
+  let yamlParseError = $state<string | null>(null)
+  let yamlDraft = $state<string | null>(null)
+
+  const configYamlLive = $derived(toYaml($state.snapshot(options), { indent: 2 }))
+
+  function onYamlInput(text: string) {
+    yamlDraft = text
+    try {
+      const parsed = parseYaml(text) as CompileOptions
+      if (parsed && typeof parsed === 'object') {
+        options = parsed
+        yamlParseError = null
+      }
+    } catch (e) {
+      yamlParseError = e instanceof Error ? e.message : String(e)
+    }
+  }
+
+  $effect(() => {
+    const tab = configTab
+    if (tab === 'yaml') {
+      yamlDraft = untrack(() => configYamlLive)
+      yamlParseError = null
+    }
+  })
 
   async function compile() {
     error = null
@@ -44,11 +75,10 @@
   }
 
   const hasResult = $derived(result !== null)
-  const tabs: { id: Tab; label: string }[] = [
+  const compileTabs: { id: Tab; label: string }[] = [
     { id: 'ts',   label: 'TypeScript' },
     { id: 'sql',  label: 'SQL' },
     { id: 'yaml', label: 'YAML' },
-    { id: 'json', label: 'JSON' },
   ]
 </script>
 
@@ -64,7 +94,25 @@
   <div class="panel-body">
     {#if showConfig}
       <div class="config-pane">
-        <CompileConfig value={options} onChange={v => options = v} />
+        <div class="config-tabs">
+          <button class="config-tab" class:active={configTab === 'form'} onclick={() => configTab = 'form'}>Form</button>
+          <button class="config-tab" class:active={configTab === 'yaml'} onclick={() => configTab = 'yaml'}>YAML</button>
+        </div>
+        {#if configTab === 'form'}
+          <CompileConfig value={options} onChange={v => options = v} />
+        {:else}
+          <div class="yaml-editor-wrap">
+            {#if yamlParseError}
+              <div class="yaml-error">{yamlParseError}</div>
+            {/if}
+            <textarea
+              class="yaml-editor"
+              value={yamlDraft ?? configYamlLive}
+              oninput={e => onYamlInput((e.target as HTMLTextAreaElement).value)}
+              spellcheck={false}
+            ></textarea>
+          </div>
+        {/if}
         <div class="compile-action">
           <button class="compile-btn" onclick={compile} disabled={compiling}>
             {compiling ? 'Compiling…' : '▶ Compile'}
@@ -74,51 +122,47 @@
     {/if}
 
     <div class="results-pane">
-      {#if !hasResult && !error}
-        <div class="empty-state">
-          <div class="empty-icon">⚡</div>
-          <div class="empty-msg">Configure options and click Compile</div>
-          {#if !showConfig}
-            <button class="compile-btn" onclick={compile} disabled={compiling}>
-              {compiling ? 'Compiling…' : '▶ Compile'}
-            </button>
-          {/if}
-        </div>
-      {:else if error}
-        <div class="error-state">
-          <div class="error-title">Compilation error</div>
-          <pre class="error-msg">{error}</pre>
-        </div>
-      {:else if result}
-        <div class="result-tabs">
-          {#each tabs as tab}
-            <button
-              class:active={activeTab === tab.id}
-              onclick={() => activeTab = tab.id}
-            >{tab.label}</button>
-          {/each}
-          <div class="tab-spacer"></div>
-          {#if !showConfig}
-            <button class="compile-btn-sm" onclick={compile} disabled={compiling}>
-              {compiling ? '…' : '▶ Re-compile'}
-            </button>
-          {/if}
-        </div>
+      <div class="result-tabs">
+        {#each compileTabs as tab}
+          <button
+            class:active={activeTab === tab.id}
+            onclick={() => activeTab = tab.id}
+          >{tab.label}</button>
+        {/each}
+        <div class="tab-spacer"></div>
+        {#if !showConfig}
+          <button class="compile-btn-sm" onclick={compile} disabled={compiling}>
+            {compiling ? '…' : '▶ Compile'}
+          </button>
+        {/if}
+      </div>
 
-        <div class="result-content">
-          {#if activeTab === 'ts'}
-            <TsOutput schemas={result.schemas} entities={result.entities} />
-          {:else if activeTab === 'sql' && result.sql}
-            <CodeViewer code={result.sql} language="sql" />
-          {:else if activeTab === 'yaml' && result.yaml}
-            <CodeViewer code={result.yaml} language="yaml" />
-          {:else if activeTab === 'json' && result.json}
-            <CodeViewer code={result.json} language="json" />
-          {:else}
-            <div class="empty">Generator not enabled or produced no output</div>
-          {/if}
-        </div>
-      {/if}
+      <div class="result-content">
+        {#if error}
+          <div class="error-state">
+            <div class="error-title">Compilation error</div>
+            <pre class="error-msg">{error}</pre>
+          </div>
+        {:else if !hasResult}
+          <div class="empty-state">
+            <div class="empty-icon">⚡</div>
+            <div class="empty-msg">Configure options and click Compile</div>
+            {#if !showConfig}
+              <button class="compile-btn" onclick={compile} disabled={compiling}>
+                {compiling ? 'Compiling…' : '▶ Compile'}
+              </button>
+            {/if}
+          </div>
+        {:else if activeTab === 'ts'}
+          <TsOutput schemas={result!.schemas} entities={result!.entities} />
+        {:else if activeTab === 'sql' && result?.sql}
+          <CodeViewer code={result.sql} language="sql" />
+        {:else if activeTab === 'yaml' && result?.yaml}
+          <CodeViewer code={result.yaml} language="yaml" />
+        {:else}
+          <div class="empty">Generator not enabled or produced no output</div>
+        {/if}
+      </div>
     </div>
   </div>
 </div>
@@ -166,6 +210,59 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+  .config-tabs {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    background: #f6f8fa;
+    flex-shrink: 0;
+  }
+  .config-tab {
+    flex: 1;
+    padding: 6px 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #57606a;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .config-tab.active {
+    color: #534AB7;
+    border-bottom-color: #534AB7;
+    background: white;
+    font-weight: 600;
+  }
+  .yaml-editor-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .yaml-editor {
+    flex: 1;
+    width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    background: #fafafa;
+    color: #24292f;
+    box-sizing: border-box;
+  }
+  .yaml-error {
+    padding: 4px 8px;
+    background: #fff0f0;
+    color: #cf222e;
+    font-size: 10px;
+    border-bottom: 1px solid #ffc0c0;
+    flex-shrink: 0;
   }
   .compile-action {
     padding: 10px 12px;

@@ -10,35 +10,30 @@
   let { schemas, entities }: Props = $props()
 
   let selectedPath = $state<string | null>(null)
-  let activeGroup = $state<'schemas' | 'entities'>('schemas')
 
-  const currentFiles = $derived(activeGroup === 'schemas' ? (schemas ?? new Map()) : (entities ?? new Map()))
-  const selectedContent = $derived(selectedPath ? currentFiles.get(selectedPath) ?? null : null)
+  const allFiles = $derived((): Map<string, string> => {
+    const merged = new Map<string, string>()
+    for (const [k, v] of (schemas ?? new Map())) merged.set(`schemas/${k}`, v)
+    for (const [k, v] of (entities ?? new Map())) merged.set(`entities/${k}`, v)
+    return merged
+  })
+
+  const selectedContent = $derived(selectedPath ? allFiles().get(selectedPath) ?? null : null)
 
   $effect(() => {
-    // Auto-select first file when switching groups
-    const first = currentFiles.keys().next().value
+    const first = allFiles().keys().next().value
     selectedPath = first ?? null
   })
 </script>
 
 <div class="ts-output">
-  <div class="group-tabs">
-    <button class:active={activeGroup === 'schemas'} onclick={() => { activeGroup = 'schemas' }}>
-      Schemas ({schemas?.size ?? 0})
-    </button>
-    <button class:active={activeGroup === 'entities'} onclick={() => { activeGroup = 'entities' }}>
-      Entities ({entities?.size ?? 0})
-    </button>
-  </div>
-
   <div class="split">
     <div class="tree-pane">
       <FileTree
-        files={currentFiles}
+        files={allFiles()}
         selected={selectedPath}
         onSelect={(p) => selectedPath = p}
-        label={activeGroup}
+        label="typescript"
       />
     </div>
     <div class="code-pane">
@@ -57,32 +52,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-  }
-  .group-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 6px 8px 0;
-    border-bottom: 1px solid #e0e0e0;
-    background: white;
-    flex-shrink: 0;
-  }
-  .group-tabs button {
-    padding: 4px 12px;
-    border: 1px solid #d0d7de;
-    border-bottom: none;
-    border-radius: 4px 4px 0 0;
-    background: #f6f8fa;
-    cursor: pointer;
-    font-size: 12px;
-    color: #57606a;
-    translate: 0 1px;
-  }
-  .group-tabs button.active {
-    background: white;
-    color: #24292f;
-    font-weight: 600;
-    border-color: #e0e0e0;
-    border-bottom-color: white;
   }
   .split {
     display: flex;

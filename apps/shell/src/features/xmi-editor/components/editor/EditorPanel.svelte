@@ -4,6 +4,9 @@
   import FieldRenderer from './FieldRenderer.svelte'
   import AttributeList from './AttributeList.svelte'
   import TaggedValueEditor from './TaggedValueEditor.svelte'
+  import ConfirmDialog from '../ConfirmDialog.svelte'
+
+  let confirmDelete = $state(false)
 
   const el = $derived(store.selectedId ? store.model.elements[store.selectedId] : null)
   const elSchema = $derived(el ? schema[el.kind] : null)
@@ -11,6 +14,8 @@
   function getFieldValue(key: string): any {
     if (!el) return ''
     if (key === 'name') return el.name
+    if (key === 'description') return el.description ?? ''
+    if (key === 'baseType') return el.baseType ?? ''
     if (key.startsWith('tags.')) return el.tags[key.slice(5)] ?? ''
     if (key.startsWith('ends.')) {
       const [, idx, prop] = key.split('.')
@@ -23,6 +28,14 @@
     if (!store.selectedId || !el) return
     if (key === 'name') {
       store.updateElement(store.selectedId, { name: String(value) })
+      return
+    }
+    if (key === 'description') {
+      store.updateElement(store.selectedId, { description: String(value) || undefined })
+      return
+    }
+    if (key === 'baseType') {
+      store.updateElement(store.selectedId, { baseType: String(value) || undefined })
       return
     }
     if (key.startsWith('tags.')) {
@@ -40,11 +53,22 @@
 
   function deleteSelected() {
     if (!store.selectedId) return
-    if (confirm(`Delete ${el?.name ?? store.selectedId}?`)) {
-      store.deleteElement(store.selectedId)
-    }
+    confirmDelete = true
+  }
+
+  function doDelete() {
+    if (store.selectedId) store.deleteElement(store.selectedId)
+    confirmDelete = false
   }
 </script>
+
+{#if confirmDelete}
+  <ConfirmDialog
+    message={`Delete ${el?.kind === 'uml:Package' ? `package "${el.name}" and all its contents` : (el?.name || store.selectedId)}?`}
+    onConfirm={doDelete}
+    onCancel={() => confirmDelete = false}
+  />
+{/if}
 
 {#if el && elSchema}
   <div class="panel">
