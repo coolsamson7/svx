@@ -1,0 +1,34 @@
+xmiPath: libs/user/core/model.xmi
+outputDir: libs/user/core/src/lib/entity
+dialect: postgres
+generators:
+  - schema
+  - typeorm
+emitForeignKeys: true
+naming:
+  tables:
+    spec: =snake =plural
+  columns:
+    spec: =snake
+  foreignKeys:
+    pattern: OR_{table}_{target}
+  foreignKeyColumns:
+    spec: =SNAKE ^OR_{name}
+  joinTables:
+    prefix: ""
+    separator: _
+  entities:
+    spec: +Entity
+  tsFiles:
+    spec: =kebab
+    entityFileSuffix: entity
+    entitySubDir: ""
+    schemaFileSuffix: ""
+    schemaSubDir: ""
+    dataTypeGrouping: one
+    dataTypeFileName: entity-schemas
+    schemaGrouping: one
+    schemaFileName: entity-schemas
+outputDirs:
+  schemas: ""
+  entities: ""

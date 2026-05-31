@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.1"
+  xmlns:xmi="http://schema.omg.org/spec/XMI/2.1"
+  xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML">
+
+  <!-- DataTypes -->
+  <packagedElement xmi:type="uml:DataType" xmi:id="SmallString" name="SmallString">
+    <taggedValue  tag="base-type" value="string"/>
+    <taggedValue tag="max-length" value="100"/>
+  </packagedElement>
+
+  <!-- User -->
+  <packagedElement xmi:type="uml:Class" xmi:id="User" name="User">
+    <taggedValue tag="table-name" value="users"/>
+
+    <ownedAttribute xmi:type="uml:Property" xmi:id="User.id" name="id">
+      <type xmi:idref="Integer"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+      <taggedValue tag="primary-key" value="true"/>
+      <taggedValue tag="generated" value="increment"/>
+    </ownedAttribute>
+
+    <ownedAttribute xmi:type="uml:Property" xmi:id="User.name" name="name">
+      <type xmi:idref="SmallString"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+    </ownedAttribute>
+
+    <ownedAttribute xmi:type="uml:Property" xmi:id="User.email" name="email">
+      <type xmi:idref="String"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+      <taggedValue tag="max-length" value="200"/>
+      <taggedValue tag="email" value="true"/>
+      <defaultValue xmi:type="uml:LiteralString" value=""/>
+    </ownedAttribute>
+
+    <!-- navigation: 1 User → * Address -->
+    <ownedAttribute xmi:type="uml:Property" xmi:id="User.addresses" name="addresses"
+                    association="assoc_User_Address">
+      <type xmi:idref="Address"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="0"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="*"/>
+    </ownedAttribute>
+  </packagedElement>
+
+  <!-- Address -->
+  <packagedElement xmi:type="uml:Class" xmi:id="Address" name="Address">
+    <taggedValue tag="table-name" value="addresses"/>
+
+    <ownedAttribute xmi:type="uml:Property" xmi:id="Address.id" name="id">
+      <type xmi:idref="Integer"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+      <taggedValue tag="primary-key" value="true"/>
+      <taggedValue tag="generated" value="increment"/>
+    </ownedAttribute>
+
+    <ownedAttribute xmi:type="uml:Property" xmi:id="Address.city" name="city">
+      <type xmi:idref="SmallString"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+    </ownedAttribute>
+
+    <!-- navigation: * Address → 1 User (owns the FK) -->
+    <ownedAttribute xmi:type="uml:Property" xmi:id="Address.user" name="user"
+                    association="assoc_User_Address">
+      <type xmi:idref="User"/>
+      <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+    </ownedAttribute>
+  </packagedElement>
+
+  <!-- Primitives (referenced by type idref) -->
+  <packagedElement xmi:type="uml:PrimitiveType" xmi:id="Integer" name="Integer"/>
+  <packagedElement xmi:type="uml:PrimitiveType" xmi:id="String" name="String"/>
+
+  <!-- Association: User 1 → * Address -->
+  <packagedElement xmi:type="uml:Association" xmi:id="assoc_User_Address" name="UserAddress">
+    <memberEnd xmi:idref="User.addresses"/>
+    <memberEnd xmi:idref="Address.user"/>
+    <taggedValue tag="cascade" value="true"/>
+    <taggedValue tag="on-delete" value="CASCADE"/>
+  </packagedElement>
+
+</xmi:XMI>
