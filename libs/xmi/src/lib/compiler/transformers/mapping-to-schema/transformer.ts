@@ -156,6 +156,7 @@ export class MappingToSchemaTransformer {
       primaryKey: field.primaryKey ?? false,
       defaultValue: field.defaultValue,
       generated: field.generated,
+      sqlTypeOverride: field.sqlTypeOverride,
     }
   }
 

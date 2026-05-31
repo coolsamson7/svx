@@ -27,6 +27,7 @@ export interface ParsedClass {
   generalizations: string[]   // IDs of parent classes
   associationEndIds: string[] // IDs of ownedAttribute that are association ends
   packagePath: string[]       // e.g. ['com', 'example', 'user']
+  tags: Record<string, string>
   description?: string
 }
 
@@ -248,8 +249,14 @@ export class XmiParser {
       .filter(a => a['@_association'] !== undefined)
       .map(a => a['@_xmi:id'])
 
+    const tags: Record<string, string> = {}
+    for (const tv of toArray(el.taggedValue as any)) {
+      const tag = tv['@_tag'], value = tv['@_value']
+      if (tag && value !== undefined) tags[normTagKey(String(tag))] = String(value)
+    }
+
     const description = extractDescription(el)
-    return { id, name, isAbstract, attributes, generalizations, associationEndIds, packagePath, description }
+    return { id, name, isAbstract, attributes, generalizations, associationEndIds, packagePath, tags, description }
   }
 
   private parseAttribute(attr: XmiOwnedAttribute): ParsedAttribute {

@@ -82,6 +82,8 @@ export interface ObjectType {
   packagePath: string[]
   /** Human-readable description from ownedComment */
   description?: string
+  /** Class-level tagged values (e.g. table-name override) */
+  tags?: Record<string, string>
 }
 
 /** A UML enumeration */

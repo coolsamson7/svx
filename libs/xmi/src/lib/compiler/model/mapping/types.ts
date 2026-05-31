@@ -20,6 +20,8 @@ export interface FieldMapping {
   logicalType: string
   /** Named DataType (uml:DataType) if the property references one — used by schema generator */
   dataTypeName?: string
+  /** Explicit SQL type override from column-type tag — bypasses logical→dialect mapping */
+  sqlTypeOverride?: string
   /** Max length for string columns */
   length?: number
   /** Precision for decimal columns */

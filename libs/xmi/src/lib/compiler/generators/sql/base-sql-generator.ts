@@ -73,7 +73,7 @@ export abstract class BaseSqlGenerator {
   /** Build a single column definition line */
   protected columnDef(col: SchemaColumn, dialect: DialectMapper): string {
     const q = dialect.config.quoteIdentifier
-    const sqlType = dialect.mapType(col.logicalType, col)
+    const sqlType = col.sqlTypeOverride ?? dialect.mapType(col.logicalType, col)
     const nullability = col.nullable ? 'NULL' : 'NOT NULL'
     const unique = col.unique && !col.primaryKey ? ' UNIQUE' : ''
     const defaultClause = col.defaultValue !== undefined

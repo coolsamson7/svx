@@ -51,6 +51,13 @@ export class ObjectToMappingTransformer {
     }
   }
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /** Table name: explicit `table-name` tag overrides the naming convention. */
+  private tableNameFor(type: import('../../model/object/types.js').ObjectType): string {
+    return type.tags?.['tableName'] ?? this.naming.tableName(type.name)
+  }
+
   // ── TABLE_PER_CLASS ────────────────────────────────────────────────────────
   // Concrete types only; abstract types' columns are flattened into each subclass.
 
@@ -58,7 +65,7 @@ export class ObjectToMappingTransformer {
     const mappings: Record<string, TypeMapping> = {}
     for (const type of ctx.model.types) {
       if (type.isAbstract) continue
-      const table = this.naming.tableName(type.name)
+      const table = this.tableNameFor(type)
       const fields = this.buildFields(this.collectAllProps(type, ctx.byName), ctx)
       const relations = type.relations.map(r => this.mapRelation(r, table, ctx.model))
       mappings[type.name] = { typeName: type.name, table, fields, relations }
@@ -73,7 +80,7 @@ export class ObjectToMappingTransformer {
   private joined(ctx: Ctx): PersistenceModel {
     const mappings: Record<string, TypeMapping> = {}
     for (const type of ctx.model.types) {
-      const table = this.naming.tableName(type.name)
+      const table = this.tableNameFor(type)
       const parentName = !type.isAbstract && type.superType && ctx.byName.get(type.superType)?.isAbstract
         ? type.superType : undefined
 
@@ -124,15 +131,15 @@ export class ObjectToMappingTransformer {
 
     // Standalone types: individual tables (no hierarchy)
     for (const type of standalone) {
-      const table = this.naming.tableName(type.name)
+      const table = this.tableNameFor(type)
       const fields = this.buildFields(type.properties, ctx)
       const relations = type.relations.map(r => this.mapRelation(r, table, ctx.model))
       mappings[type.name] = { typeName: type.name, table, fields, relations }
     }
 
     // Hierarchy types: one physical table per root abstract type
-    for (const [rootName, { root, concretes }] of hierarchies) {
-      const table = this.naming.tableName(rootName)
+    for (const [, { root, concretes }] of hierarchies) {
+      const table = this.tableNameFor(root)
       const rootPropNames = new Set(root.properties.map(p => p.name))
 
       // Collect subclass-specific properties (nullable in the shared table)
@@ -246,16 +253,25 @@ export class ObjectToMappingTransformer {
     const dtPrecision = dt?.tags['precision']
     const dtScale = dt?.tags['scale']
 
+    // Explicit tagged-value overrides take priority over naming conventions
+    const columnOverride = tags['columnName']
+    const sqlTypeOverride = tags['columnType'] || undefined
+    const uniqueOverride = tags['unique'] === 'true'
+    const nullableOverride = tags['nullable'] !== undefined
+      ? tags['nullable'] === 'true'
+      : undefined
+
     return {
       property: prop.name,
-      column: this.naming.columnName(prop.name),
+      column: columnOverride ?? this.naming.columnName(prop.name),
       logicalType,
       dataTypeName: isDataType ? (prop.type as string) : undefined,
+      sqlTypeOverride,
       length: prop.length ?? (attrMaxLength ? Number(attrMaxLength) : dtMaxLength ? Number(dtMaxLength) : logicalType === 'string' ? 255 : undefined),
       precision: prop.precision ?? (dtPrecision ? Number(dtPrecision) : undefined),
       scale: prop.scale ?? (dtScale ? Number(dtScale) : undefined),
-      nullable: isPrimaryKey ? false : (prop.isNullable ?? true),
-      unique: isPrimaryKey,
+      nullable: isPrimaryKey ? false : (nullableOverride ?? prop.isNullable ?? true),
+      unique: isPrimaryKey || uniqueOverride,
       primaryKey: isPrimaryKey,
       generated,
       defaultValue: prop.defaultValue,
@@ -265,7 +281,7 @@ export class ObjectToMappingTransformer {
   private mapRelation(rel: Relation, ownerTable: string, model: ObjectModel): RelationMapping {
     const targetType = model.types.find(t => t.name === rel.target)
     const targetTable = targetType
-      ? this.naming.tableName(targetType.name)
+      ? this.tableNameFor(targetType)
       : this.naming.tableName(rel.target)
 
     const mapping: RelationMapping = {

@@ -46,6 +46,8 @@ export interface SchemaColumn {
   enumValues?: string[]
   /** Auto-generation strategy */
   generated?: 'uuid' | 'increment'
+  /** Explicit SQL type override — bypasses logical→dialect mapping */
+  sqlTypeOverride?: string
 }
 
 /**

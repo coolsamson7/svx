@@ -291,7 +291,7 @@ export class SchemaMapperGenerator {
           if (field.length) base += `.max(${field.length})`
       }
     }
-    if (field.nullable) {
+    if (field.nullable || (field.primaryKey && field.generated)) {
       imps.push('optional')
       return { expr: `optional(${base})`, imps }
     }

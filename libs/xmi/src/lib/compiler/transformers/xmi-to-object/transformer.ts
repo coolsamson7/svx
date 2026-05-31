@@ -149,6 +149,7 @@ export class XmiToObjectTransformer {
         relations,
         packagePath: cls.packagePath,
         description: cls.description,
+        tags: Object.keys(cls.tags).length > 0 ? cls.tags : undefined,
       })
     }
 

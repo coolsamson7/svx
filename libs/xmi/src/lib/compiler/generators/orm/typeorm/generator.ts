@@ -227,11 +227,11 @@ export class TypeOrmGenerator {
       if (field.generated === 'uuid') {
         usedDecorators.push('PrimaryGeneratedColumn')
         lines.push(`@PrimaryGeneratedColumn("uuid", { name: "${field.column}" })`)
-        lines.push(`${field.property}!: string;`)
+        lines.push(`${field.property}?: string;`)
       } else if (field.generated === 'increment') {
         usedDecorators.push('PrimaryGeneratedColumn')
         lines.push(`@PrimaryGeneratedColumn({ name: "${field.column}" })`)
-        lines.push(`${field.property}!: number;`)
+        lines.push(`${field.property}?: number;`)
       } else {
         usedDecorators.push('PrimaryColumn')
         lines.push(`@PrimaryColumn({ name: "${field.column}" })`)
@@ -245,7 +245,9 @@ export class TypeOrmGenerator {
     const opts: string[] = []
     opts.push(`name: "${field.column}"`)
 
-    if (isEnum && enumValues.has(typeName)) {
+    if (field.sqlTypeOverride) {
+      opts.push(`type: "${field.sqlTypeOverride}"`)
+    } else if (isEnum && enumValues.has(typeName)) {
       opts.push(`type: "varchar"`)
       if (field.length) opts.push(`length: ${field.length}`)
     } else {
