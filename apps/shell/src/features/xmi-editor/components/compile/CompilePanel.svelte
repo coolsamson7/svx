@@ -22,7 +22,7 @@
       foreignKeyColumns:{ spec: '=SNAKE OR_{name}_ID' },
       joinTables:       { prefix: '', separator: '_' },
       entities:         { spec: '' },
-      tsFiles:          { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas' },
+      tsFiles:          { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas', entityFileSuffix: 'entity', entitySubDir: '', schemaFileSuffix: 'schema', schemaSubDir: '' },
     },
     outputDirs: { schemas: 'schemas', entities: 'entities' },
   })

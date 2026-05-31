@@ -126,13 +126,22 @@ class XmiStore {
     const assoc: UmlAssociation = {
       id, name: '', kind: 'uml:Association', tags: {}, attrs: [],
       ends: [
-        { id: crypto.randomUUID(), role: '', typeId: sourceId, lower: '0', upper: '*' },
-        { id: crypto.randomUUID(), role: '', typeId: targetId, lower: '0', upper: '*' },
+        { id: crypto.randomUUID(), role: '', typeId: sourceId, lower: '0', upper: '*', navigable: true },
+        { id: crypto.randomUUID(), role: '', typeId: targetId, lower: '0', upper: '*', navigable: true },
       ],
     }
     this.push({ ...m, elements: { ...m.elements, [id]: assoc }, order: [...m.order, id] })
     this.selectedId = id
     return id
+  }
+
+  updateAssocEnd(assocId: string, endIdx: 0 | 1, patch: Partial<import('./types').AssocEnd>) {
+    const m = this.model
+    const assoc = m.elements[assocId] as UmlAssociation
+    if (!assoc) return
+    const ends = [{ ...assoc.ends[0] }, { ...assoc.ends[1] }] as [import('./types').AssocEnd, import('./types').AssocEnd]
+    ends[endIdx] = { ...ends[endIdx], ...patch }
+    this.push({ ...m, elements: { ...m.elements, [assocId]: { ...assoc, ends } } })
   }
 
   #defaultName(kind: string, m: UmlModel): string {

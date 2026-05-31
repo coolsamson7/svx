@@ -92,18 +92,25 @@ export function parseXmi(xml: string): UmlModel {
 
     if (ownedEnds.length >= 2) {
       // ownedEnd style: each end has @_type pointing to the participant class
-      const mapped = ownedEnds.slice(0, 2).map((e: any): AssocEnd => ({
-        id: e['@_xmi:id'] ?? '',
-        role: e['@_name'] ?? '',
-        typeId: e['@_type'] ?? '',
-        lower: e.lowerValue?.['@_value'] ?? '0',
-        upper: e.upperValue?.['@_value'] ?? '*',
-      }))
+      const mapped = ownedEnds.slice(0, 2).map((e: any): AssocEnd => {
+        const endTags: Record<string, string> = {}
+        for (const tv of (e.taggedValue ?? [])) endTags[tv['@_tag']] = tv['@_value'] ?? ''
+        const role: string = e['@_name'] ?? ''
+        const navigable = e['@_isNavigable'] !== 'false'
+        return {
+          id: e['@_xmi:id'] ?? '',
+          role,
+          typeId: e['@_type'] ?? '',
+          lower: e.lowerValue?.['@_value'] ?? '0',
+          upper: e.upperValue?.['@_value'] ?? '*',
+          navigable,
+          cascade: endTags['cascade'] || undefined,
+          onDelete: endTags['on-delete'] || undefined,
+        }
+      })
       ends = [mapped[0], mapped[1]]
     } else {
       // memberEnd style: refs are ownedAttribute IDs.
-      // The ownedAttribute's TYPE is the participant at that end.
-      // The ownedAttribute's MULTIPLICITY is how many of that type per the OTHER class.
       const refs: string[] = (rawEl.memberEnd ?? [])
         .map((m: any) => m['@_xmi:idref'] ?? '')
         .filter(Boolean)
@@ -112,11 +119,20 @@ export function parseXmi(xml: string): UmlModel {
 
       ends = refs.slice(0, 2).map((ref): AssocEnd => {
         const raw = rawAttrById[ref]
-        const targetTypeId: string = raw?.type?.['@_xmi:idref'] ?? ''
+        const attrTags: Record<string, string> = {}
+        for (const tv of (raw?.taggedValue ?? [])) attrTags[tv['@_tag']] = tv['@_value'] ?? ''
         const role: string = raw?.['@_name'] ?? ''
-        const lower: string = raw?.lowerValue?.['@_value'] ?? '0'
-        const upper: string = raw?.upperValue?.['@_value'] ?? '*'
-        return { id: ref, role, typeId: targetTypeId, lower, upper }
+        const navigable = raw?.['@_isNavigable'] !== 'false'
+        return {
+          id: ref,
+          role,
+          typeId: raw?.type?.['@_xmi:idref'] ?? '',
+          lower: raw?.lowerValue?.['@_value'] ?? '0',
+          upper: raw?.upperValue?.['@_value'] ?? '*',
+          navigable,
+          cascade: attrTags['cascade'] || undefined,
+          onDelete: attrTags['on-delete'] || undefined,
+        }
       }) as [AssocEnd, AssocEnd]
     }
 

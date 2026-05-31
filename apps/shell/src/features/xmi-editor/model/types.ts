@@ -24,10 +24,17 @@ export interface UmlElement {
 
 export interface AssocEnd {
   id: string
+  /** Property name on the other class. Empty string = not navigable (no accessor generated). */
   role: string
   typeId: string
   lower: string
   upper: string
+  /** False = FK column exists but no TS navigation property is generated. Default: true */
+  navigable: boolean
+  /** ORM-level cascade. 'true' | 'insert' | 'update' | 'remove' | comma-separated combo */
+  cascade?: string
+  /** DB-level FK ON DELETE. 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION' */
+  onDelete?: string
 }
 
 export interface UmlAssociation extends UmlElement {

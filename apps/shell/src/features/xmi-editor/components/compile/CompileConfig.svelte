@@ -37,7 +37,7 @@
       foreignKeyColumns: { spec: '=SNAKE OR_{name}_ID' },
       joinTables:        { prefix: '', separator: '_' },
       entities:          { spec: '' },
-      tsFiles:           { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas' },
+      tsFiles:           { spec: '=kebab', dataTypeGrouping: 'one', dataTypeFileName: 'data-types', schemaGrouping: 'per-type', schemaFileName: 'entity-schemas', entityFileSuffix: 'entity', entitySubDir: '', schemaFileSuffix: 'schema', schemaSubDir: '' },
     }
   }
 
@@ -221,6 +221,22 @@ Example: OR_{table}_{target} → OR_USER_CONTACT_INFO`
       </label>
       <label>File name
         <input type="text" value={tf.schemaFileName ?? 'entity-schemas'} oninput={e => setNaming(['tsFiles', 'schemaFileName'], (e.target as HTMLInputElement).value)} />
+      </label>
+    </div>
+    <div class="row">
+      <label>Entity file suffix
+        <input type="text" value={tf.entityFileSuffix ?? 'entity'} placeholder="entity" oninput={e => setNaming(['tsFiles', 'entityFileSuffix'], (e.target as HTMLInputElement).value)} />
+      </label>
+      <label>Entity subdir
+        <input type="text" value={tf.entitySubDir ?? ''} placeholder="(none)" oninput={e => setNaming(['tsFiles', 'entitySubDir'], (e.target as HTMLInputElement).value)} />
+      </label>
+    </div>
+    <div class="row">
+      <label>Schema file suffix
+        <input type="text" value={tf.schemaFileSuffix ?? 'schema'} placeholder="schema" oninput={e => setNaming(['tsFiles', 'schemaFileSuffix'], (e.target as HTMLInputElement).value)} />
+      </label>
+      <label>Schema subdir
+        <input type="text" value={tf.schemaSubDir ?? ''} placeholder="(none)" oninput={e => setNaming(['tsFiles', 'schemaSubDir'], (e.target as HTMLInputElement).value)} />
       </label>
     </div>
   </section>

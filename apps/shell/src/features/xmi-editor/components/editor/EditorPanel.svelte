@@ -5,11 +5,38 @@
   import AttributeList from './AttributeList.svelte'
   import TaggedValueEditor from './TaggedValueEditor.svelte'
   import ConfirmDialog from '../ConfirmDialog.svelte'
+  import AssocPanel from './AssocPanel.svelte'
+  import AssocEndEditor from './AssocEndEditor.svelte'
+  import type { UmlAssociation, AssocEnd } from '../../model/types'
 
   let confirmDelete = $state(false)
+  let expandedRelId = $state<string | null>(null)
 
   const el = $derived(store.selectedId ? store.model.elements[store.selectedId] : null)
   const elSchema = $derived(el ? schema[el.kind] : null)
+
+  /** Associations that involve the currently selected class (one end's typeId === el.id) */
+  const classRelations = $derived(
+    (el?.kind === 'uml:Class')
+      ? Object.values(store.model.elements).filter(
+          (e): e is UmlAssociation =>
+            e.kind === 'uml:Association' &&
+            ((e as UmlAssociation).ends[0].typeId === el.id || (e as UmlAssociation).ends[1].typeId === el.id)
+        )
+      : []
+  )
+
+  function relEndFor(assoc: UmlAssociation): { end: AssocEnd; idx: 0 | 1; other: AssocEnd } {
+    // Return the end pointing TO the other class (typeId ≠ current class) — that end carries
+    // the role/multiplicity that belongs to the current class's navigation property.
+    if (assoc.ends[0].typeId !== el!.id) return { end: assoc.ends[0], idx: 0, other: assoc.ends[1] }
+    return { end: assoc.ends[1], idx: 1, other: assoc.ends[0] }
+  }
+
+  function isFkEnd(end: AssocEnd, other: AssocEnd): boolean {
+    const otherIsMany = other.upper === '*' || other.upper === '-1' || Number(other.upper) > 1
+    return end.upper === '1' && otherIsMany
+  }
 
   function getFieldValue(key: string): any {
     if (!el) return ''
@@ -83,29 +110,69 @@
       </button>
     </div>
     <div class="panel-body">
-      {#each elSchema.fields as field}
-        <div class="field-row">
-          <label>{field.label}</label>
-          <FieldRenderer
-            {field}
-            value={getFieldValue(field.key)}
-            onchange={(v) => setFieldValue(field.key, v)}
+      {#if el.kind === 'uml:Association'}
+        <AssocPanel assoc={el as UmlAssociation} />
+      {:else}
+        {#each elSchema.fields as field}
+          <div class="field-row">
+            <label>{field.label}</label>
+            <FieldRenderer
+              {field}
+              value={getFieldValue(field.key)}
+              onchange={(v) => setFieldValue(field.key, v)}
+            />
+          </div>
+        {/each}
+
+        {#if el.kind === 'uml:Class' || el.kind === 'uml:DataType'}
+          <div class="section-title">Attributes</div>
+          <AttributeList elementId={el.id} attrs={el.attrs.filter(a => !a.isAssociationEnd)} />
+        {/if}
+
+        {#if el.kind === 'uml:Class' && classRelations.length > 0}
+          <div class="section-title">Relations</div>
+          <div class="rel-list">
+            {#each classRelations as assoc (assoc.id)}
+              {@const { end, idx, other } = relEndFor(assoc)}
+              {@const fk = isFkEnd(end, other)}
+              {@const otherName = store.model.elements[end.typeId]?.name ?? end.typeId}
+              <div class="rel-row" class:fk-row={fk}>
+                <div
+                  class="rel-header"
+                  role="button"
+                  tabindex="0"
+                  onclick={() => expandedRelId = expandedRelId === assoc.id ? null : assoc.id}
+                  onkeydown={(e) => e.key === 'Enter' && (expandedRelId = expandedRelId === assoc.id ? null : assoc.id)}
+                >
+                  <span class="rel-arrow">→</span>
+                  <span class="rel-target">{otherName}</span>
+                  {#if end.role}<span class="rel-role">.{end.role}</span>{/if}
+                  <span class="rel-mult">[{end.lower}..{end.upper}]</span>
+                  {#if fk}<span class="fk-badge">FK</span>{/if}
+                </div>
+                {#if expandedRelId === assoc.id}
+                  <div class="rel-body">
+                    <AssocEndEditor
+                      assocId={assoc.id}
+                      endIdx={idx}
+                      {end}
+                      isFk={fk}
+                    />
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        {#if elSchema.allowExtraTaggedValues}
+          <div class="section-title">Tagged values</div>
+          <TaggedValueEditor
+            elementId={el.id}
+            tags={el.tags}
+            knownKeys={elSchema.fields.filter(f => f.key.startsWith('tags.')).map(f => f.key.slice(5))}
           />
-        </div>
-      {/each}
-
-      {#if el.kind === 'uml:Class' || el.kind === 'uml:DataType'}
-        <div class="section-title">Attributes</div>
-        <AttributeList elementId={el.id} attrs={el.attrs} />
-      {/if}
-
-      {#if elSchema.allowExtraTaggedValues}
-        <div class="section-title">Tagged values</div>
-        <TaggedValueEditor
-          elementId={el.id}
-          tags={el.tags}
-          knownKeys={elSchema.fields.filter(f => f.key.startsWith('tags.')).map(f => f.key.slice(5))}
-        />
+        {/if}
       {/if}
     </div>
   </div>
@@ -197,5 +264,55 @@
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid #eee;
+  }
+
+  .rel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .rel-row {
+    border: 1px solid #e0e0ff;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fafafe;
+  }
+
+  .rel-row.fk-row {
+    border-color: #c8c4f0;
+  }
+
+  .rel-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 8px;
+    cursor: pointer;
+  }
+
+  .rel-header:hover { background: #f0eefc; }
+
+  .rel-arrow { color: #534AB7; font-size: 13px; }
+
+  .rel-target { font-weight: 600; font-size: 13px; color: #222; flex: 1; }
+
+  .rel-role { font-size: 12px; color: #534AB7; }
+
+  .rel-mult { font-size: 11px; color: #888; font-family: monospace; }
+
+  .fk-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: #534AB7;
+    color: white;
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+
+  .rel-body {
+    padding: 10px 12px;
+    background: white;
+    border-top: 1px solid #e0e0ff;
   }
 </style>

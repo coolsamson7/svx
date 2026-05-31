@@ -91,9 +91,12 @@ export function emitXmi(model: UmlModel): string {
       lines.push(`  <packagedElement xmi:type="uml:Association"${attr('xmi:id', el.id)}${attr('name', '')}>`)
       for (const [i, end] of el.ends.entries()) {
         const endId = end.id || el.id + (i === 0 ? '_src' : '_tgt')
-        lines.push(`    <ownedEnd xmi:type="uml:Property"${attr('xmi:id', endId)}${attr('name', end.role)}${attr('type', end.typeId)}>`)
+        const navAttr = end.navigable === false ? ' isNavigable="false"' : ''
+        lines.push(`    <ownedEnd xmi:type="uml:Property"${attr('xmi:id', endId)}${attr('name', end.role)}${attr('type', end.typeId)}${navAttr}>`)
         lines.push(`      <lowerValue xmi:type="uml:LiteralInteger"${attr('xmi:id', endId + '_lower')}${attr('value', end.lower)}/>`)
         lines.push(`      <upperValue xmi:type="uml:LiteralUnlimitedNatural"${attr('xmi:id', endId + '_upper')}${attr('value', end.upper)}/>`)
+        if (end.cascade) lines.push(`      <taggedValue${attr('tag', 'cascade')}${attr('value', end.cascade)}/>`)
+        if (end.onDelete) lines.push(`      <taggedValue${attr('tag', 'on-delete')}${attr('value', end.onDelete)}/>`)
         lines.push('    </ownedEnd>')
       }
       for (const [tag, value] of Object.entries(el.tags)) {
