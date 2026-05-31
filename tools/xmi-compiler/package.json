@@ -2,16 +2,14 @@
   "name": "@svx/xmi-compiler",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "compile": "node dist/index.js"
+    "compile": "npx tsx src/index.ts"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.0.0",
-    "js-yaml": "^4.1.0",
-    "typeorm": "^0.3.0"
+    "@svx/xmi": "*",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
