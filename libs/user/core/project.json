@@ -13,6 +13,13 @@
         "outputPath": "dist/libs/user/core"
       }
     },
+    "compile-xmi": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx tools/xmi-compiler/src/index.ts libs/user/core/compiler.yaml",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "generate-rest-proxies": {
       "executor": "nx:run-commands",
 
