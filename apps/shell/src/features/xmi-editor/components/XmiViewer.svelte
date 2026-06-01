@@ -28,8 +28,7 @@
   import ConfirmDialog from './ConfirmDialog.svelte'
   import { emitXmi } from '@svx/xmi'
 
-  let showCompile = $state(false)
-  let viewMode = $state<'viewer' | 'xmi'>('viewer')
+  let viewMode = $state<'viewer' | 'xmi' | 'compile'>('viewer')
   let pendingDeleteId = $state<string | null>(null)
 
   const xmiSource = $derived(emitXmi(store.model))
@@ -186,37 +185,25 @@
   <div class="toolbar-row">
     <Toolbar selectedPackageId={selectedPackageId()} />
     <UndoBar />
-    <div class="tb-sep"></div>
-    <button
-      class="tb-btn"
-      class:active={showCompile}
-      onclick={() => showCompile = !showCompile}
-      disabled={store.model.order.length === 0}
-      title="Compile model"
-    >⚡ Compile</button>
   </div>
-  <div class="canvas-area" class:with-panel={showCompile}>
-    {#if isEmpty}
+
+  <div class="canvas-area">
+    <div class="mode-bar">
+      <button class="mode-btn" class:active={viewMode === 'viewer'} onclick={() => viewMode = 'viewer'} title="Diagram Viewer">
+        <span class="material-symbols-rounded">hub</span>
+      </button>
+      <button class="mode-btn" class:active={viewMode === 'xmi'} onclick={() => viewMode = 'xmi'} title="XMI Source">
+        <span class="material-symbols-rounded">code</span>
+      </button>
+      <button class="mode-btn" class:active={viewMode === 'compile'} onclick={() => viewMode = 'compile'} title="Compile">
+        <span class="material-symbols-rounded">bolt</span>
+      </button>
+    </div>
+    {#if viewMode === 'compile'}
+      <CompilePanel />
+    {:else if isEmpty}
       <DropZone />
     {:else}
-      <div class="mode-bar">
-        <button
-          class="mode-btn"
-          class:active={viewMode === 'viewer'}
-          onclick={() => viewMode = 'viewer'}
-          title="Diagram Viewer"
-        >
-          <span class="material-symbols-rounded">hub</span>
-        </button>
-        <button
-          class="mode-btn"
-          class:active={viewMode === 'xmi'}
-          onclick={() => viewMode = 'xmi'}
-          title="XMI Source"
-        >
-          <span class="material-symbols-rounded">code</span>
-        </button>
-      </div>
       <div class="tree-sidebar">
         <PackageTree />
       </div>
@@ -244,11 +231,6 @@
           {#if store.selectedId}
             <EditorPanel />
           {/if}
-        {/if}
-        {#if showCompile}
-          <div class="compile-panel">
-            <CompilePanel onClose={() => showCompile = false} />
-          </div>
         {/if}
       </div>
     {/if}
@@ -313,47 +295,5 @@
     flex: 1;
     position: relative;
     overflow: hidden;
-  }
-  .compile-panel {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 700px;
-    z-index: 10;
-    box-shadow: -4px 0 16px rgba(0,0,0,0.12);
-  }
-  .tb-sep {
-    width: 1px;
-    background: #e0e0e0;
-    align-self: stretch;
-    margin: 0 4px;
-  }
-  .tb-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .tb-btn:hover:not(:disabled) {
-    background: #f5f5ff;
-    border-color: #534AB7;
-    color: #534AB7;
-  }
-  .tb-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  .tb-btn.active {
-    background: #EEEDFE;
-    border-color: #534AB7;
-    color: #534AB7;
-    font-weight: 600;
   }
 </style>

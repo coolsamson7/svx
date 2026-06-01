@@ -7,7 +7,7 @@
   import CodeViewer from './CodeViewer.svelte'
   import TsOutput from './TsOutput.svelte'
 
-  interface Props { onClose: () => void }
+  interface Props { onClose?: () => void }
   let { onClose }: Props = $props()
 
   let options = $state<CompileOptions>({
@@ -103,7 +103,9 @@
         {compiling ? '…' : '▶ Run'}
       </button>
       <button class="icon-btn" onclick={() => showConfig = !showConfig} title="Toggle config">⚙</button>
-      <button class="icon-btn" onclick={onClose} title="Close">✕</button>
+      {#if onClose}
+        <button class="icon-btn" onclick={onClose} title="Close">✕</button>
+      {/if}
     </div>
   </div>
 
