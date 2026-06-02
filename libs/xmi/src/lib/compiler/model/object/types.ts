@@ -69,6 +69,8 @@ export interface Relation {
   cascade?: true | string[]
   /** DB-level FK ON DELETE action: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION' */
   onDelete?: string
+  /** Human-readable description from ownedComment */
+  description?: string
 }
 
 /** A UML class mapped to an in-memory object type */

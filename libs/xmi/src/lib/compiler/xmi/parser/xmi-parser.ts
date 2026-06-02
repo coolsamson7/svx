@@ -298,7 +298,9 @@ export class XmiParser {
       if (tag && value !== undefined) tags[normTagKey(String(tag))] = String(value)
     }
 
-    return { id, name, typeId, typeName, isAssociationEnd, lowerBound, upperBound, isNullable, defaultValue, tags }
+    const description = extractDescription(attr as any)
+
+    return { id, name, typeId, typeName, isAssociationEnd, lowerBound, upperBound, isNullable, defaultValue, tags, description }
   }
 
   private parseAssociation(el: XmiPackagedElement): ParsedAssociation {

@@ -22,6 +22,8 @@ export interface FieldMapping {
   dataTypeName?: string
   /** Explicit SQL type override from column-type tag — bypasses logical→dialect mapping */
   sqlTypeOverride?: string
+  /** Add a secondary index on this column */
+  index?: boolean
   /** Max length for string columns */
   length?: number
   /** Precision for decimal columns */
@@ -66,6 +68,8 @@ export interface RelationMapping {
   mappedBy?: string
   /** FK column name (for ManyToOne / OneToOne owning side) */
   joinColumn?: string
+  /** FK constraint name */
+  foreignKeyName?: string
   /** Join table definition (for ManyToMany owning side) */
   joinTable?: JoinTableMapping
   /** Whether this is the owning side of the relation */

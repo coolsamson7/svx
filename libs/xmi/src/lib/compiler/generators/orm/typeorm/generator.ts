@@ -22,6 +22,8 @@ export interface TypeOrmGeneratorConfig {
   entitiesDir: string
   /** Path from outputDir to the schemas output dir (e.g. 'schemas') */
   schemasDir: string
+  /** Header comment prepended to every generated file */
+  fileHeader?: string
 }
 
 /**
@@ -35,7 +37,10 @@ export class TypeOrmGenerator {
     cfg: TypeOrmGeneratorConfig,
   ): Map<string, string> {
     const result = new Map<string, string>()
-    const { naming, tsFiles, entitiesDir, schemasDir } = cfg
+    const { naming, tsFiles, entitiesDir, schemasDir, fileHeader } = cfg
+    const headerBlock = fileHeader
+      ? fileHeader.trim().split('\n').map(l => `// ${l}`).join('\n') + '\n\n'
+      : ''
 
     const schGrouping      = tsFiles.schemaGrouping   ?? 'per-type'
     const schFileName      = tsFiles.schemaFileName   ?? 'entity-schemas'
@@ -60,7 +65,7 @@ export class TypeOrmGenerator {
       const stem = naming.tsFileStem(type.name)
       const entityRelPath = [...entSubParts, ...type.packagePath, `${stem}${entSuffix}.ts`].join('/')
       const source = this.generateAbstractEntity(type, enumNames, naming)
-      result.set(entityRelPath, source)
+      result.set(entityRelPath, headerBlock + source)
     }
 
     // Concrete types: full TypeORM entity classes
@@ -107,7 +112,7 @@ export class TypeOrmGenerator {
       }
 
       const source = this.generateEntity(type, mapping, objectModel, enumNames, enumValues, schemaImportPath, naming, parentImportPath, siblingImportPaths)
-      result.set(entityRelPath, source)
+      result.set(entityRelPath, headerBlock + source)
     }
 
     return result
@@ -166,7 +171,8 @@ export class TypeOrmGenerator {
 
     // Relations
     for (const rel of mapping.relations) {
-      const { line, usedDecorators } = this.generateRelation(rel, type.name, objectModel, naming)
+      const relDescription = type.relations.find(r => r.name === rel.property)?.description
+      const { line, usedDecorators } = this.generateRelation(rel, type.name, objectModel, naming, relDescription)
       line.forEach(l => bodyLines.push(l))
       usedDecorators.forEach(d => decorators.add(d))
     }
@@ -260,6 +266,7 @@ export class TypeOrmGenerator {
 
     if (field.nullable) opts.push(`nullable: true`)
     if (field.unique) opts.push(`unique: true`)
+    if (field.index) opts.push(`index: true`)
     if (field.defaultValue !== undefined) {
       const dv = typeof field.defaultValue === 'string'
         ? `"${field.defaultValue}"`
@@ -283,9 +290,12 @@ export class TypeOrmGenerator {
     _ownerTypeName: string,
     objectModel: ObjectModel,
     naming: NamingStrategy,
+    description?: string,
   ): { line: string[]; usedDecorators: string[] } {
     const lines: string[] = []
     const usedDecorators: string[] = []
+
+    if (description) lines.push(`/** ${description} */`)
 
     const targetClass = naming.entityName(rel.target)
     const targetVar = rel.target.toLowerCase()
@@ -310,11 +320,14 @@ export class TypeOrmGenerator {
         const inverseProp = rel.mappedBy
           ?? this.findInverseRelationName(objectModel, rel.target, _ownerTypeName)
           ?? _ownerTypeName.toLowerCase()
-        const mtoOpts = cascadeStr ? `, { cascade: ${cascadeStr} }` : ''
+        const mtoOptParts: string[] = []
+        if (cascadeStr) mtoOptParts.push(`cascade: ${cascadeStr}`)
+        if (rel.onDelete) mtoOptParts.push(`onDelete: '${rel.onDelete}'`)
+        const mtoOpts = mtoOptParts.length ? `, { ${mtoOptParts.join(', ')} }` : ''
         lines.push(`@ManyToOne(() => ${targetClass}, (${targetVar}: ${targetClass}) => ${targetVar}.${inverseProp}${mtoOpts})`)
         if (rel.joinColumn) {
-          const jcOpts = rel.onDelete ? `, onDelete: '${rel.onDelete}'` : ''
-          lines.push(`@JoinColumn({ name: "${rel.joinColumn}"${jcOpts} })`)
+          const fkNamePart = rel.foreignKeyName ? `, foreignKeyConstraintName: "${rel.foreignKeyName}"` : ''
+          lines.push(`@JoinColumn({ name: "${rel.joinColumn}"${fkNamePart} })`)
         }
         lines.push(`${rel.property}!: ${targetClass};`)
         lines.push('')

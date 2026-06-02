@@ -110,6 +110,7 @@ export class XmiToObjectTransformer {
           isNullable: attr.isNullable,
           defaultValue: attr.defaultValue,
           tags: Object.keys(attr.tags).length > 0 ? attr.tags : undefined,
+          description: attr.description,
         }
         properties.push(property)
       }
@@ -138,6 +139,7 @@ export class XmiToObjectTransformer {
           isOwning: true, // provisional
           cascade: parseCascadeTag(effectiveTags['cascade']),
           onDelete: effectiveTags['onDelete'],
+          description: attr.description,
         })
       }
 

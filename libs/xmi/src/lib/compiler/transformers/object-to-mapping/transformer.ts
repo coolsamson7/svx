@@ -257,6 +257,7 @@ export class ObjectToMappingTransformer {
     const columnOverride = tags['columnName']
     const sqlTypeOverride = tags['columnType'] || undefined
     const uniqueOverride = tags['unique'] === 'true'
+    const indexOverride = tags['index'] === 'true'
     const nullableOverride = tags['nullable'] !== undefined
       ? tags['nullable'] === 'true'
       : undefined
@@ -272,6 +273,7 @@ export class ObjectToMappingTransformer {
       scale: prop.scale ?? (dtScale ? Number(dtScale) : undefined),
       nullable: isPrimaryKey ? false : (nullableOverride ?? prop.isNullable ?? true),
       unique: isPrimaryKey || uniqueOverride,
+      index: indexOverride || undefined,
       primaryKey: isPrimaryKey,
       generated,
       defaultValue: prop.defaultValue,
@@ -298,8 +300,8 @@ export class ObjectToMappingTransformer {
       case 'one_to_one': {
         if (rel.isOwning) {
           const fkCol = this.naming.fkColumnName(rel.name, rel.target)
-          void this.naming.foreignKeyName(ownerTable, targetTable, fkCol)
           mapping.joinColumn = fkCol
+          mapping.foreignKeyName = this.naming.foreignKeyName(ownerTable, targetTable, fkCol)
           mapping.isOwning = true
         }
         break

@@ -134,6 +134,8 @@ export interface NamingConfig {
 export interface CompilerConfig {
   xmiPath: string
   outputDir: string
+  /** Header comment prepended to every generated TypeScript file (supports multi-line via YAML `|`) */
+  fileHeader?: string
   /** Sub-directory overrides within outputDir. Default: schemas/ and entities/ */
   outputDirs?: OutputDirsConfig
   naming: NamingConfig

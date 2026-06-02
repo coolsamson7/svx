@@ -27,6 +27,7 @@ import type { TsFileNamingConfig } from '../../config/types.js'
 export interface SchemaGeneratorConfig {
   naming: NamingStrategy
   tsFiles: TsFileNamingConfig
+  fileHeader?: string
 }
 
 export class SchemaMapperGenerator {
@@ -35,7 +36,10 @@ export class SchemaMapperGenerator {
     persistenceModel: PersistenceModel,
     cfg: SchemaGeneratorConfig,
   ): Map<string, string> {
-    const { naming, tsFiles } = cfg
+    const { naming, tsFiles, fileHeader } = cfg
+    const headerBlock = fileHeader
+      ? fileHeader.trim().split('\n').map(l => `// ${l}`).join('\n') + '\n\n'
+      : ''
     const dtGrouping       = tsFiles.dataTypeGrouping  ?? 'one'
     const dtFileName       = tsFiles.dataTypeFileName  ?? 'data-types'
     const schGrouping      = tsFiles.schemaGrouping    ?? 'per-type'
@@ -47,6 +51,7 @@ export class SchemaMapperGenerator {
     const schSubParts = schemaSubDir ? [schemaSubDir] : []
 
     const result = new Map<string, string>()
+    const setFile = (path: string, content: string) => result.set(path, headerBlock + content)
     const dataTypeNames = new Set(objectModel.dataTypes.map(d => d.name))
 
     // ── DataType constants ────────────────────────────────────────────────────
@@ -60,7 +65,7 @@ export class SchemaMapperGenerator {
         lines.push(`export const ${dt.name} = ${expr};`)
       }
       if (lines.length > 0) {
-        result.set(`${dtFileName}.ts`, this.withImports(needed, lines))
+        setFile(`${dtFileName}.ts`, this.withImports(needed, lines))
       }
     } else {
       for (const dt of objectModel.dataTypes) {
@@ -71,7 +76,7 @@ export class SchemaMapperGenerator {
         lines.push(`export const ${dt.name} = ${expr};`)
         const stem = naming.tsFileStem(dt.name)
         const filePath = [...dt.packagePath, `${stem}.ts`].join('/')
-        result.set(filePath, this.withImports(needed, lines))
+        setFile(filePath, this.withImports(needed, lines))
       }
     }
 
@@ -157,7 +162,7 @@ export class SchemaMapperGenerator {
 
         const stem = naming.tsFileStem(typeName)
         const filePath = [...schSubParts, ...objType.packagePath, `${stem}${schSuffix}.ts`].join('/')
-        result.set(filePath, fileLines.join('\n'))
+        setFile(filePath, fileLines.join('\n'))
       }
     } else {
       // grouping: 'one' — single file with all schemas
@@ -221,7 +226,7 @@ export class SchemaMapperGenerator {
       }
 
       const content = this.withImports(needed, [...extraImports, ...(extraImports.length ? [''] : []), ...lines, ...typeLines])
-      result.set(`${schFileName}.ts`, content)
+      setFile(`${schFileName}.ts`, content)
     }
 
     return result
