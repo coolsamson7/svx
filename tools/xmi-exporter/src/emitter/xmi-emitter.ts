@@ -192,11 +192,15 @@ function emitAssociation(assoc: UmlAssociation): string {
   // Source end
   lines.push(`    <ownedEnd xmi:type="uml:Property"${attr('xmi:id', srcEndId)}${attr('name', assoc.sourceRole)}${attr('type', assoc.sourceId)}>`);
   lines.push(emitMultiplicity(srcEndId, assoc.sourceMult, '      '));
+  if (assoc.sourceCascade) lines.push(`      <taggedValue${attr('tag', 'cascade')}${attr('value', assoc.sourceCascade)}/>`);
+  if (assoc.sourceOnDelete) lines.push(`      <taggedValue${attr('tag', 'on-delete')}${attr('value', assoc.sourceOnDelete)}/>`);
   lines.push('    </ownedEnd>');
 
   // Target end
   lines.push(`    <ownedEnd xmi:type="uml:Property"${attr('xmi:id', tgtEndId)}${attr('name', assoc.targetRole)}${attr('type', assoc.targetId)}>`);
   lines.push(emitMultiplicity(tgtEndId, assoc.targetMult, '      '));
+  if (assoc.targetCascade) lines.push(`      <taggedValue${attr('tag', 'cascade')}${attr('value', assoc.targetCascade)}/>`);
+  if (assoc.targetOnDelete) lines.push(`      <taggedValue${attr('tag', 'on-delete')}${attr('value', assoc.targetOnDelete)}/>`);
   lines.push('    </ownedEnd>');
 
   if (assoc.taggedValues.length > 0) {
