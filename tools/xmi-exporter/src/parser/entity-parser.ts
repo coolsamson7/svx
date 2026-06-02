@@ -223,32 +223,19 @@ function processProperty(
       return;
     }
 
-    // Check cascade
-    const hasCascade = checkCascade(relDec);
+    // Extract per-end cascade and onDelete
+    const { cascade: endCascade, onDelete: endOnDelete } = extractEndMeta(relDec, prop);
 
     const mults = relationMultiplicities(relationKind as RelationKind);
     const pairKey = [className, targetName].sort().join(':');
     const aid = assocId(className, targetName);
 
-    // Determine [A, B] canonical order (same as assocId: alphabetical)
-    const [canonA, canonB] = [className, targetName].sort() as [string, string];
-    const canonicalOrder = className === canonA; // true if className < targetName
-
-    const taggedValues: TaggedValue[] = [];
-    if (hasCascade) taggedValues.push({ tag: 'cascade', value: 'true' });
-
     const existing = assocMap.get(pairKey);
 
     if (!existing) {
-      // First time seeing this pair — create from current decorator
       let sourceRole: string;
       let targetRole: string;
-
       if (relationKind === 'OneToMany') {
-        sourceRole = className.replace(/Entity$/, '').toLowerCase();
-        targetRole = propName;
-      } else if (relationKind === 'ManyToOne') {
-        // propName is the "many" side's FK ref; source side role is unknown
         sourceRole = className.replace(/Entity$/, '').toLowerCase();
         targetRole = propName;
       } else {
@@ -256,6 +243,7 @@ function processProperty(
         targetRole = propName;
       }
 
+      // Determine which end is "source" (className) for cascade assignment
       const assoc: UmlAssociation = {
         id: aid,
         sourceId: className,
@@ -264,27 +252,27 @@ function processProperty(
         targetRole,
         sourceMult: mults.sourceMult,
         targetMult: mults.targetMult,
-        taggedValues,
+        taggedValues: [],
+        sourceCascade: endCascade || undefined,
+        sourceOnDelete: endOnDelete || undefined,
       };
       assocMap.set(pairKey, assoc);
     } else {
-      // Seen before — if we now have the OneToMany side, update roles with canonical names.
-      // OneToMany on className.propName: propName is the collection (e.g. "addresses").
-      // The existing entry was ManyToOne and used a guessed role; replace with accurate name.
+      // Seen before — update roles and per-end metadata for the newly-seen side
+      const isSource = existing.sourceId === className;
       if (relationKind === 'OneToMany') {
-        // propName is collection on className side
-        // In the existing assoc, className is either source or target
-        if (existing.sourceId === className) {
-          existing.targetRole = propName;  // collection on the OneToMany side
-        } else {
-          existing.sourceRole = propName;
-        }
-        // Also propagate cascade if present
-        if (hasCascade && !existing.taggedValues.some(tv => tv.tag === 'cascade')) {
-          existing.taggedValues.push({ tag: 'cascade', value: 'true' });
-        }
+        if (isSource) existing.targetRole = propName;
+        else existing.sourceRole = propName;
       }
-      // For ManyToOne as second encounter, the OneToMany already provided better names — skip
+      // Apply cascade/onDelete to the correct end
+      if (endCascade) {
+        if (isSource) existing.sourceCascade = endCascade;
+        else existing.targetCascade = endCascade;
+      }
+      if (endOnDelete) {
+        if (isSource) existing.sourceOnDelete = endOnDelete;
+        else existing.targetOnDelete = endOnDelete;
+      }
     }
     return;
   }
@@ -489,20 +477,30 @@ function getRelationKind(prop: any): RelationKind | null {
   return null;
 }
 
-function checkCascade(dec: Decorator): boolean {
+function extractEndMeta(relDec: Decorator, prop: any): { cascade: string; onDelete: string } {
+  let cascade = '';
+  let onDelete = '';
   try {
-    const args = dec.getArguments();
-    // Options object is typically the 3rd argument for TypeORM relations
-    for (const arg of args) {
+    // Cascade from relation decorator options (3rd arg object)
+    for (const arg of relDec.getArguments()) {
       if (Node.isObjectLiteralExpression(arg)) {
-        for (const prop of (arg as any).getProperties()) {
-          if (Node.isPropertyAssignment(prop)) {
-            if (prop.getName() === 'cascade' || prop.getName() === 'onDelete') {
-              const val = prop.getInitializer();
-              if (val) {
-                const text = val.getText();
-                if (text === 'true' || text.includes('CASCADE')) return true;
-              }
+        for (const p of (arg as any).getProperties()) {
+          if (Node.isPropertyAssignment(p) && p.getName() === 'cascade') {
+            const v = p.getInitializer();
+            if (v) cascade = v.getText() === 'true' ? 'true' : v.getText().replace(/[\[\]'"]/g, '').trim();
+          }
+        }
+      }
+    }
+    // onDelete from @JoinColumn decorator on the same property
+    const jcDec = prop.getDecorator?.('JoinColumn');
+    if (jcDec) {
+      for (const arg of jcDec.getArguments()) {
+        if (Node.isObjectLiteralExpression(arg)) {
+          for (const p of (arg as any).getProperties()) {
+            if (Node.isPropertyAssignment(p) && p.getName() === 'onDelete') {
+              const v = p.getInitializer();
+              if (v) onDelete = v.getText().replace(/['"]/g, '').trim();
             }
           }
         }
@@ -511,7 +509,7 @@ function checkCascade(dec: Decorator): boolean {
   } catch {
     // ignore
   }
-  return false;
+  return { cascade, onDelete };
 }
 
 interface ColumnOptions {
