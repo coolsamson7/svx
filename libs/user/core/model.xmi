@@ -3,17 +3,21 @@
   xmlns:xmi="http://schema.omg.org/spec/XMI/2.1"
   xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML">
 
-  <!-- DataTypes -->
+  <!-- ── DataTypes ─────────────────────────────────────────────────────────── -->
+
   <packagedElement xmi:type="uml:DataType" xmi:id="SmallString" name="SmallString">
-    <taggedValue  tag="base-type" value="string"/>
+    <ownedComment><body>Short text field — max 100 characters.</body></ownedComment>
+    <taggedValue tag="base-type" value="string"/>
     <taggedValue tag="max-length" value="100"/>
   </packagedElement>
 
-  <!-- User -->
+  <!-- ── User ──────────────────────────────────────────────────────────────── -->
+
   <packagedElement xmi:type="uml:Class" xmi:id="User" name="User">
-    <taggedValue tag="table-name" value="users"/>
+    <ownedComment><body>A registered user of the platform.</body></ownedComment>
 
     <ownedAttribute xmi:type="uml:Property" xmi:id="User.id" name="id">
+      <ownedComment><body>Auto-generated primary key.</body></ownedComment>
       <type xmi:idref="Integer"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
@@ -22,12 +26,14 @@
     </ownedAttribute>
 
     <ownedAttribute xmi:type="uml:Property" xmi:id="User.name" name="name">
+      <ownedComment><body>Display name of the user.</body></ownedComment>
       <type xmi:idref="SmallString"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
     </ownedAttribute>
 
     <ownedAttribute xmi:type="uml:Property" xmi:id="User.email" name="email">
+      <ownedComment><body>Unique email address used for login.</body></ownedComment>
       <type xmi:idref="String"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
@@ -36,20 +42,24 @@
       <defaultValue xmi:type="uml:LiteralString" value=""/>
     </ownedAttribute>
 
-    <!-- navigation: 1 User → * Address -->
+    <!-- navigation: 1 User → * Address (cascade ORM saves) -->
     <ownedAttribute xmi:type="uml:Property" xmi:id="User.addresses" name="addresses"
                     association="assoc_User_Address">
+      <ownedComment><body>Delivery and billing addresses belonging to this user.</body></ownedComment>
       <type xmi:idref="Address"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="0"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="*"/>
+      <taggedValue tag="cascade" value="true"/>
     </ownedAttribute>
   </packagedElement>
 
-  <!-- Address -->
+  <!-- ── Address ───────────────────────────────────────────────────────────── -->
+
   <packagedElement xmi:type="uml:Class" xmi:id="Address" name="Address">
-    <taggedValue tag="table-name" value="addresses"/>
+    <ownedComment><body>A physical address associated with a user.</body></ownedComment>
 
     <ownedAttribute xmi:type="uml:Property" xmi:id="Address.id" name="id">
+      <ownedComment><body>Auto-generated primary key.</body></ownedComment>
       <type xmi:idref="Integer"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
@@ -58,30 +68,34 @@
     </ownedAttribute>
 
     <ownedAttribute xmi:type="uml:Property" xmi:id="Address.city" name="city">
+      <ownedComment><body>Name of the city.</body></ownedComment>
       <type xmi:idref="SmallString"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
     </ownedAttribute>
 
-    <!-- navigation: * Address → 1 User (owns the FK) -->
+    <!-- navigation: * Address → 1 User (owns the FK; DB cascade delete) -->
     <ownedAttribute xmi:type="uml:Property" xmi:id="Address.user" name="user"
                     association="assoc_User_Address">
+      <ownedComment><body>The user this address belongs to.</body></ownedComment>
       <type xmi:idref="User"/>
       <lowerValue xmi:type="uml:LiteralInteger" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" value="1"/>
+      <taggedValue tag="on-delete" value="CASCADE"/>
     </ownedAttribute>
   </packagedElement>
 
-  <!-- Primitives (referenced by type idref) -->
+  <!-- ── Primitives ────────────────────────────────────────────────────────── -->
+
   <packagedElement xmi:type="uml:PrimitiveType" xmi:id="Integer" name="Integer"/>
   <packagedElement xmi:type="uml:PrimitiveType" xmi:id="String" name="String"/>
 
-  <!-- Association: User 1 → * Address -->
+  <!-- ── Associations ──────────────────────────────────────────────────────── -->
+
+  <!-- User 1 ──< Address (User owns the cascade, Address owns the FK column) -->
   <packagedElement xmi:type="uml:Association" xmi:id="assoc_User_Address" name="UserAddress">
     <memberEnd xmi:idref="User.addresses"/>
     <memberEnd xmi:idref="Address.user"/>
-    <taggedValue tag="cascade" value="true"/>
-    <taggedValue tag="on-delete" value="CASCADE"/>
   </packagedElement>
 
 </xmi:XMI>
