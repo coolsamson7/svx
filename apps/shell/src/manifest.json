@@ -30,9 +30,9 @@
         "users:read"
       ],
       "visibility": [
-        "public"
+        "private"
       ],
-      "tags": [
+      "tags": [ 
         "navigation"
       ],
       "version": "1.0.0",
