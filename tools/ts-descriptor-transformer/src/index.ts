@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 
-const DEFAULT_DECORATORS = ['Reflectable', 'DeclareService', 'DeclareComponent']
+const DEFAULT_DECORATORS = ['Implements', 'Entity', 'Reflectable', 'DeclareService', 'DeclareComponent']
 
 /* =========================================================
  * extractDescriptors — source-map-friendly alternative for Vite plugins.

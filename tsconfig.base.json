@@ -23,7 +23,9 @@
       "@svx/user-core": ["libs/user/core/src/index.ts"],
       "@svx/security-oidc": ["libs/security/oidc/src/index.ts"],
       "@svx/security-credentials": ["libs/security/credentials/src/index.ts"],
-      "@svx/security-nestjs": ["libs/security/nestjs/src/index.ts"]
+      "@svx/security-nestjs": ["libs/security/nestjs/src/index.ts"],
+
+      "@svx/xmi": ["libs/xmi/src/index.ts"]
     }
   }
 }

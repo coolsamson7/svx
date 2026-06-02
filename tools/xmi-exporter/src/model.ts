@@ -42,4 +42,12 @@ export interface UmlAssociation {
   sourceMult: Multiplicity;
   targetMult: Multiplicity;
   taggedValues: TaggedValue[];
+  /** ORM cascade value on the source end (e.g. 'true', 'insert,update') */
+  sourceCascade?: string;
+  /** DB-level ON DELETE action on the source end */
+  sourceOnDelete?: string;
+  /** ORM cascade value on the target end */
+  targetCascade?: string;
+  /** DB-level ON DELETE action on the target end */
+  targetOnDelete?: string;
 }
