@@ -8,8 +8,9 @@
     endIdx: 0 | 1
     end: AssocEnd
     isFk: boolean
+    showTitle?: boolean
   }
-  let { assocId, endIdx, end, isFk }: Props = $props()
+  let { assocId, endIdx, end, isFk, showTitle = true }: Props = $props()
 
   const CASCADE_OPTIONS = ['', 'true', 'insert', 'update', 'remove', 'insert,update', 'insert,update,remove']
   const ON_DELETE_OPTIONS = ['', 'CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']
@@ -22,11 +23,13 @@
 </script>
 
 <div class="end-editor">
-  <div class="end-title">
-    <span class="arrow">→</span>
-    <span class="target">{targetName}</span>
-    {#if isFk}<span class="fk-badge">FK</span>{/if}
-  </div>
+  {#if showTitle}
+    <div class="end-title">
+      <span class="arrow">→</span>
+      <span class="target">{targetName}</span>
+      {#if isFk}<span class="fk-badge">FK</span>{/if}
+    </div>
+  {/if}
 
   <div class="field">
     <label>Role (property name)</label>
@@ -58,19 +61,19 @@
     </label>
   </div>
 
-  {#if isFk}
-    <div class="field">
-      <label>Cascade (ORM)</label>
-      <select
-        value={end.cascade ?? ''}
-        onchange={(e) => patch('cascade', (e.target as HTMLSelectElement).value || undefined)}
-      >
-        {#each CASCADE_OPTIONS as opt}
-          <option value={opt}>{opt || '—'}</option>
-        {/each}
-      </select>
-    </div>
+  <div class="field">
+    <label>Cascade (ORM)</label>
+    <select
+      value={end.cascade ?? ''}
+      onchange={(e) => patch('cascade', (e.target as HTMLSelectElement).value || undefined)}
+    >
+      {#each CASCADE_OPTIONS as opt}
+        <option value={opt}>{opt || '—'}</option>
+      {/each}
+    </select>
+  </div>
 
+  {#if isFk}
     <div class="field">
       <label>On Delete (DB)</label>
       <select

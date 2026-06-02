@@ -157,6 +157,7 @@
                       endIdx={idx}
                       {end}
                       isFk={fk}
+                      showTitle={false}
                     />
                   </div>
                 {/if}
