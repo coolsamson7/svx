@@ -59,6 +59,7 @@ export class CompilerPipeline {
           const schemasDir  = config.outputDirs?.schemas  ?? DEFAULT_OUTPUT_DIRS.schemas!
           const entities = new TypeOrmGenerator().generate(objectModel, persistenceModel, {
             naming, tsFiles: config.naming.tsFiles ?? {}, entitiesDir, schemasDir,
+            fileHeader: config.fileHeader,
           })
           const ormOutDir = join(config.outputDir, entitiesDir)
           for (const [relPath, source] of entities) {
@@ -72,7 +73,7 @@ export class CompilerPipeline {
         case 'schema': {
           const schemasDir = config.outputDirs?.schemas ?? DEFAULT_OUTPUT_DIRS.schemas!
           const files = new SchemaMapperGenerator().generate(objectModel, persistenceModel, {
-            naming, tsFiles: config.naming.tsFiles ?? {},
+            naming, tsFiles: config.naming.tsFiles ?? {}, fileHeader: config.fileHeader,
           })
           const schOutDir = join(config.outputDir, schemasDir)
           for (const [relPath, content] of files) {
