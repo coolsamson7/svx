@@ -9,22 +9,22 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "svelte": "^5.55.5",
-    "sv-router": "^0.16.0",
-    "reflect-metadata": "^0.2.2",
-
-    "@svx/portal": "*",
-    "@svx/di": "*",
-    "@svx/core": "*",
     "@svx/common": "*",
+    "@svx/core": "*",
+    "@svx/di": "*",
+    "@svx/portal": "*",
     "@svx/security": "*",
-    "@svx/service-common": "*",
     "@svx/service-client": "*",
+    "@svx/service-common": "*",
     "@svx/user-interface": "*",
-
     "@xyflow/svelte": "^1.5.2",
     "elkjs": "^0.11.1",
-    "fast-xml-parser": "^5.8.0"
+    "fast-xml-parser": "^5.8.0",
+    "@svx/xmi": "*",
+    "highlight.js": "^11.11.1",
+    "reflect-metadata": "^0.2.2",
+    "sv-router": "^0.16.0",
+    "svelte": "^5.55.5"
   },
   "devDependencies": {
     "vite": "^8.0.10"
