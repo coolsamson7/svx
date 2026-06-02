@@ -3,6 +3,8 @@ modules:
     - key: xmi-viewer
       title: XMI Viewer
       description: View and edit UML class models stored as XMI files
+      config:
+        resource: config
       parameters:
         - identifier: gitlabUrl
           name: GitLab Raw URL
@@ -11,9 +13,10 @@ modules:
           required: false
         - identifier: attachmentName
           name: Attachment name
-          description: Name of the .xmi file attached to this Confluence page
+          description: "Name of the .xmi file attached to this Confluence page (default: model.xmi)"
           type: string
           required: false
+          defaultValue: "model.xmi"
         - identifier: readonly
           name: Read-only mode
           description: Show the diagram without edit controls
@@ -28,8 +31,8 @@ modules:
 resources:
   - key: main
     path: static
-    tunnel:
-      port: 5174
+  - key: config
+    path: static/config-page
 
 permissions:
   scopes:

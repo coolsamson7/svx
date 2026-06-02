@@ -41,7 +41,7 @@
       )
       const data = await res.json()
       const attachment = data.results?.[0]
-      if (!attachment) throw new Error(`Attachment "${context.config.attachmentName}" not found`)
+      if (!attachment) return
       const fileRes = await requestConfluence(`/wiki${attachment._links.download}`)
       text = await fileRes.text()
     }
@@ -65,8 +65,8 @@
 
   {:else if store.model.order.length === 0}
     <div class="state muted">
-      No XMI source configured.<br />
-      Edit the macro and set a GitLab URL or attachment name.
+      No model found.<br />
+      Attach a <strong>model.xmi</strong> file to this page, or edit the macro to set a GitLab URL.
     </div>
 
   {:else}

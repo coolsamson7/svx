@@ -35,7 +35,7 @@ export async function getForgeContext(): Promise<ForgeContext> {
     spaceKey: ctx.extension.space?.key ?? '',
     config: {
       gitlabUrl:      (ctx.extension as any).config?.gitlabUrl,
-      attachmentName: (ctx.extension as any).config?.attachmentName,
+      attachmentName: (ctx.extension as any).config?.attachmentName ?? 'model.xmi',
       readonly:       (ctx.extension as any).config?.readonly === 'true',
       height:         Number((ctx.extension as any).config?.height ?? 600),
     },

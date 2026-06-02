@@ -62,6 +62,10 @@ export class ServiceRegistry {
       throw new Error(`Unknown service ${type.name}`)
     }
 
+    mock<T extends Service>(type: AbstractType<T>, instance: T): void {
+      this.findServiceDescriptor(type).instance = instance
+    }
+
     report() : string {
       const builder = new StringBuilder()
 

@@ -68,9 +68,11 @@ export class ServiceClient {
     if (!proxy) {
       const descriptor = this.serviceRegistry.findServiceDescriptor(type)
 
-      proxy = new ProxyBuilder<T>(type)
-        .bind((name, ...args) => this.getChannel(descriptor.componentDescriptor).call(descriptor, name, ...args))
-        .build()
+      proxy = descriptor.instance
+        ? descriptor.instance as T
+        : new ProxyBuilder<T>(type)
+            .bind((name, ...args) => this.getChannel(descriptor.componentDescriptor).call(descriptor, name, ...args))
+            .build()
 
       this.proxies.set(type, proxy)
     }
