@@ -83,6 +83,12 @@
   {:else}
     <span class="material-symbols-rounded" style="font-size:48px; color:#ccc">upload_file</span>
     <p>Drop a <code>.xmi</code> file here, paste XMI, or click to browse</p>
+    <button
+      class="new-btn"
+      onclick={(e) => { e.stopPropagation(); store.addElement('uml:Class', 'NewClass') }}
+    >
+      <span class="material-symbols-rounded">add</span> Start with a blank model
+    </button>
     {#if error}
       <p class="error">{error}</p>
     {/if}
@@ -126,6 +132,22 @@
     padding: 1px 4px;
     border-radius: 3px;
   }
+  .new-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 8px 18px;
+    border: 1px solid #534AB7;
+    border-radius: 6px;
+    background: white;
+    color: #534AB7;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .new-btn:hover { background: #EEEDFE; }
+  .new-btn .material-symbols-rounded { font-size: 16px; }
   .error {
     color: #c00;
     font-size: 13px;

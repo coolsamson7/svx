@@ -16,14 +16,16 @@
       const w = node.measured?.width ?? node.width ?? 200
       const h = node.measured?.height ?? node.height ?? 100
 
-      // Measure the actual SvelteFlow container — not window, which includes panels/sidebars
+      // For nodes inside packages, `position` is relative to the parent.
+      // `internals.positionAbsolute` is always the absolute flow coordinate.
+      const abs = (node as any).internals?.positionAbsolute ?? node.position
+
       const container = document.querySelector('.svelte-flow')
       const cw = container?.clientWidth ?? 800
       const ch = container?.clientHeight ?? 600
 
-      // flowToScreenPosition returns coords relative to the SvelteFlow container
-      const tl = flowToScreenPosition(node.position)
-      const br = flowToScreenPosition({ x: node.position.x + w, y: node.position.y + h })
+      const tl = flowToScreenPosition(abs)
+      const br = flowToScreenPosition({ x: abs.x + w, y: abs.y + h })
 
       const inView =
         tl.x > MARGIN && tl.y > MARGIN &&
@@ -31,8 +33,8 @@
 
       if (!inView) {
         setCenter(
-          node.position.x + w / 2,
-          node.position.y + h / 2,
+          abs.x + w / 2,
+          abs.y + h / 2,
           { zoom: getZoom(), duration: 300 },
         )
       }
