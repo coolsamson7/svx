@@ -1,0 +1,24 @@
+{
+  "name": "@svx/messaging-nats",
+  "sourceRoot": "libs/messaging/nats/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/messaging/nats/vitest.config.ts",
+        "reportsDirectory": "../../../coverage/libs/messaging/nats"
+      }
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "dependsOn": ["^build"],
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/messaging/nats/src/index.ts",
+        "tsConfig": "libs/messaging/nats/tsconfig.lib.json",
+        "outputPath": "dist/libs/messaging/nats"
+      }
+    }
+  }
+}

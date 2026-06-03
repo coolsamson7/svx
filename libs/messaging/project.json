@@ -1,0 +1,24 @@
+{
+  "name": "@svx/messaging",
+  "sourceRoot": "libs/messaging/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "configFile": "libs/messaging/vitest.config.ts",
+        "reportsDirectory": "../../coverage/libs/messaging"
+      }
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "dependsOn": ["^build"],
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "libs/messaging/src/index.ts",
+        "tsConfig": "libs/messaging/tsconfig.lib.json",
+        "outputPath": "dist/libs/messaging"
+      }
+    }
+  }
+}

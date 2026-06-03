@@ -1,0 +1,14 @@
+{
+  "name": "@svx/messaging-nats",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@svx/messaging": "*",
+    "nats": "^2.29.3"
+  }
+}

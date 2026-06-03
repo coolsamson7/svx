@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/libs/messaging",
+    "declaration": true,
+    "types": [
+      "node"
+    ],
+    "rootDir": "../.."
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/jest.config.ts",
+    "src/test-setup.ts"
+  ]
+}
