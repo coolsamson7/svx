@@ -6,6 +6,7 @@ import {
   Provider,
 } from '@nestjs/common'
 import { ModuleRef } from '@nestjs/core'
+import { VALIDATE_EVENTS } from './codec'
 import { EventManager } from './event-manager'
 import { registeredHandlers } from './handle.decorator'
 import { EnvelopePipeline, registeredPipelines } from './pipeline'
@@ -17,6 +18,11 @@ import { MessageTransport } from './transport'
 export interface MessagingModuleOptions {
   /** a provider that binds the {@link MessageTransport} token (e.g. <code>natsTransport(...)</code>). */
   transport: Provider
+  /**
+   * validate events against their <code>@Implements</code> schema (via {@link ValidatingCodec}).
+   * Off by default. The transport factory reads this flag through the {@link VALIDATE_EVENTS} token.
+   */
+  validate?: boolean
   /** optional extra providers. */
   providers?: Provider[]
 }
@@ -43,8 +49,15 @@ export class MessagingModule implements OnApplicationBootstrap, OnApplicationShu
     return {
       module: MessagingModule,
       global: true,
-      // pipeline classes become providers → constructed via DI
-      providers: [options.transport, ...registeredPipelines(), ...(options.providers ?? []), EventManager],
+      providers: [
+        options.transport,
+        // pipeline classes become providers → constructed via DI
+        ...registeredPipelines(),
+        ...(options.providers ?? []),
+        EventManager,
+        // read by the transport factory to choose ValidatingCodec vs plain
+        { provide: VALIDATE_EVENTS, useValue: options.validate ?? false },
+      ],
       exports: [EventManager, MessageTransport],
     }
   }

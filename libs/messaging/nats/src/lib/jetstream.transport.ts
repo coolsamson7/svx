@@ -168,9 +168,9 @@ export class JetStreamTransport extends MessageTransport {
 
   private async consume(messages: ConsumerMessages, subscription: EventSubscription, deliver: DeliverFn): Promise<void> {
     for await (const msg of messages) {
-      const envelope = this.factory.forReceive(msg, subscription.descriptor)
-
       try {
+        // decode (and, with a validating codec, validate) inside the try so failures are nak'd
+        const envelope = this.factory.forReceive(msg, subscription.descriptor)
         await deliver(envelope)
         msg.ack()
       } catch (error) {

@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { Injectable } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { connect } from 'nats'
+import { Implements, type InferObject, number, object, string } from '@svx/common'
 import {
   Envelope,
   EnvelopePipeline,
@@ -110,10 +111,27 @@ class SessionPipeline implements EnvelopePipeline {
 }
 
 // ─── Event + listener under test ─────────────────────────────────────────────
+// Schema attached the same way service DTOs do it (cf. UserEntity @Implements(UserSchema)).
+// With MessagingModule.forRoot({ validate: true }) the ValidatingCodec enforces it on the wire.
+const GreetingSchema = object(
+  {
+    message: string().min(1),
+    seq: number(),
+  },
+  'Greeting',
+)
+
+type GreetingShape = InferObject<typeof GreetingSchema>
+
 @Event({ name: 'integration.greeting' })
-class Greeting {
-  constructor(readonly message = '', readonly seq = 0) {}
+@Implements(GreetingSchema)
+class Greeting implements GreetingShape {
+  message!: string
+  seq!: number
 }
+
+/** Build a Greeting instance from its fields (no constructor on the event class). */
+const greeting = (message: string, seq: number): Greeting => Object.assign(new Greeting(), { message, seq })
 
 @Injectable()
 class GreetingListener {
@@ -149,7 +167,7 @@ describe.each(TRANSPORTS)('messaging integration — $name', ({ useStream, provi
     if (useStream) await deleteStream()
 
     app = await Test.createTestingModule({
-      imports: [MessagingModule.forRoot({ transport: provider() })],
+      imports: [MessagingModule.forRoot({ transport: provider(), validate: true })],
       // SessionPipeline is auto-registered by its @EnvelopePipeline decorator and
       // provided/constructed by MessagingModule — no need to list it here.
       providers: [GreetingListener],
@@ -171,7 +189,7 @@ describe.each(TRANSPORTS)('messaging integration — $name', ({ useStream, provi
   it('delivers a sent event to the @Handle method', async () => {
     const arrived = listener.next()
 
-    await manager.send(new Greeting('hello', 1))
+    await manager.send(greeting('hello', 1))
 
     const event = await arrived
     expect(event).toBeInstanceOf(Greeting)
@@ -182,13 +200,23 @@ describe.each(TRANSPORTS)('messaging integration — $name', ({ useStream, provi
   it('delivers multiple events in order', async () => {
     const before = listener.received.length
 
-    await manager.send(new Greeting('a', 2))
-    await manager.send(new Greeting('b', 3))
+    await manager.send(greeting('a', 2))
+    await manager.send(greeting('b', 3))
 
     await vi.waitFor(() => expect(listener.received.length).toBe(before + 2))
 
     const last = listener.received.slice(before)
     expect(last.map((e) => e.message)).toEqual(['a', 'b'])
+  })
+
+  it('rejects an event that violates its @Implements schema (ValidatingCodec)', async () => {
+    const before = listener.received.length
+
+    // message must be min(1) — empty string fails the schema on encode, before it ever hits the wire
+    await expect(manager.send(greeting('', 1))).rejects.toThrow()
+
+    // nothing was published, so the handler never fired
+    expect(listener.received.length).toBe(before)
   })
 
   it('captures the session on send and replays it on receive (symmetric pipeline)', async () => {
@@ -197,7 +225,7 @@ describe.each(TRANSPORTS)('messaging integration — $name', ({ useStream, provi
     const arrived = listener.next()
 
     // send inside a session context — the pipeline stamps it into the envelope header
-    await sessionStore.run(session, () => manager.send(new Greeting('with-session', 9)))
+    await sessionStore.run(session, () => manager.send(greeting('with-session', 9)))
 
     const event = await arrived
     expect(event.message).toBe('with-session')
