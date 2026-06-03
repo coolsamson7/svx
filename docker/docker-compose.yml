@@ -36,6 +36,19 @@ services:
     networks:
       - svx-network
   #----------------------------------------------------------------
+  nats:
+    image: 'nats:2-alpine'
+    container_name: nats
+    # -js enables JetStream (harmless for core NATS, ready for the JetStream transport later)
+    command: '--name svx-nats --http_port 8222 -js'
+    ports:
+      - '4222:4222'   # client connections (nats://localhost:4222)
+      - '8222:8222'   # http monitoring (http://localhost:8222)
+    expose:
+      - '4222'
+    networks:
+      - svx-network
+  #----------------------------------------------------------------
 networks:
   svx-network:
 volumes:

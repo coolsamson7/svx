@@ -12,10 +12,13 @@
     "libs/portal", 
     "libs/validation", 
     "libs/core", 
-    "libs/service/common", 
-    "libs/service/client", 
-    "libs/service/nestjs", 
-    
+    "libs/service/common",
+    "libs/service/client",
+    "libs/service/nestjs",
+
+    "libs/messaging",
+    "libs/messaging/nats",
+
     "tools/manifest-generator",
     "tools/ts-service-reflector"
   ],

@@ -75,6 +75,7 @@
     "class-validator": "^0.15.1",
     "jwks-rsa": "^4.0.1",
     "m3-svelte": "^7.1.2",
+    "nats": "^2.29.3",
     "oidc-client-ts": "^3.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
